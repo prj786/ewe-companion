@@ -1,0 +1,12 @@
+{
+  "name": "ewe",
+  "owner": { "name": "prj786", "url": "https://github.com/prj786" },
+  "metadata": { "description": "ewe's own Claude Code plugins, installed by ewe-companion" },
+  "plugins": [
+    {
+      "name": "ewe-companion",
+      "source": "./ewe-companion",
+      "description": "Answer Claude's permission prompts and questions from the ewe desktop's companion island; see when sessions finish."
+    }
+  ]
+}

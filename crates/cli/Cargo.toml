@@ -1,0 +1,19 @@
+[package]
+name = "ewe-companion"
+description = "ewe-companion's CLI and agent hook relay (JSON out, exit 0)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ewe-companion"
+path = "src/main.rs"
+
+# std only besides these: a hook runs on every agent event, so start-up
+# time is the budget (no async runtime, no argument-parser crate)
+[dependencies]
+companion-core.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+socket2.workspace = true
+libc.workspace = true

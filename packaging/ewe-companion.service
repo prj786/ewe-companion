@@ -1,0 +1,17 @@
+# ewe-companion.service: the companion's daemon, started on demand by the
+# shell's Companion plugin (never enabled at boot: no plugin, no daemon). It
+# lives OUTSIDE the shell so a restart of ewe.service cannot drop a card an
+# agent is waiting on; the island reconnects and re-learns the state.
+# No [Install]: `ewe-plugin disable ewe.companion` leaves nothing behind.
+[Unit]
+Description=ewe companion daemon (agent cards, sessions, history)
+Documentation=https://github.com/prj786/ewe-companion
+
+[Service]
+# a stray start outside a Wayland session (ssh, a TTY) is skipped, not failed
+ExecCondition=/bin/sh -c 'test -S "$${XDG_RUNTIME_DIR:-/run/user/$$(id -u)}/$${WAYLAND_DISPLAY:-none}"'
+ExecStart=/usr/bin/ewe-companiond
+Restart=on-failure
+RestartSec=2
+# waiting hooks get "no opinion" on TERM (Claude asks in its terminal)
+TimeoutStopSec=5

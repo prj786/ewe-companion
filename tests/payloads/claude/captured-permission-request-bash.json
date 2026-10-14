@@ -1,0 +1,30 @@
+{
+ "cwd": "/home/u/Projects/scratch",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PermissionRequest",
+ "permission_mode": "default",
+ "permission_suggestions": [
+  {
+   "destination": "session",
+   "directories": [
+    "/home/u/Projects/scratch"
+   ],
+   "type": "addDirectories"
+  },
+  {
+   "destination": "session",
+   "mode": "acceptEdits",
+   "type": "setMode"
+  }
+ ],
+ "prompt_id": "bce73458-f023-4e9a-812f-375befb3fb5d",
+ "session_id": "97c9bf28-fd6e-4b31-864b-73e7bed8dc82",
+ "tool_input": {
+  "command": "touch made-by-claude.txt",
+  "description": "Create empty file made-by-claude.txt"
+ },
+ "tool_name": "Bash",
+ "transcript_path": "/home/u/.claude/projects/-home-u-Projects-scratch/session.jsonl"
+}

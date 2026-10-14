@@ -1,0 +1,13 @@
+[package]
+name = "companion-core"
+description = "ewe-companion's shared types: the socket protocol, the agent dialects, paths"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+regex.workspace = true

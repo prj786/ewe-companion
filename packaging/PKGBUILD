@@ -1,0 +1,56 @@
+# Maintainer: scubba
+#
+# ewe-companion — the desktop companion's daemon, CLI and agent hook relay
+# (RFC-007). The island itself is the shell plugin ewe.companion
+# (prj786/ewe-plugin-companion), which ewe vendors into its payload.
+# P1 skeleton: the release workflow (P7) rewrites _tag/pkgver and attaches
+# the built package; until then this builds from a local checkout.
+
+pkgname=ewe-companion
+# The git TAG and the pacman pkgver are different strings (a tag may carry
+# -beta, an Arch pkgver may not hold a hyphen; 0.1.0beta sorts below 0.1.0
+# under vercmp). The archive is addressed by the TAG, so the source URL and
+# the directory follow _tag, never pkgver.
+_tag=v0.1.0-beta
+pkgver=0.1.0beta
+pkgrel=1
+pkgdesc="ewe-companion — answer your AI agents from the ewe desktop's island; the daemon, CLI and hook relay"
+arch=('x86_64' 'aarch64')
+url="https://github.com/prj786/ewe-companion"
+license=('MIT')
+depends=('gcc-libs' 'glibc')
+optdepends=(
+  'ewe: the desktop whose island this daemon talks to (plugin ewe.companion)'
+  'claude-code: `ewe-companion agents install claude` installs the hooks'
+  'kitty: Answer in terminal brings you to the exact tab'
+)
+makedepends=('rust' 'cargo')
+# Arch's makepkg LTO breaks linking some crates' assembly (see Komble's
+# PKGBUILD); Rust-level LTO stays on in Cargo.toml.
+options=(!lto !debug)
+
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$_tag.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/$pkgname-${_tag#v}"
+  cargo build --release --locked
+}
+
+check() {
+  cd "$srcdir/$pkgname-${_tag#v}"
+  cargo test --release --locked
+  BIN=target/release tests/relay-failsafe.sh
+}
+
+package() {
+  cd "$srcdir/$pkgname-${_tag#v}"
+  install -Dm755 target/release/ewe-companiond "$pkgdir/usr/bin/ewe-companiond"
+  install -Dm755 target/release/ewe-companion  "$pkgdir/usr/bin/ewe-companion"
+  install -Dm644 packaging/ewe-companion.service "$pkgdir/usr/lib/systemd/user/ewe-companion.service"
+  # the Claude Code plugin + its local marketplace (decision 8):
+  # `ewe-companion agents install claude` points Claude Code here
+  install -d "$pkgdir/usr/share/ewe-companion"
+  cp -r integrations/claude-code "$pkgdir/usr/share/ewe-companion/claude-code"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

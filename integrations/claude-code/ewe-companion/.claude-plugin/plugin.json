@@ -1,0 +1,8 @@
+{
+  "name": "ewe-companion",
+  "version": "0.1.0",
+  "description": "Answer Claude's permission prompts and questions from the ewe desktop's companion island; see when sessions finish. With the companion off, Claude asks in its terminal as usual.",
+  "author": { "name": "prj786", "url": "https://github.com/prj786" },
+  "homepage": "https://github.com/prj786/ewe-companion",
+  "license": "MIT"
+}

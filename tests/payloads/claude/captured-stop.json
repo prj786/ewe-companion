@@ -1,0 +1,15 @@
+{
+ "background_tasks": [],
+ "cwd": "/home/u/Projects/scratch",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "Stop",
+ "last_assistant_message": "Done.",
+ "permission_mode": "default",
+ "prompt_id": "bce73458-f023-4e9a-812f-375befb3fb5d",
+ "session_crons": [],
+ "session_id": "97c9bf28-fd6e-4b31-864b-73e7bed8dc82",
+ "stop_hook_active": false,
+ "transcript_path": "/home/u/.claude/projects/-home-u-Projects-scratch/session.jsonl"
+}
