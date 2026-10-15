@@ -42,8 +42,8 @@ The daemon replies `welcome`, then a full `state`, and keeps the connection.
 | `peek` | `key`, `line`, `level` (`info` · `success` · `warning` · `danger`), `actions: [Action]`, `ttl_ms` (0 = the island's own `peek_seconds`) | one line; the same `key` replaces the line |
 | `card` | a `Card` | followed at once by a `state` that includes it |
 | `card.close` | `id`, `reason` | `answered` · `answered-elsewhere` · `no-ack` · `timeout` · `locked` · `island-gone` · `agent-gone` · `daemon-stopping` |
-| `chat.reply` | `id`, `kind` (`thinking` · `answer` · `done` · `error` · `info`), `text`, `undo?` (a token), `command?`, `action?` (`{label, command, args}`), `confirm?` (`{token, command, about, risk, reason, terminal}`), `output?` | `thinking` first, then the answer under the same `id`. `action` is a button under an answer from the knowledge pack ("Open Settings"); a click sends it back as `command.run`. `confirm` is a proposed shell command: the island shows it exactly, with Run and In terminal (only In terminal when `terminal`), and `reason` in warning ink when `risk` is `danger`; a click sends `confirm.run`. `output` is the last lines a command printed |
-| `do` | `id`, `action`, `args` | what only the shell does: `dnd {on}` · `open {what, page}` · `launch {app, path?, dir?}` · `term {command}` (kitty runs it in the user's shell and stays open) · `screenshot {mode}` · `browse {url}` (ewe-browser when installed, else the default browser). The island answers `do.result` within 3 s. `launch` finds `app` (a desktop id, a name, a program) in the shell's desktop-entry index and answers `data: {name}`, or `ok:false` with `error:"not-found"` |
+| `chat.reply` | `id`, `kind` (`thinking` · `answer` · `done` · `error` · `info`), `text`, `undo?` (a token), `command?`, `action?` (`{label, command, args}`), `confirm?` (`{token, command, about, risk, reason, terminal}`), `output?`, `rows?` | `thinking` first, then the answer under the same `id` (a reply that comes later by itself, such as the copy that waited for Safe's unlock, has its own `id` and no `thinking`). `action` is a button under the answer ("Open Settings", "Unlock Safe", a tainted turn's "Do it"); a click sends it back as `command.run`. `confirm` is a proposed shell command: the island shows it exactly, with Run and In terminal (only In terminal when `terminal`), and `reason` in warning ink when `risk` is `danger`; a click sends `confirm.run`. `output` is the last lines a command printed. `rows` is what a command found (see *Rows*) |
+| `do` | `id`, `action`, `args` | what only the shell does: `dnd {on}` · `open {what, page}` · `launch {app, path?, dir?}` · `term {command}` (kitty runs it in the user's shell and stays open) · `screenshot {mode}` · `browse {url}` (ewe-browser when installed, else the default browser) · `browser {bin, args}` (ewe browser's command line: the island runs `bin` + `args` as argv, `bin`'s name must be `ewe-browser`, and answers `data: {reply}`, the last line it printed, parsed; the daemon waits 20 s, since it may start the browser) · `safe_unlock {bin}` (runs `bin unlock --ask`, Safe's own prompt, detached; `bin`'s name must be `ewe-safe`). The island answers `do.result` within 3 s (`browser`: 20 s). `launch` finds `app` (a desktop id, a name, a program) in the shell's desktop-entry index and answers `data: {name}`, or `ok:false` with `error:"not-found"` |
 
 `presence` is one of `idle`, `working`, `waiting` or `error`. The `state`
 snapshot also carries:
@@ -62,6 +62,36 @@ a Komble page (`updates` · `plugins` · `settings` · `search=<words>` ·
 `options=<plugin id>`), or a Quick settings tab (`home` · `wifi` · `bt` ·
 `audio` · `cal` · `notifs`, plus plugin tabs).
 
+### Rows
+
+What a command found, under its line: Safe's logins, files and folders,
+ewe browser's history and tabs.
+
+```json
+"rows": [{"title": "ewe-safe", "detail": "~/Projects/ewe", "icon": "folder",
+          "actions": [{"label": "Open", "command": "open_folder", "args": {"path": "/home/you/Projects/ewe/ewe-safe"}},
+                      {"label": "Copy path", "copy": "/home/you/Projects/ewe/ewe-safe"}]}]
+```
+
+- `icon`: `folder` · `file` · `web` · `key`.
+- A click on the row does its first action; the others are small buttons.
+- An action with `command` is sent back as `command.run` (a catalog
+  command, validated like any other). An action with `copy` never leaves
+  the island: it puts that text on the clipboard (`wl-copy`).
+- A Safe row's action is `safe_copy {id, field, title, username}`: an item
+  id and the words to show, never a value.
+
+### The catalog's newer commands
+
+`find_files {query, kind?}` · `open_file {path}` · `browser_history
+{query}` · `browser_tabs {}` · `browser_tab {words | id}` · `safe_copy
+{query | id, field: password|username|otp}` · `safe_login {query}` ·
+`safe_lock {}` · `safe_unlock {then?}` (`then`: the Safe command that
+waited for the unlock) · `safe_status {}`. `web_search`, `play_music` and
+`open_url` use ewe browser's command line (`search`, `play`, `open`) when it
+has one. What these find is shown on the island; the conversation, and so a
+model, keeps a line without names ("done", a count).
+
 `launch_app` takes `app` (a name: "nemo", "zed", "the browser", "terminal")
 and an optional `path` (words or a path: "documents", "~/Projects/ewe",
 "ewe-companion"); `open_folder` takes `path`. The daemon finds the folder
@@ -75,7 +105,7 @@ and the chat treats them as a question.
 |---|---|---|
 | `card.shown` | `id` | **the ack**. Without it within 800 ms, the daemon answers the agent "no opinion" |
 | `card.answer` | `id`, `action`, `answers?` | a click; see *Actions* |
-| `env` | `locked`, `dnd`, `fullscreen`, `casting`, `idle`, `hypr` | sent on connect and on every change. `hypr` is the shell's `HYPRLAND_INSTANCE_SIGNATURE`, for jump-to-terminal |
+| `env` | `locked`, `dnd`, `fullscreen`, `casting`, `idle`, `hypr`, `wayland` | sent on connect and on every change. `hypr` is the shell's `HYPRLAND_INSTANCE_SIGNATURE`, for jump-to-terminal; `wayland` its `WAYLAND_DISPLAY`, for what Safe copies (a user unit may have none) |
 | `session.jump` | `id` | bring that session's terminal forward |
 | `settings` | `provider`, `model`, `base_url` | who answers questions (the plugin's options). **Never a key** |
 | `chat.send` | `text` | a question or a command in plain words |
@@ -181,10 +211,12 @@ there is no daemon.
 | `history` | `limit` | `ok`, `events` |
 | `sessions` | — | `ok`, `sessions` |
 | `jump` | `session` | `ok`, `window`, `tab` |
-| `ask` | `text` | a chat reply (`kind`, `text`, `undo`, `command`, `action`) and `ok` |
+| `ask` | `text` | a chat reply (`kind`, `text`, `undo`, `command`, `action`, `rows`) and `ok` |
+| `find` | `query`, `kind` (`any` · `folder`), `limit` | `ok`, `results: [{path, kind, modified}]` (best first, then newest; `modified` in seconds), `partial` (the 1.5 s budget ran out) |
 | `settings` | `provider`, `model`, `base_url` | `ok`, `chat` |
 | `key.set` / `key.clear` | `provider` (+ `key`) | `ok` |
 | `usage` | `agent`, `rate_limits` | `ok`. Only the status-line relay sends it |
 | `debug.card` | `kind` | `ok`, `id`. Only for a daemon started with `EWE_COMPANION_DEBUG=1` |
 | `debug.answer` | `id`, `action`, `answers` | `ok`. Same condition: a stand-in for a click, so tests can run without a pointer |
 | `debug.confirm` | `token`, `mode` | a chat reply with `output`. Same condition: a stand-in for the Run click |
+| `debug.run` | `command`, `args` | a chat reply. Same condition: a stand-in for a button's `command.run` (a row's Copy, Unlock Safe) |

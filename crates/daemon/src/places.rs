@@ -255,8 +255,26 @@ pub async fn default_app(name: &str) -> Option<String> {
         }
         _ => return None,
     };
+    default_for(mime).await
+}
+
+/// The desktop id that opens this file: its type (`xdg-mime query
+/// filetype`), then that type's default, as Settings → Default apps sets it.
+pub async fn app_for_file(p: &Path) -> Option<String> {
+    let mime = xdg_mime(&["query", "filetype", &p.to_string_lossy()]).await?;
+    default_for(&mime).await
+}
+
+async fn default_for(mime: &str) -> Option<String> {
+    let id = xdg_mime(&["query", "default", mime]).await?;
+    let id = id.strip_suffix(".desktop").unwrap_or(&id).to_string();
+    (!id.is_empty()).then_some(id)
+}
+
+/// One `xdg-mime` answer, trimmed; None when it says nothing.
+async fn xdg_mime(args: &[&str]) -> Option<String> {
     let mut c = Command::new("xdg-mime");
-    c.args(["query", "default", mime])
+    c.args(args)
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .kill_on_drop(true);
@@ -264,9 +282,8 @@ pub async fn default_app(name: &str) -> Option<String> {
         .await
         .ok()?
         .ok()?;
-    let id = String::from_utf8(out.stdout).ok()?.trim().to_string();
-    let id = id.strip_suffix(".desktop").unwrap_or(&id).to_string();
-    (!id.is_empty()).then_some(id)
+    let s = String::from_utf8(out.stdout).ok()?.trim().to_string();
+    (!s.is_empty()).then_some(s)
 }
 
 #[cfg(test)]

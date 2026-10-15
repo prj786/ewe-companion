@@ -1,12 +1,16 @@
 //! Running a [`Call`] from the catalog (`companion_core::commands`).
 //!
-//! Every command here is a desktop action (T1, decision 6): it runs at
-//! once, says in one line what it did, and offers Undo where there is a
-//! way back. Commands go through argv only, never a shell, with a short
+//! Every command here is a read (T0: it shows what it found, as rows the
+//! island draws) or a desktop action (T1, decision 6): it runs at once,
+//! says in one line what it did, and offers Undo where there is a way
+//! back. Commands go through argv only, never a shell, with a short
 //! budget. The ones only the shell can do (Do not disturb, opening apps,
 //! screenshots, the browser) are sent to the island as `do` messages, so an
 //! app the companion opens belongs to the desktop, not to this daemon's
 //! unit, and survives a daemon restart.
+//!
+//! ewe browser, Safe and the finder have their own modules
+//! ([`crate::browser`], [`crate::safe`], [`crate::finder`]).
 
 use std::process::Stdio;
 use std::sync::Arc;
@@ -17,42 +21,63 @@ use serde_json::{Value, json};
 use tokio::process::Command;
 
 use crate::hub::Hub;
-use crate::places;
+use crate::{browser, finder, places, safe};
 
 const BUDGET: Duration = Duration::from_secs(5);
 
+#[derive(Default)]
 pub struct Outcome {
     pub ok: bool,
     pub line: String,
     pub undo: Option<Call>,
+    /// ewe browser's own Undo: the argv lists its reply carried
+    pub undo_browser: Vec<Vec<String>>,
     /// the words named nothing here (no such app, no such folder): when
     /// they came from the offline matcher, the chat treats them as a
     /// question instead ("open the pod bay doors")
     pub miss: bool,
+    /// what it found, as rows the island draws (`chat.reply` `rows`):
+    /// `{title, detail, icon, actions: [{label, command, args} | {label, copy}]}`
+    pub rows: Vec<Value>,
+    /// a button under the line ("Unlock Safe")
+    pub action: Option<(String, Call)>,
+    /// what the conversation keeps instead of `line`, so a model sees
+    /// "done" or a count, never a name (Safe's logins, found files, the
+    /// browser's pages). Set, the line is shown on the island only
+    pub private: Option<String>,
+    /// a command that must be confirmed first (ewe browser's tier 2): the
+    /// exact command line, offered with Run like any proposal
+    pub propose: Option<(String, String)>,
 }
 
-fn done(line: impl Into<String>, undo: Option<Call>) -> Outcome {
+pub(crate) fn done(line: impl Into<String>, undo: Option<Call>) -> Outcome {
     Outcome {
         ok: true,
         line: line.into(),
         undo,
-        miss: false,
+        ..Default::default()
     }
 }
 
-fn failed(line: impl Into<String>) -> Outcome {
+pub(crate) fn failed(line: impl Into<String>) -> Outcome {
     Outcome {
-        ok: false,
         line: line.into(),
-        undo: None,
-        miss: false,
+        ..Default::default()
     }
 }
 
-fn missed(line: impl Into<String>) -> Outcome {
+pub(crate) fn missed(line: impl Into<String>) -> Outcome {
     Outcome {
         miss: true,
         ..failed(line)
+    }
+}
+
+impl Outcome {
+    /// The same outcome, with what a model may see of it.
+    pub(crate) fn private(mut self, line: impl Into<String>) -> Outcome {
+        self.private = Some(line.into());
+        self
     }
 }
 
@@ -268,35 +293,42 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
                 Err(e) => failed(e),
             }
         }
-        "web_search" | "play_music" | "open_url" => {
-            let q = a.get("query").and_then(Value::as_str).unwrap_or("").trim();
-            let (url, line) = match call.command.as_str() {
-                "web_search" => (catalog::search_url(q), format!("Searching the web for {q}")),
-                "play_music" => (
-                    catalog::music_url(q),
-                    format!("Looking up {q} in YouTube Music"),
-                ),
-                _ => (
-                    a["url"].as_str().unwrap_or("").to_string(),
-                    "Opened the page".to_string(),
-                ),
-            };
-            match hub.shell_do("browse", json!({"url": url})).await {
-                Ok(r) => {
-                    // ewe-browser when it is installed, else the default browser
-                    let via = r.get("via").and_then(Value::as_str).unwrap_or("");
-                    done(
-                        if via.is_empty() {
-                            line
-                        } else {
-                            format!("{line} · {via}")
-                        },
-                        None,
-                    )
-                }
-                Err(e) => failed(e),
+        // ewe browser's own command line when it has one, else the page
+        // opened as before (the island's `browse`)
+        "web_search" => {
+            let q = a["query"].as_str().unwrap_or("").trim();
+            match browser::cli().await {
+                Some(cli) => browser::search(hub, &cli, q).await,
+                None => browse(hub, call).await,
             }
         }
+        "play_music" => {
+            let q = a["query"].as_str().unwrap_or("").trim();
+            match browser::cli().await {
+                Some(cli) => browser::play(hub, &cli, q).await,
+                None => browse(hub, call).await,
+            }
+        }
+        "open_url" => browser::open_url(hub, a["url"].as_str().unwrap_or("")).await,
+        "browser_history" => {
+            browser::history(hub, a.get("query").and_then(Value::as_str).unwrap_or("")).await
+        }
+        "browser_tabs" => browser::tabs(hub).await,
+        "browser_tab" => {
+            browser::tab(
+                hub,
+                a.get("id").and_then(Value::as_str),
+                a.get("words").and_then(Value::as_str).unwrap_or(""),
+            )
+            .await
+        }
+        "find_files" => finder::run(a).await,
+        "open_file" => open_file(hub, a["path"].as_str().unwrap_or("").trim()).await,
+        "safe_copy" => safe::copy(hub, a).await,
+        "safe_login" => safe::login(hub, a["query"].as_str().unwrap_or("")).await,
+        "safe_lock" => safe::lock(hub).await,
+        "safe_unlock" => safe::unlock(hub, a.get("then")).await,
+        "safe_status" => safe::status(hub).await,
         "launch_app" => {
             let app = a["app"].as_str().unwrap_or("").trim().to_string();
             let words = a
@@ -353,32 +385,108 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
         }
         "open_folder" => {
             let words = a["path"].as_str().unwrap_or("").trim();
-            let Some(p) = places::resolve(words) else {
-                return missed(format!("I can't find a folder called {words}."));
+            // a folder by its words, else the finder's best folder of that
+            // name anywhere under home ("open the ewe-safe folder")
+            let p = match places::resolve(words) {
+                Some(p) => p,
+                None => match finder::best_folder(words).await {
+                    Some(p) => p,
+                    None => return missed(format!("I can't find a folder called {words}.")),
+                },
             };
-            // a file shows in its folder; the file manager is the one
-            // Settings → Default apps chose, else Nemo (Super+E)
-            let dir = if p.is_dir() {
-                p.clone()
-            } else {
-                p.parent().unwrap_or(&p).to_path_buf()
-            };
-            let fm = places::default_app("file manager")
-                .await
-                .unwrap_or_else(|| "nemo".into());
-            let d = dir.to_string_lossy().to_string();
-            match hub
-                .shell_do("launch", json!({"app": fm, "path": d, "dir": d}))
-                .await
-            {
-                Ok(_) => done(format!("Opened {}", places::show(&dir)), None),
-                Err(e) if e == NOT_FOUND => failed("There is no file manager here."),
-                Err(e) => failed(e),
-            }
+            show_folder(hub, &p).await
         }
         // never from here: a proposal waits for its Run click (chat.rs)
         "run_shell" => failed("A shell command runs from its Run button in the chat."),
         other => failed(format!("No command called {other}.")),
+    }
+}
+
+/// A page opened the old way, for a browser without its own command line:
+/// the island's `browse` (ewe browser when installed, else the default
+/// browser).
+pub(crate) async fn browse(hub: &Arc<Hub>, call: &Call) -> Outcome {
+    let a = &call.args;
+    let q = a.get("query").and_then(Value::as_str).unwrap_or("").trim();
+    let (url, line) = match call.command.as_str() {
+        "web_search" => (catalog::search_url(q), format!("Searching the web for {q}")),
+        "play_music" => (
+            catalog::music_url(q),
+            format!("Looking up {q} in YouTube Music"),
+        ),
+        _ => (
+            a["url"].as_str().unwrap_or("").to_string(),
+            "Opened the page".to_string(),
+        ),
+    };
+    match hub.shell_do("browse", json!({"url": url})).await {
+        Ok(r) => {
+            // ewe-browser when it is installed, else the default browser
+            let via = r.get("via").and_then(Value::as_str).unwrap_or("");
+            done(
+                if via.is_empty() {
+                    line
+                } else {
+                    format!("{line} · {via}")
+                },
+                None,
+            )
+        }
+        Err(e) => failed(e),
+    }
+}
+
+/// A folder in the file manager; a file shows in its folder. The file
+/// manager is the one Settings → Default apps chose, else Nemo (Super+E).
+async fn show_folder(hub: &Arc<Hub>, p: &std::path::Path) -> Outcome {
+    let dir = if p.is_dir() {
+        p.to_path_buf()
+    } else {
+        p.parent().unwrap_or(p).to_path_buf()
+    };
+    let fm = places::default_app("file manager")
+        .await
+        .unwrap_or_else(|| "nemo".into());
+    let d = dir.to_string_lossy().to_string();
+    match hub
+        .shell_do("launch", json!({"app": fm, "path": d, "dir": d}))
+        .await
+    {
+        Ok(_) => done(format!("Opened {}", places::show(&dir)), None),
+        Err(e) if e == NOT_FOUND => failed("There is no file manager here."),
+        Err(e) => failed(e),
+    }
+}
+
+/// A file in its default app (Settings → Default apps, through xdg-mime);
+/// a folder in the file manager.
+async fn open_file(hub: &Arc<Hub>, words: &str) -> Outcome {
+    let Some(p) = places::resolve(words) else {
+        return failed("That file is not there any more.");
+    };
+    if p.is_dir() {
+        return show_folder(hub, &p).await;
+    }
+    let Some(app) = places::app_for_file(&p).await else {
+        return failed("No app opens this kind of file. Pick one in Settings → Default apps.");
+    };
+    let dir = p.parent().unwrap_or(&p).to_string_lossy().to_string();
+    let path = p.to_string_lossy().to_string();
+    match hub
+        .shell_do("launch", json!({"app": app, "path": path, "dir": dir}))
+        .await
+    {
+        Ok(r) => {
+            let name = r.get("name").and_then(Value::as_str).unwrap_or(&app);
+            let file = p.file_name().map(|n| n.to_string_lossy().to_string());
+            done(
+                format!("Opened {} in {name}", file.unwrap_or_default()),
+                None,
+            )
+            .private("Opened the file.")
+        }
+        Err(e) if e == NOT_FOUND => failed("The app for this kind of file is not installed."),
+        Err(e) => failed(e),
     }
 }
 

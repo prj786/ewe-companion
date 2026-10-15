@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""A stand-in for Safe's command line (ewe-safe docs/PROTOCOL.md), for the
+companion's tests: the real ewe-safe talks to the owner's real safe, so a
+test never runs it. Point the daemon here with
+EWE_COMPANION_SAFE=tests/fakes/ewe-safe.
+
+Verbs: summary, status, match --query Q [--limit N], copy ID --field F,
+lock, unlock --ask, version. Like the real one it prints one JSON object
+and exits 0; `copy` copies nothing (it only says it did) and nothing here
+ever prints a value.
+
+State lives in $EWE_FAKE_DIR (default /tmp/ewe-companion-fakes-$UID):
+  safe.json       {"locked": bool}; FAKE_SAFE_LOCKED=1 starts it locked
+  safe.log        one JSON line per call ({argv, wayland}), for the tests
+  safe-gone       if this file exists, every verb answers like a Safe whose
+                  service went away (daemon-unavailable)
+FAKE_SAFE_ITEMS names a JSON file of item summaries to use instead of the
+built-in three (the canary test plants its strings there).
+"""
+import json
+import os
+import sys
+import time
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+STATE = os.path.join(D, "safe.json")
+
+ITEMS = [
+    {"id": "4f9c0d1e-0000-4000-8000-000000000001", "kind": "login", "title": "GitHub",
+     "username": "sam", "urls": ["https://github.com/login"], "folder": "Personal",
+     "has_password": True, "has_otp": True},
+    {"id": "4f9c0d1e-0000-4000-8000-000000000002", "kind": "login", "title": "github.com",
+     "username": "sam-work", "urls": ["https://github.com"], "folder": "Remedium",
+     "has_password": True, "has_otp": False},
+    {"id": "4f9c0d1e-0000-4000-8000-000000000003", "kind": "login", "title": "Discord",
+     "username": "sam", "urls": ["https://discord.com/login"], "folder": "",
+     "has_password": True, "has_otp": False},
+]
+if os.environ.get("FAKE_SAFE_ITEMS"):
+    ITEMS = json.load(open(os.environ["FAKE_SAFE_ITEMS"]))
+
+
+def state():
+    try:
+        return json.load(open(STATE))
+    except (OSError, ValueError):
+        return {"locked": os.environ.get("FAKE_SAFE_LOCKED") == "1"}
+
+
+def save(s):
+    json.dump(s, open(STATE, "w"))
+
+
+def out(obj):
+    print(json.dumps(obj))
+    sys.exit(0)
+
+
+def err(code, message):
+    out({"ok": False, "error": code, "message": message})
+
+
+def opt(name, default=""):
+    a = sys.argv
+    return a[a.index(name) + 1] if name in a and a.index(name) + 1 < len(a) else default
+
+
+argv = sys.argv[1:]
+with open(os.path.join(D, "safe.log"), "a") as f:
+    f.write(json.dumps({"argv": argv, "wayland": os.environ.get("WAYLAND_DISPLAY", "")}) + "\n")
+verb = argv[0] if argv else ""
+s = state()
+if os.path.exists(os.path.join(D, "safe-gone")):
+    err("daemon-unavailable", "Safe's service is not running.")
+
+if verb == "version":
+    out({"ok": True, "version": "0.1.0-fake", "protocol": 1})
+if verb in ("summary", "status"):
+    out({"ok": True, "locked": s["locked"], "set_up": True,
+         "items": None if s["locked"] else len(ITEMS), "sync_state": "in-sync"})
+if verb == "lock":
+    s["locked"] = True
+    save(s)
+    out({"ok": True, "locked": True})
+if verb == "unlock":
+    # --ask: the real one opens a prompt and waits for the master password
+    time.sleep(0.5)
+    s["locked"] = False
+    save(s)
+    out({"ok": True, "items": len(ITEMS)})
+if s["locked"]:
+    err("locked", "Safe is locked.")
+if verb == "match":
+    q = opt("--query").lower()
+    hits = []
+    for it in ITEMS:
+        hosts = " ".join(u.split("://")[-1].split("/")[0] for u in it.get("urls", []))
+        if it["kind"] == "login" and (not q or q in f"{it['title']} {it['username']} {hosts}".lower()):
+            hits.append(dict(it, score=5, reason=""))
+    limit = int(opt("--limit", "0") or 0)
+    out({"ok": True, "items": hits[:limit] if limit else hits})
+if verb == "copy":
+    item = next((i for i in ITEMS if len(argv) > 1 and i["id"] == argv[1]), None)
+    if item is None:
+        err("not-found", "That item is not in the safe.")
+    field = opt("--field", "password")
+    if field == "otp" and not item.get("has_otp"):
+        err("not-found", f"{item['title']} has no one-time code.")
+    out({"ok": True, "copied": field, "cleared_after": 30})
+err("bad-request", f"unknown verb: {verb}")

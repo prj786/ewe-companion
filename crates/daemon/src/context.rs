@@ -89,6 +89,7 @@ async fn installed() -> String {
         ("komble", "Komble"),
         ("ewe-sync", "ewe-sync"),
         ("ewe-browser", "ewe browser"),
+        ("ewe-safe", "Safe (passwords)"),
         ("ewe-castd", "ewe-cast"),
     ];
     let (have, missing): (Vec<_>, Vec<_>) = apps.iter().partition(|(bin, _)| tool(bin).is_some());

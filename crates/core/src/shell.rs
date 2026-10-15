@@ -10,7 +10,11 @@
 //!   machine (`rm -rf` on home or the system, `mkfs`, `dd` onto a disk, a
 //!   fork bomb), and the ones that break ewe's own rules: a partial upgrade
 //!   (`pacman -Sy` without `u`, rule 10), writing ewe.conf by hand (rule 1)
-//!   or the generated files (rule 9). Reading them is fine.
+//!   or the generated files (rule 9). Reading them is fine. And whatever
+//!   would print a password manager's values or names (`ewe-safe read`,
+//!   `reveal`, `list` …, `op read`, `pass show`, `secret-tool lookup`): a
+//!   command's output comes back into the conversation, and so to a model
+//!   (C3; TRIO.md: values never cross, names stay local).
 //! - **Risky**: offered with a warning and a danger-styled button: deleting,
 //!   moving over, root, removing packages, stopping services, killing
 //!   programs, a script piped from the internet, throwing away git work,
@@ -91,6 +95,58 @@ fn refuse_rules() -> &'static [Rule] {
         .into_iter()
         .map(|(p, why)| Rule {
             re: Regex::new(&p).expect("refuse rule"),
+            why,
+        })
+        .collect()
+    })
+}
+
+/// Where a program starts: the line's start, after `;` `&` `|` `(` a quote
+/// or `$(`, past `sudo`, `env`, flags and `VAR=value`, and its folder.
+const AT_START: &str = r#"(?:^|[;&|(`'"]|\$\()\s*(?:(?:sudo|doas|env|exec|command|nohup|time)\s+|-\S+\s+|\w+=\S*\s+)*(?:\S*/)?"#;
+
+const SAFE_VALUES: &str = "Safe's values never go through the companion: use Super+P or the Safe window, or say \"copy my GitHub password\" and Safe copies it.";
+const MANAGER_VALUES: &str =
+    "Passwords never go through the companion: use Super+P or your password manager's own window.";
+
+/// Commands that print a password manager's values or names: their output
+/// would come back into the conversation.
+fn secret_rules() -> &'static [Rule] {
+    static R: OnceLock<Vec<Rule>> = OnceLock::new();
+    R.get_or_init(|| {
+        let flags = r"\s+(?:-\S+\s+)*";
+        [
+            (
+                format!(
+                    r"(?:^|[^\w.-])ewe-safe{flags}(?:read|reveal|show|inject|run|git-credential|list|search|match|export|generate|passkey|ssh|watch)\b"
+                ),
+                SAFE_VALUES,
+            ),
+            (
+                format!(r"(?:^|[^\w.-])ewe-pass{flags}(?:match|fill)\b"),
+                SAFE_VALUES,
+            ),
+            (
+                format!(r"{AT_START}op{flags}(?:read|inject|run|item|document)\b"),
+                MANAGER_VALUES,
+            ),
+            (
+                format!(r"{AT_START}r?bw{flags}(?:get|list|export|code|search|serve)\b"),
+                MANAGER_VALUES,
+            ),
+            (format!(r"{AT_START}(?:pass|gopass)(?:\s|$)"), MANAGER_VALUES),
+            (
+                format!(r"keepassxc-cli{flags}(?:show|export|ls|search|attachment-export)\b"),
+                MANAGER_VALUES,
+            ),
+            (
+                r"secret-tool\s+(?:lookup|search)\b".to_string(),
+                "The keyring's secrets never go through the companion.",
+            ),
+        ]
+        .into_iter()
+        .map(|(p, why)| Rule {
+            re: Regex::new(&p).expect("secret rule"),
             why,
         })
         .collect()
@@ -254,7 +310,11 @@ pub fn assess(cmd: &str) -> Assessment {
         ));
     }
     let low = c.to_lowercase();
-    if let Some(r) = refuse_rules().iter().find(|r| r.re.is_match(&low)) {
+    if let Some(r) = refuse_rules()
+        .iter()
+        .chain(secret_rules())
+        .find(|r| r.re.is_match(&low))
+    {
         return verdict(Verdict::Refused(r.why));
     }
     // redirections that throw output away are not overwrites
@@ -386,6 +446,53 @@ mod tests {
         assert!(assess("watch df -h").terminal);
         assert!(assess("ls -la | less").terminal, "a pager after a pipe");
         assert!(!assess("ewe-theme scheme apply ewe-light").terminal);
+    }
+
+    #[test]
+    fn password_values_and_names_are_refused() {
+        for c in [
+            r#"ewe-safe read "safe://Personal/GitHub/password""#,
+            "ewe-safe reveal 4f9c0d1e --field password",
+            "ewe-safe show 4f9c0d1e",
+            "ewe-safe list",
+            "ewe-safe match --query github",
+            "ewe-safe inject -i env.tpl -o .env",
+            "ewe-safe run -- env",
+            "ewe-safe git-credential get",
+            "/usr/bin/ewe-safe --json reveal x --field otp",
+            "echo $(ewe-safe read safe://x/y/password)",
+            "bash -c 'ewe-safe search bank'",
+            "ewe-pass match --class firefox",
+            "op read op://Personal/GitHub/password",
+            "op item get GitHub --reveal",
+            "sudo op item list",
+            "bw get password github",
+            "rbw get github",
+            "pass show github",
+            "pass github",
+            "ls; gopass show x",
+            "secret-tool lookup service ewe-companion",
+            "keepassxc-cli show db.kdbx GitHub",
+        ] {
+            assert!(refused(c), "{c}");
+        }
+        assert!(matches!(
+            assess("ewe-safe read safe://a/b/password").verdict,
+            Verdict::Refused(w) if w.starts_with("Safe's values never go through the companion")
+        ));
+        // what prints no value and no name is fine
+        for c in [
+            "ewe-safe status",
+            "ewe-safe summary",
+            "ewe-safe lock",
+            "systemctl --user status ewe-safe.service",
+            "echo pass",
+            r#"git commit -m "tests pass""#,
+            "top -b -n 1",
+            "ls ~/.password-store-backup",
+        ] {
+            assert!(!refused(c), "{c}");
+        }
     }
 
     #[test]

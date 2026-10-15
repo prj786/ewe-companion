@@ -23,9 +23,18 @@
 //!
 //! The chat is one running conversation of the last few turns, in memory
 //! (the store keeps history later, P4). The turn is the user's own words,
-//! so a command it asks for runs without a confirm card (T1, decision 6;
-//! C4's taint rule starts to matter once pages and notifications can enter
-//! a turn).
+//! so a command it asks for runs without a confirm card (T1, decision 6).
+//!
+//! What a command found (Safe's logins, files, the browser's pages) shows
+//! on the island as rows; the conversation keeps only the outcome's
+//! `private` line ("done", a count), so a later question to a model never
+//! carries a name (TRIO.md: values never cross, names stay local). A Safe
+//! request's own words are kept out too.
+//!
+//! "What is this page about?" reads the page open in ewe browser and asks
+//! the model with the page's text wrapped in `<untrusted source="web
+//! page">`. That turn is tainted (C4): an ACTION in its reply does not run;
+//! it comes back as a button, with the reason.
 
 use std::sync::Arc;
 
@@ -39,8 +48,8 @@ use companion_core::{intent, persona, proto};
 use serde_json::{Value, json};
 use tracing::{info, warn};
 
-use crate::hub::{Hub, Proposal};
-use crate::{commands, context, providers, runner};
+use crate::hub::{Hub, Proposal, Undo};
+use crate::{browser, commands, context, providers, runner};
 
 #[derive(Default)]
 pub struct Reply {
@@ -56,6 +65,10 @@ pub struct Reply {
     pub confirm: Option<Value>,
     /// what a command printed, its last lines
     pub output: Option<String>,
+    /// what a command found, as rows the island draws
+    pub rows: Vec<Value>,
+    /// what the conversation keeps instead of `text` (names stay local)
+    pub private: Option<String>,
 }
 
 impl Reply {
@@ -214,14 +227,43 @@ async fn act(hub: &Arc<Hub>, call: &companion_core::commands::Call) -> Reply {
     reply_of(hub, call, out)
 }
 
-fn reply_of(hub: &Arc<Hub>, call: &Call, out: commands::Outcome) -> Reply {
+/// A command's outcome as the island shows it: its line, Undo, the rows
+/// it found, a button, or a command to confirm first.
+pub fn reply_of(hub: &Arc<Hub>, call: &Call, out: commands::Outcome) -> Reply {
+    let undo = match (out.undo, out.undo_browser.is_empty()) {
+        (Some(u), _) => Some(hub.keep_undo(Undo::Call(u))),
+        (None, false) => Some(hub.keep_undo(Undo::Browser(out.undo_browser))),
+        (None, true) => None,
+    };
+    let confirm = out
+        .propose
+        .and_then(|(cmd, about)| propose(hub, &cmd, &about, false).ok());
     Reply {
-        kind: if out.ok { "done" } else { "error" },
+        kind: match (out.ok, out.rows.is_empty() && confirm.is_none()) {
+            (false, _) => "error",
+            (true, true) => "done",
+            (true, false) => "answer",
+        },
         text: out.line,
-        undo: out.undo.map(|u| hub.keep_undo(u)),
+        undo,
         command: Some(call.command.clone()),
+        action: out.action,
+        confirm,
+        rows: out.rows,
+        private: out.private,
         ..Default::default()
     }
+}
+
+/// Keep a turn for the next question. A reply with a `private` line is
+/// kept as that line, and a Safe request's own words stay out too.
+fn remember(hub: &Arc<Hub>, text: &str, r: &Reply) {
+    let safe = r
+        .command
+        .as_deref()
+        .is_some_and(companion_core::commands::is_safe);
+    let user = if safe { "(a request to Safe)" } else { text };
+    hub.chat_push(user, r.private.as_deref().unwrap_or(&r.text));
 }
 
 /// A model's ACTION: a proposal for `run_shell`, else the command itself.
@@ -266,12 +308,15 @@ pub async fn answer(hub: &Arc<Hub>, text: &str) -> Reply {
     // ("open the pod bay doors": no such app) is a question after all; its
     // line is kept in case nothing else has an answer either
     let mut missed: Option<String> = None;
+    if intent::about_page(text) {
+        return about_page(hub, text).await;
+    }
     if let Some(call) = intent::match_text(text) {
         let out = commands::run(hub, &call).await;
         info!(command = %call.command, ok = out.ok, miss = out.miss, "command");
         if !out.miss {
             let r = reply_of(hub, &call, out);
-            hub.chat_push(text, &r.text);
+            remember(hub, text, &r);
             return r;
         }
         missed = Some(out.line);
@@ -345,7 +390,7 @@ pub async fn answer(hub: &Arc<Hub>, text: &str) -> Reply {
                     ..Default::default()
                 },
             };
-            hub.chat_push(text, &r.text);
+            remember(hub, text, &r);
             r
         }
         // the provider failed, but the pack knows: answer, and say why the
@@ -357,6 +402,84 @@ pub async fn answer(hub: &Arc<Hub>, text: &str) -> Reply {
             ..Default::default()
         },
     }
+}
+
+/// How much of a page goes to a model.
+const PAGE_MAX: usize = 12_000;
+
+/// "What is this page about?": the page open in ewe browser goes to the
+/// model as untrusted data, and the turn is tainted: an ACTION in the
+/// reply comes back as a button to click, never a run (C4).
+async fn about_page(hub: &Arc<Hub>, text: &str) -> Reply {
+    let settings = hub.chat_settings();
+    if providers::info(&settings.provider).is_none() {
+        return Reply::info(
+            "Reading a page needs someone to answer: pick who in Komble → Plugins → Companion → Options.",
+        );
+    }
+    let page = match browser::page(PAGE_MAX).await {
+        Ok(p) => p,
+        Err(e) => {
+            return Reply {
+                kind: "error",
+                text: e,
+                ..Default::default()
+            };
+        }
+    };
+    let host = hostname();
+    let pack = pack();
+    let system = persona::system_prompt(&persona::Brief {
+        host: &host,
+        primer: &pack.primer,
+        topics: "",
+        machine: "",
+    });
+    let about = format!("{} · {}", page.title, page.url);
+    let ask = format!(
+        "{text}\n\nThe page open in ewe browser:\n{}",
+        persona::untrusted("web page", &about, &page.text)
+    );
+    info!(chars = page.text.len(), "page question");
+    let history = hub.chat_history();
+    let r = match providers::ask(&settings, &system, &history, &ask).await {
+        Ok(reply) => match persona::parse_action(&reply) {
+            // a page asked for it, or seemed to: the user decides
+            Some(call) if call.command == "run_shell" => act_on(hub, &call, &reply).await,
+            Some(call) => {
+                let words: String = reply
+                    .lines()
+                    .filter(|l| !l.trim_start().starts_with("ACTION"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let why = "This request read a web page, so I'm asking first.";
+                Reply {
+                    kind: "answer",
+                    text: match words.trim() {
+                        "" => why.to_string(),
+                        w => format!("{w}\n{why}"),
+                    },
+                    action: Some(("Do it".into(), call)),
+                    ..Default::default()
+                }
+            }
+            None => Reply {
+                kind: "answer",
+                text: reply.trim().to_string(),
+                ..Default::default()
+            },
+        },
+        Err(e) => Reply {
+            kind: "error",
+            text: e,
+            ..Default::default()
+        },
+    };
+    // the question and the answer; never the page itself
+    if r.kind != "error" {
+        hub.chat_push(text, &r.text);
+    }
+    r
 }
 
 /// The island's `chat.send`: "thinking", then the answer, both as
@@ -376,6 +499,7 @@ pub fn reply_json(id: &str, r: &Reply) -> Value {
         .action
         .as_ref()
         .map(|(label, call)| json!({"label": label, "command": call.command, "args": call.args}));
+    let rows = (!r.rows.is_empty()).then_some(&r.rows);
     json!({"id": id, "kind": r.kind, "text": r.text, "undo": r.undo, "command": r.command,
-           "action": action, "confirm": r.confirm, "output": r.output})
+           "action": action, "confirm": r.confirm, "output": r.output, "rows": rows})
 }

@@ -9,12 +9,15 @@
 //! - [`commands`], [`intent`], [`persona`]: what the companion can do, the
 //!   offline matcher that understands plain commands, and how a model asks
 //!   for one.
+//! - [`find`]: what "find pdfs about tax" asks for, and how well a name
+//!   answers it (the daemon's finder walks the disk with it).
 //!
 //! Pure code only: no I/O beyond reading the environment, so every rule here
 //! is unit-tested.
 
 pub mod claude;
 pub mod commands;
+pub mod find;
 pub mod id;
 pub mod intent;
 pub mod knowledge;

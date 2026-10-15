@@ -9,15 +9,18 @@
 //! Logs (`journalctl --user -u ewe-companion`) carry types, ids and timings,
 //! never prompt text, commands or answers.
 
+mod browser;
 mod chat;
 mod commands;
 mod context;
+mod finder;
 mod glance;
 mod hub;
 mod keyring;
 mod places;
 mod providers;
 mod runner;
+mod safe;
 mod server;
 mod store;
 mod term;

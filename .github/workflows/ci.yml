@@ -17,5 +17,8 @@ jobs:
       - run: cargo build --locked
       # the hook relay's fail-safes, end to end over a real socket
       - run: tests/relay-failsafe.sh
-      # the chat path against a stdlib mock LLM (no key, no network)
+      # the chat path against a stdlib mock LLM (no key, no network), with the
+      # fake ewe-safe and ewe-browser in tests/fakes/
       - run: tests/chat.sh
+      # names stay local: Safe's titles and usernames reach no provider, log or store
+      - run: tests/canary.sh

@@ -37,8 +37,8 @@ struct Inner {
     chat_status: Value,
     /// the running conversation, (role, text), oldest first
     history: Vec<(String, String)>,
-    /// Undo tokens → the call that puts things back (the last few only)
-    undo: Vec<(String, Call)>,
+    /// Undo tokens → what puts things back (the last few only)
+    undo: Vec<(String, Undo)>,
     /// proposed shell commands waiting for their Run click: token → it
     proposals: Vec<(String, Proposal)>,
     /// `do` requests waiting for the island's `do.result`
@@ -55,6 +55,14 @@ const HISTORY: usize = 8;
 
 /// How long a proposed command waits for its Run click.
 const PROPOSAL_TTL: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
+/// What an Undo puts back: a catalog command, or the argv lists ewe
+/// browser answered with (its `undo`), run again through the island.
+#[derive(Debug, Clone)]
+pub enum Undo {
+    Call(Call),
+    Browser(Vec<Vec<String>>),
+}
 
 /// A shell command offered in the chat, waiting for the user's click.
 #[derive(Debug, Clone)]
@@ -459,16 +467,16 @@ impl Hub {
         g.history.drain(..over);
     }
 
-    pub fn keep_undo(&self, call: Call) -> String {
+    pub fn keep_undo(&self, undo: Undo) -> String {
         let token = new_id("u");
         let mut g = self.lock();
-        g.undo.push((token.clone(), call));
+        g.undo.push((token.clone(), undo));
         let over = g.undo.len().saturating_sub(16);
         g.undo.drain(..over);
         token
     }
 
-    pub fn take_undo(&self, token: &str) -> Option<Call> {
+    pub fn take_undo(&self, token: &str) -> Option<Undo> {
         let mut g = self.lock();
         let i = g.undo.iter().position(|(t, _)| t == token)?;
         Some(g.undo.remove(i).1)
@@ -497,6 +505,18 @@ impl Hub {
     /// Ask the island to do what only the shell can (Do not disturb, open an
     /// app, a screenshot, the browser), and wait for its `do.result`.
     pub async fn shell_do(&self, action: &str, args: Value) -> Result<Value, String> {
+        self.shell_do_within(action, args, std::time::Duration::from_secs(3))
+            .await
+    }
+
+    /// [`Hub::shell_do`] with a longer wait, for what may start an app
+    /// first (ewe browser's command line starts the browser, then acts).
+    pub async fn shell_do_within(
+        &self,
+        action: &str,
+        args: Value,
+        wait: std::time::Duration,
+    ) -> Result<Value, String> {
         if self.island_count() == 0 {
             return Err("The island is not running.".into());
         }
@@ -507,7 +527,7 @@ impl Hub {
             "do",
             json!({"id": id, "action": action, "args": args}),
         ));
-        let r = tokio::time::timeout(std::time::Duration::from_secs(3), rx).await;
+        let r = tokio::time::timeout(wait, rx).await;
         self.lock().dos.remove(&id);
         match r {
             Ok(Ok(res)) => res,
