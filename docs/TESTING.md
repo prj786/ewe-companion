@@ -93,7 +93,8 @@ touch the real ones:
   `EWE_COMPANION_BROWSER`. They keep state and a log of every call in
   `$EWE_FAKE_DIR` (`safe.json`, `safe.log`, `browser.log`); a file
   `browser-old` there makes the browser answer like 0.1.0-beta (no command
-  line), and touching the fake makes the daemon ask again.
+  line), and touching the fake makes the daemon ask again; a file
+  `safe-gone` makes Safe answer like a service that went away.
 - `tests/fake-island.py --do` answers the daemon's `do` requests: it runs
   `browser` and `safe_unlock` with the binary the daemon names (the fakes)
   and answers the rest ok, printing `do …` and `chat.reply …` lines.
@@ -106,8 +107,9 @@ touch the real ones:
 
 PLAN §16's canary for Safe (TRIO.md: names stay local). The fake Safe's
 titles, usernames, folders and sites carry `EWE-CANARY-7Q2X`
-(`FAKE_SAFE_ITEMS`); twenty scripted chats ask Safe for things through the
-matcher, a row's click, a model's ACTION, a locked safe and its unlock, then
+(`FAKE_SAFE_ITEMS`); 22 scripted chats ask Safe for things through the
+matcher, a row's click, a model's ACTION, a locked safe and its unlock, try
+two commands that would print what Safe holds (refused, never run), then
 ask the model about it. The canary must reach the island (or the test proves
 nothing), and must be in no request the mock provider got, no line of the
 daemon's log at `EWE_COMPANION_LOG=debug`, and no byte of `companion.db`,

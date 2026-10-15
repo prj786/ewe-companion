@@ -2,9 +2,15 @@
 //! resume", "where is the ewe-safe folder", "find pdfs about tax").
 //!
 //! It walks `$HOME` with the `ignore` crate's parallel walker. Hidden files
-//! and folders, build trees (`node_modules`, `target` …) and caches are
-//! skipped, links are not followed, and the walk stops after
-//! [`BUDGET`] (a partial answer says so). What the words ask for and how
+//! and folders are skipped; build trees (`node_modules`, `target`, `build`,
+//! `dist` …) and caches are found by their own name but never entered;
+//! links are not followed; the walk stops after [`BUDGET`] (a partial
+//! answer says so).
+//!
+//! `.gitignore` files are not read (`standard_filters(false)`): they hide
+//! what people do look for (notes, exports, a local `docs/` kept out of a
+//! repo), and a dotfiles setup with `*` in a home-level ignore file would
+//! hide the whole home. The SKIP list keeps the budget for real folders. What the words ask for and how
 //! well a name answers are `companion_core::find`'s rules; here the best
 //! come first, then the newest.
 //!
@@ -31,10 +37,21 @@ const ROWS: usize = 8;
 /// Matches kept while walking, before the ranking picks the best.
 const KEEP: usize = 5000;
 
-/// Folders the finder never enters: build trees and caches.
+/// Folders the finder never enters (a folder of that name is still found):
+/// build trees, dependency trees and caches, which hold thousands of files
+/// nobody looks for by name.
 const SKIP: &[&str] = &[
     "node_modules",
     "target",
+    "build",
+    "_build",
+    "dist",
+    "out",
+    "vendor",
+    "CMakeFiles",
+    "bower_components",
+    "Pods",
+    "DerivedData",
     "__pycache__",
     "venv",
     "site-packages",
@@ -78,10 +95,6 @@ pub fn walk(root: &Path, q: &Query, limit: usize, budget: Duration) -> (Vec<Hit>
         .follow_links(false)
         .max_depth(Some(12))
         .threads(threads)
-        .filter_entry(|e| {
-            !(e.file_type().is_some_and(|t| t.is_dir())
-                && SKIP.contains(&e.file_name().to_string_lossy().as_ref()))
-        })
         .build_parallel()
         .run(|| {
             Box::new(|entry| {
@@ -113,7 +126,11 @@ pub fn walk(root: &Path, q: &Query, limit: usize, budget: Duration) -> (Vec<Hit>
                         });
                     }
                 }
-                WalkState::Continue
+                if dir && SKIP.contains(&name.as_ref()) {
+                    WalkState::Skip
+                } else {
+                    WalkState::Continue
+                }
             })
         });
     let mut hits = hits.into_inner().unwrap_or_else(|p| p.into_inner());
@@ -227,6 +244,7 @@ mod tests {
             "Documents/Taxes",
             "Projects/ewe/ewe-safe/src",
             "Projects/ewe/node_modules/ewe-safe",
+            "Projects/ewe/build/ewe-safe",
             ".hidden/ewe-safe",
             ".cache/x",
         ] {
@@ -258,6 +276,8 @@ mod tests {
             ["Projects/ewe/ewe-safe"]
         );
         assert_eq!(names("pdfs about tax"), ["Documents/Taxes/tax-2025.pdf"]);
+        // a build tree is found by its name, never entered
+        assert_eq!(names("the build folder"), ["Projects/ewe/build"]);
         assert_eq!(names("my resume"), ["Documents/resume.odt"]);
         // the folder named exactly first, then what starts with the words
         assert_eq!(

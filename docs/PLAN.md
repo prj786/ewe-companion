@@ -1547,7 +1547,7 @@ find a file or directory for me." The contract is ewe-safe's `docs/TRIO.md`
 - [x] **Names stay local.** An outcome's `private` line is what the
       conversation keeps (and a Safe request's own words are kept out), so
       a model hears "done" or a count. `tests/canary.sh`: a fake Safe whose
-      titles, usernames, folders and sites carry `EWE-CANARY-7Q2X`, twenty
+      titles, usernames, folders and sites carry `EWE-CANARY-7Q2X`, 22
       scripted chats (the matcher, a row's click, a model's ACTION, locked
       and unlocked); the canary reaches the island and no provider request,
       no log line at debug level, no store byte. A mutation (keeping `text`
@@ -1557,9 +1557,19 @@ find a file or directory for me." The contract is ewe-safe's `docs/TRIO.md`
       `knowledge/browser.md` (history, tabs, sync, Safe in the browser);
       `Fill in a password`, `Find a window, an app or a file`, `ewe
       browser` and `The companion` updated.
-- [x] Tests: core 67, daemon 24; `tests/chat.sh` 50 (29 new, against
+- [x] Review fixes (DeepSeek, 2026-10-15): `shell::assess` refuses a
+      command that prints a password manager's values or names (`ewe-safe
+      read/reveal/show/list/inject/run/git-credential …`, `op read`, `op
+      item`, `bw get`, `pass`, `secret-tool lookup`), for a model's
+      proposal and the user's own `$ …` alike, since a run's output goes
+      into the conversation; `play` and a tab switch always keep a plain
+      line; the `<untrusted>` wrapper (now `persona::untrusted`) defuses
+      tags in any case or spacing; the finder skips `build`, `dist`,
+      `out`, `vendor` and more but still finds them by name; an unlock
+      that does not finish says the waiting request was dropped.
+- [x] Tests: core 69, daemon 25; `tests/chat.sh` 53 (32 new, against
       `tests/fakes/ewe-safe`, `tests/fakes/ewe-browser` and
-      `tests/fake-island.py --do`); `tests/canary.sh` 7; the island harness
+      `tests/fake-island.py --do`); `tests/canary.sh` 8; the island harness
       (rows, the finder's buttons, Unlock Safe clicked with the virtual
       mouse, a search and a tab switch through `do browser`).
 - [ ] Against the real ewe browser command line once `rail-and-cli` is

@@ -266,7 +266,10 @@ one: a model's `run_shell` ACTION, a topic's `run:` line, the user's
 To change what the guard thinks (`crates/core/src/shell.rs`):
 
 - **Refused** is for machine killers and house-rule breakers only (rule 1:
-  writing `ewe.conf`; rule 9: `generated/`; rule 10: a partial upgrade).
+  writing `ewe.conf`; rule 9: `generated/`; rule 10: a partial upgrade),
+  and for what would print a password manager's values or names
+  (`secret_rules`: `ewe-safe read`, `op read`, `pass show` …): a run's
+  output goes back into the conversation, and so to a model (C3).
   Loosening a refusal is the owner's call, never yours.
 - **Risky** shows the reason in warning ink and a danger-styled Run. Say the
   reason in plain words ("deletes files", "runs as root").

@@ -93,7 +93,10 @@ RFC-007's rules, in code:
   button (`chat::about_page`). What ewe browser's `untrusted` tools return
   reaches a model only as a count.
 - **Values never cross, names stay local** (TRIO.md, RFC-008 S8). The
-  companion asks Safe to copy; it never calls `show` or `reveal`. Safe's
+  companion asks Safe to copy; it never calls `show` or `reveal`, and
+  `shell::assess` refuses a proposed command that would print a password
+  manager's values or names (`ewe-safe read`, `op read`, `pass show` …),
+  since a run's output goes back into the conversation. Safe's
   titles and usernames, found files and the browser's pages show on the
   island; the conversation keeps the outcome's `private` line ("done", a
   count), and nothing of them is stored or logged. `tests/canary.sh`
@@ -121,13 +124,13 @@ tool it marks tier 2 becomes a proposal too.
 
 ```sh
 cargo build                                   # debug: target/debug/ewe-companion{,d}
-cargo test                                    # core 67, daemon 24 unit tests
+cargo test                                    # core 69, daemon 25 unit tests
 cargo clippy --all-targets -- -D warnings     # CI runs it with --locked
 cargo fmt --all --check
-tests/chat.sh                                 # 50 checks: the chat path vs a mock LLM, Safe,
+tests/chat.sh                                 # 53 checks: the chat path vs a mock LLM, Safe,
                                               #   ewe browser and the finder vs tests/fakes/
 tests/relay-failsafe.sh                       # 26 checks: the hook relay's fail-safes
-tests/canary.sh                               # 7 checks: Safe's names reach no model, log or store
+tests/canary.sh                               # 8 checks: Safe's names reach no model, log or store
 BIN=target/release tests/relay-failsafe.sh    # the same against a release build
 tests/island.sh up --scale 1.8                # the island in ewe's nested harness
 ```

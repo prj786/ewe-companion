@@ -368,35 +368,57 @@ pub async fn unlock(hub: &Arc<Hub>, then: Option<&Value>) -> Outcome {
 }
 
 /// Watch for the unlock, then run what was waiting and say how it went.
+/// When the safe does not open (Safe stops answering, or 3 minutes pass
+/// with something waiting), say that what waited was dropped: a request
+/// never vanishes without a word.
 async fn wait_for_unlock(hub: Arc<Hub>, then: Option<Call>) {
     let start = tokio::time::Instant::now();
-    while start.elapsed() < UNLOCK_WAIT {
+    let (call, out) = loop {
+        if start.elapsed() >= UNLOCK_WAIT {
+            if then.is_none() {
+                return; // nothing waited: the prompt was just left
+            }
+            let line = "Safe is still locked, so I dropped what was waiting. Ask again once it is unlocked.";
+            break (
+                Call::new("safe_unlock", json!({})),
+                failed(line).private(line),
+            );
+        }
         tokio::time::sleep(Duration::from_secs(1)).await;
         match call(&hub, &["summary"]).await {
-            Ok(v) if v["locked"].as_bool() == Some(false) => {
-                let (call, out) = match then {
-                    Some(next) => {
-                        let out = run_then(&hub, &next).await;
-                        (next, out)
-                    }
-                    None => (
+            Ok(v) if v["locked"].as_bool() == Some(false) => match then {
+                Some(next) => {
+                    let out = run_then(&hub, &next).await;
+                    break (next, out);
+                }
+                None => {
+                    break (
                         Call::new("safe_unlock", json!({})),
                         done("Safe is unlocked.", None).private("Safe is unlocked."),
-                    ),
-                };
-                let r = chat::reply_of(&hub, &call, out);
-                hub.broadcast(proto::line(
-                    "chat.reply",
-                    chat::reply_json(&new_id("m"), &r),
-                ));
-                return;
-            }
+                    );
+                }
+            },
             Ok(_) => {}
             Err(f) if f.code == "locked" => {}
-            // Safe went away: nothing more to wait for
-            Err(_) => return,
+            // Safe went away before it opened
+            Err(_) => {
+                let line = if then.is_some() {
+                    "The unlock did not finish: Safe stopped answering, so I dropped what was waiting. Ask again."
+                } else {
+                    "The unlock did not finish: Safe stopped answering."
+                };
+                break (
+                    Call::new("safe_unlock", json!({})),
+                    failed(line).private(line),
+                );
+            }
         }
-    }
+    };
+    let r = chat::reply_of(&hub, &call, out);
+    hub.broadcast(proto::line(
+        "chat.reply",
+        chat::reply_json(&new_id("m"), &r),
+    ));
 }
 
 /// The Safe command that waited for the unlock (validated as a catalog

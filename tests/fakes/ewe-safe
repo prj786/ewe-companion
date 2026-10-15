@@ -12,6 +12,8 @@ ever prints a value.
 State lives in $EWE_FAKE_DIR (default /tmp/ewe-companion-fakes-$UID):
   safe.json       {"locked": bool}; FAKE_SAFE_LOCKED=1 starts it locked
   safe.log        one JSON line per call ({argv, wayland}), for the tests
+  safe-gone       if this file exists, every verb answers like a Safe whose
+                  service went away (daemon-unavailable)
 FAKE_SAFE_ITEMS names a JSON file of item summaries to use instead of the
 built-in three (the canary test plants its strings there).
 """
@@ -69,6 +71,8 @@ with open(os.path.join(D, "safe.log"), "a") as f:
     f.write(json.dumps({"argv": argv, "wayland": os.environ.get("WAYLAND_DISPLAY", "")}) + "\n")
 verb = argv[0] if argv else ""
 s = state()
+if os.path.exists(os.path.join(D, "safe-gone")):
+    err("daemon-unavailable", "Safe's service is not running.")
 
 if verb == "version":
     out({"ok": True, "version": "0.1.0-fake", "protocol": 1})

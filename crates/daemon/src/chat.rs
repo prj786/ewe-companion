@@ -407,16 +407,6 @@ pub async fn answer(hub: &Arc<Hub>, text: &str) -> Reply {
 /// How much of a page goes to a model.
 const PAGE_MAX: usize = 12_000;
 
-/// Untrusted text for a prompt: its closing tag cannot be faked from inside.
-fn untrusted(source: &str, about: &str, text: &str) -> String {
-    let clean = |s: &str| s.replace(['"', '<', '>', '\n'], " ");
-    format!(
-        "<untrusted source=\"{source}\" about=\"{}\">\n{}\n</untrusted>",
-        clean(about),
-        text.replace("</untrusted", "< /untrusted")
-    )
-}
-
 /// "What is this page about?": the page open in ewe browser goes to the
 /// model as untrusted data, and the turn is tainted: an ACTION in the
 /// reply comes back as a button to click, never a run (C4).
@@ -448,7 +438,7 @@ async fn about_page(hub: &Arc<Hub>, text: &str) -> Reply {
     let about = format!("{} · {}", page.title, page.url);
     let ask = format!(
         "{text}\n\nThe page open in ewe browser:\n{}",
-        untrusted("web page", &about, &page.text)
+        persona::untrusted("web page", &about, &page.text)
     );
     info!(chars = page.text.len(), "page question");
     let history = hub.chat_history();

@@ -140,6 +140,22 @@ check '[ "$(echo "$out" | field text)" = "Type your master password in Safe'"'"'
 for _ in $(seq 60); do grep -q "chat.reply done Copied the Discord password" "$W/island.log" && break; sleep 0.1; done
 check 'grep -q "chat.reply done Copied the Discord password (sam)" "$W/island.log"' \
       "…and once Safe is unlocked, the waiting copy runs and says so" "$(tail -n 3 "$W/island.log")"
+# a command that would print a password (or a login's name) is never offered:
+# its output would go back into the conversation (C3)
+out=$("$BIN/ewe-companion" ask '$ ewe-safe read "safe://Personal/GitHub/password"')
+check '[ "$(echo "$out" | field kind)" = "error" ] && echo "$out" | grep -q "Safe.s values never go through the companion" && [ "$(echo "$out" | js "r.get(\"confirm\")")" = "None" ]' \
+      "\$ ewe-safe read …: refused, never offered" "$out"
+out=$("$BIN/ewe-companion" ask "print my github password")
+check '[ "$(echo "$out" | field kind)" = "error" ] && [ "$(echo "$out" | js "r.get(\"confirm\")")" = "None" ] && ! grep -q "\"reveal\"" "$W/fakes/safe.log"' \
+      "a model's run_shell of ewe-safe reveal: refused, Safe never asked" "$out"
+# Safe goes away while its prompt is open: what waited is dropped, and said
+"$BIN/ewe-companion" ask "lock my safe" >/dev/null
+out=$("$BIN/ewe-companion" debug run safe_unlock '{"then": {"command": "safe_copy", "args": {"query": "discord"}}}')
+touch "$W/fakes/safe-gone"
+for _ in $(seq 40); do grep -q "chat.reply error The unlock did not finish" "$W/island.log" && break; sleep 0.1; done
+check 'grep -q "chat.reply error The unlock did not finish: Safe stopped answering, so I dropped what was waiting" "$W/island.log"' \
+      "Safe gone during the unlock: the waiting copy is dropped, and the island is told" "$(tail -n 2 "$W/island.log")"
+rm -f "$W/fakes/safe-gone"; echo '{"locked": false}' >"$W/fakes/safe.json"
 out=$("$BIN/ewe-companion" ask "what did I just ask you")
 check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; t=json.dumps(b[\"messages\"][1:]); sys.exit(0 if \"(a request to Safe)\" in t and \"sam\" not in t and \"Discord\" not in t else 1)" "$MOCK_LOG"' \
       "names stay local: the next question to a model carries no title or username" "$(tail -c 400 "$MOCK_LOG")"
