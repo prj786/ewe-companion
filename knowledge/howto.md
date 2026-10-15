@@ -177,9 +177,11 @@ I open any installed app, and apps in a folder. Tell me in the chat (Super+A): "
 "The browser", "the file manager" and "a text editor" are the ones chosen in Settings → Default apps, and "terminal" is kitty. An app that is open already comes forward instead of opening twice, unless you name a folder for it.
 
 ## Find a window, an app or a file
-keys: find window, search, find app, find file, overview, launcher, search files, all windows, expose
+keys: find window, search, find app, find file, overview, launcher, search files, all windows, expose, find a folder, where is my file
 open: overview
 Tap Super for the Overview: window cards at the top, workspaces at the bottom, and typing searches apps, open windows and files. Drop a window card on a workspace to move it. Super+D opens the launcher, which searches apps and files; clicking an app that is open already jumps to its window.
+
+Or ask me: "find my resume", "where is the ewe-safe folder", "find pdfs about tax". I look through your home folder by name (not hidden folders or build folders) and list what I find, with Open, Show in folder, Copy path and, for a folder, Open terminal here.
 
 ## Cast to a TV
 keys: cast, casting, tv, chromecast, miracast, mirror to tv, screen mirroring, smart tv
@@ -187,8 +189,11 @@ open: quicksettings cast
 With the Cast plugin: Quick settings → Cast, or Super+Shift+C, then pick the TV. Open Screen Mirroring on the TV first, keep the laptop near it, and prefer 5 GHz Wi-Fi.
 
 ## Fill in a password
-keys: password, passwords, password manager, 1password, bitwarden, pass, login fill, autofill
-With the Passwords plugin, Super+P opens the picker: Enter types the username, Tab, then the password; Ctrl+Enter types only the password. Choose 1Password, Bitwarden or pass in its Options (Komble → Plugins → Passwords → Options).
+keys: password, passwords, password manager, 1password, bitwarden, pass, login fill, autofill, super p, 1password cli
+With the Passwords plugin, Super+P opens the picker: Enter types the username, Tab, then the password; Ctrl+Enter types only the password. It fills from Safe, ewe's own password manager, once a safe is set up; 1Password, Bitwarden or pass work too. Pick one in Komble → Plugins → Passwords → Options → Password manager.
+
+If Super+P says to install the 1Password CLI but your logins are in Safe, set Komble → Plugins → Passwords → Options → Password manager to ewe.
+<!-- ewe.passwords 1.2.0: provider auto / ewe / 1password / bitwarden / pass; TRIO.md S3 makes the picker offer Safe on its own later. -->
 
 ## Set up a VPN
 keys: vpn, wireguard, openvpn, l2tp, ipsec, tunnel

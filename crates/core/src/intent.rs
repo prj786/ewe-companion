@@ -46,6 +46,37 @@ fn on_word(w: &str) -> Option<bool> {
     }
 }
 
+/// What Safe copies, from the word people use for it.
+fn safe_field(w: &str) -> &'static str {
+    match w {
+        "password" | "pass" => "password",
+        w if w.contains("code") || w.contains("otp") || w == "2fa" => "otp",
+        _ => "username",
+    }
+}
+
+/// The site or app a Safe request names ("my bank" → "bank"); "the" or
+/// "my" alone names nothing.
+fn safe_query(q: &str) -> Option<String> {
+    let mut q = q.trim();
+    for pre in ["my ", "the ", "your "] {
+        q = q.strip_prefix(pre).unwrap_or(q).trim();
+    }
+    for suf in [" website", " site", " account"] {
+        q = q.strip_suffix(suf).unwrap_or(q).trim();
+    }
+    (!q.is_empty() && !matches!(q, "the" | "my" | "a" | "it" | "this" | "that"))
+        .then(|| q.to_string())
+}
+
+fn safe_copy(query: &str, field: &str) -> Option<Call> {
+    let q = safe_query(query)?;
+    Some(Call::new(
+        "safe_copy",
+        json!({"query": q, "field": safe_field(field)}),
+    ))
+}
+
 fn rules() -> &'static [Rule] {
     static RULES: OnceLock<Vec<Rule>> = OnceLock::new();
     RULES.get_or_init(|| {
@@ -117,6 +148,24 @@ fn rules() -> &'static [Rule] {
                   };
                   Some(Call::new("screenshot", json!({"mode": mode})))
               }),
+            // ── Safe, the password manager: Safe copies, the companion
+            //    never sees a value. Before "lock", so "lock my safe" is
+            //    Safe's and "lock" stays the screen ──
+            r(r"copy (?:my |the )?(.+?)(?:'s)? (password|pass|username|user ?name|login|e-?mail|2fa code|2fa|one[- ]time code|otp|totp|verification code|security code|code)(?: (?:from|in) (?:my |the )?safe)?",
+              |c| safe_copy(&c[1], &c[2])),
+            r(r"copy (?:my |the )?(password|username|user ?name|login|e-?mail|2fa code|one[- ]time code|otp|code) (?:for|of|from) (?:my |the )?(.+?)(?: (?:from|in) (?:my |the )?safe)?",
+              |c| safe_copy(&c[2], &c[1])),
+            r(r"(?:log|sign) me (?:in|into|on)(?: to| at)? (.+)|(?:log|sign) (?:in|into|on)(?: to| at)? (.+)",
+              |c| {
+                  let q = safe_query(c.get(1).or(c.get(2))?.as_str())?;
+                  Some(Call::new("safe_login", json!({"query": q})))
+              }),
+            r(r"(?:lock|close) (?:my |the )?safe",
+              |_| Some(Call::new("safe_lock", json!({})))),
+            r(r"unlock (?:my |the )?safe",
+              |_| Some(Call::new("safe_unlock", json!({})))),
+            r(r"is (?:my |the )?safe (?:synced|in sync|up to date|locked|unlocked|open)|(?:my |the )?safe(?:'s)? status|how many (?:passwords|logins|items|accounts) (?:do i have|(?:are )?(?:there )?in (?:my |the )?safe|does (?:my |the )?safe (?:have|hold))(?: in (?:my |the )?safe)?",
+              |_| Some(Call::new("safe_status", json!({})))),
             r(r"lock(?: (?:the )?(?:screen|computer|pc|laptop|session))?",
               |_| Some(Call::new("lock", json!({})))),
             // ── open an ewe app ──
@@ -168,10 +217,46 @@ fn rules() -> &'static [Rule] {
                   };
                   Some(Call::new("open", json!({"what": "settings", "page": page})))
               }),
-            // ── the browser (ewe-browser when installed) ──
+            // ── the browser (ewe browser's own command line when it has
+            //    one) ──
             r(r"(?:open|go to|visit) (https?://\S+)",
               |c| Some(Call::new("open_url", json!({"url": &c[1]})))),
-            r(r"(?:search|google|look up|find)(?: the web| online| on the web)?(?: for)? (.+)",
+            // a bare site: "open github.com" (a known ending, so "open
+            // notes.md" stays a file's business)
+            r(r"(?:open|go to|visit|browse to) ((?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|org|net|io|dev|app|ge|de|uk|co|ai|edu|gov|me|tv|fm|ly|gg|xyz|info|eu|us|ca|au|jp|fr|it|es|nl|ru|pl|ch|se|no|fi|dk|be|at|br|tr|ua|am|az|news|wiki|blog|tech|site|online|store|to|cc|is|social)(?:/\S*)?|www\.\S+)",
+              |c| Some(Call::new("open_url", json!({"url": format!("https://{}", &c[1])})))),
+            // the browser's history: "find tax in my history", "that site
+            // about sheep", "show my history"
+            r(r"(?:find|search(?: for)?|look up|look for|show me) (.+?) in (?:my |the )?(?:browser |browsing |web )?history|(?:what was |find |open |show me |go to )?(?:that|the) (?:web ?site|site|page|article) (?:about|with|on) (.+)|(?:show|open|list)(?: me)?(?: my| the)? (?:browser |browsing |web )?history",
+              |c| {
+                  let q = c.get(1).or(c.get(2)).map_or("", |m| m.as_str()).trim();
+                  Some(Call::new("browser_history", json!({"query": q})))
+              }),
+            r(r"(?:show|list|what are)(?: me)?(?: all)?(?: my| the)?(?: open)? (?:browser )?tabs(?: (?:are )?open)?|(?:which|what) tabs are open",
+              |_| Some(Call::new("browser_tabs", json!({})))),
+            r(r"(?:go|switch|jump|take me)(?: back)? to(?: the| my)? (.+?) tab|(?:open|show|find)(?: the| my)? (.+?) tab",
+              |c| {
+                  let w = c.get(1).or(c.get(2))?.as_str().trim();
+                  (!matches!(w, "new" | "a new" | "next" | "last" | "previous" | "other"))
+                      .then(|| Call::new("browser_tab", json!({"words": w})))
+              }),
+            // ── files and folders: the daemon's finder. "find" is the
+            //    finder; "find … online", "search", "google" and "look up"
+            //    are the web. A finder that finds nothing hands the words
+            //    on as a question ──
+            r(r"search (?:my |the |in my )?(?:files|folders|computer|home(?: folder)?|disk) for (.+)|(?:search|look) for ((?:the |a |my )?(?:files?|folders?|directory|directories) .+)",
+              |c| Some(Call::new("find_files", json!({"query": c.get(1).or(c.get(2))?.as_str().trim()})))),
+            r(r"(?:find|locate)(?: me)? (.+)",
+              |c| {
+                  let q = c[1].trim();
+                  let web = [" online", " on the web", " on the internet", " on google"]
+                      .iter()
+                      .any(|s| q.ends_with(s));
+                  (!web).then(|| Call::new("find_files", json!({"query": q})))
+              }),
+            r(r"where(?:'s| is| are| did i (?:put|save)) (my .+|(?:the |a )?.+? (?:folder|directory|dir|file|files))",
+              |c| Some(Call::new("find_files", json!({"query": c[1].trim()})))),
+            r(r"(?:search|google|look up|find)(?: the web| online| on the web)?(?: for)? (.+?)(?: online| on the web| on the internet| on google)?",
               |c| Some(Call::new("web_search", json!({"query": c[1].trim()})))),
             r(r"play (?:some |the song |the album |music by |songs by )?(.+?)(?: on (?:youtube|youtube music|the browser))?",
               |c| Some(Call::new("play_music", json!({"query": c[1].trim()})))),
@@ -192,6 +277,20 @@ fn rules() -> &'static [Rule] {
               |c| Some(Call::new("launch_app", json!({"app": c[1].trim()})))),
         ]
     })
+}
+
+/// "What is this page about?": a question about the page open in ewe
+/// browser. Not a command: the chat reads the page and asks the model,
+/// with the page's text marked untrusted (C4).
+pub fn about_page(text: &str) -> bool {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(
+            r"^(?:what(?:'s| is) (?:this|the|that) (?:web ?)?(?:page|site|article|tab) about|summari[sz]e (?:this|the|that|my) (?:web ?)?(?:page|site|article|tab)|(?:explain|tl;?dr)(?: me)? (?:this|the) (?:web ?)?(?:page|article)|what does (?:this|the) (?:web ?)?(?:page|article) say)\b",
+        )
+        .expect("about_page pattern")
+    })
+    .is_match(&clean(text))
 }
 
 /// The command these words ask for, if they plainly ask for one.
@@ -428,6 +527,155 @@ mod tests {
     }
 
     #[test]
+    fn the_browser_s_own_powers() {
+        is(
+            "open github.com",
+            "open_url",
+            json!({"url": "https://github.com"}),
+        );
+        is(
+            "go to www.archlinux.org/news",
+            "open_url",
+            json!({"url": "https://www.archlinux.org/news"}),
+        );
+        is(
+            "find hyprland docs online",
+            "web_search",
+            json!({"query": "hyprland docs"}),
+        );
+        is(
+            "look up sheep breeds",
+            "web_search",
+            json!({"query": "sheep breeds"}),
+        );
+        is(
+            "find tax in my history",
+            "browser_history",
+            json!({"query": "tax"}),
+        );
+        is(
+            "that site about sheep breeds",
+            "browser_history",
+            json!({"query": "sheep breeds"}),
+        );
+        is("show my history", "browser_history", json!({"query": ""}));
+        is("show my tabs", "browser_tabs", json!({}));
+        is("which tabs are open?", "browser_tabs", json!({}));
+        is(
+            "go to the YouTube tab",
+            "browser_tab",
+            json!({"words": "youtube"}),
+        );
+        is(
+            "open the youtube tab",
+            "browser_tab",
+            json!({"words": "youtube"}),
+        );
+        assert_ne!(m("open a new tab").map(|c| c.0), Some("browser_tab".into()));
+        // Quick settings' own tabs still win
+        is(
+            "go to the calendar tab",
+            "open",
+            json!({"what": "quicksettings", "page": "cal"}),
+        );
+        assert!(about_page("What is this page about?"));
+        assert!(about_page("summarize this page in three points"));
+        assert!(about_page("tldr this article"));
+        assert!(!about_page("what is ewe about"));
+        assert_eq!(m("what is this page about"), None);
+    }
+
+    #[test]
+    fn files_and_folders() {
+        is(
+            "find my resume",
+            "find_files",
+            json!({"query": "my resume"}),
+        );
+        is(
+            "Where is the ewe-safe folder?",
+            "find_files",
+            json!({"query": "the ewe-safe folder"}),
+        );
+        is(
+            "find pdfs about tax",
+            "find_files",
+            json!({"query": "pdfs about tax"}),
+        );
+        is(
+            "search my files for invoice",
+            "find_files",
+            json!({"query": "invoice"}),
+        );
+        is(
+            "search for folders named photos",
+            "find_files",
+            json!({"query": "folders named photos"}),
+        );
+        is(
+            "where's my passport scan",
+            "find_files",
+            json!({"query": "my passport scan"}),
+        );
+        // opening a folder by name is still open_folder (it finds it first)
+        is(
+            "open the ewe-safe folder",
+            "open_folder",
+            json!({"path": "ewe-safe"}),
+        );
+    }
+
+    #[test]
+    fn safe() {
+        let copy = |q: &str, f: &str| json!({"query": q, "field": f});
+        is(
+            "copy my GitHub password",
+            "safe_copy",
+            copy("github", "password"),
+        );
+        is(
+            "copy the password for github",
+            "safe_copy",
+            copy("github", "password"),
+        );
+        is(
+            "copy my github username",
+            "safe_copy",
+            copy("github", "username"),
+        );
+        is("copy my github code", "safe_copy", copy("github", "otp"));
+        is(
+            "copy the one-time code for my bank",
+            "safe_copy",
+            copy("bank", "otp"),
+        );
+        is(
+            "copy discord's 2fa code from safe",
+            "safe_copy",
+            copy("discord", "otp"),
+        );
+        assert_eq!(m("copy my password"), None, "no site named");
+        is(
+            "log me in to GitHub",
+            "safe_login",
+            json!({"query": "github"}),
+        );
+        is("sign in to my bank", "safe_login", json!({"query": "bank"}));
+        is("lock my safe", "safe_lock", json!({}));
+        is("unlock my safe", "safe_unlock", json!({}));
+        is("is my safe synced?", "safe_status", json!({}));
+        is("how many passwords do I have", "safe_status", json!({}));
+        is("how many logins are in my safe", "safe_status", json!({}));
+        // the screen is still "lock"
+        is("lock", "lock", json!({}));
+        is("lock the screen", "lock", json!({}));
+        for (t, _) in [("copy my GitHub password", ()), ("log me in to github", ())] {
+            let c = match_text(t).unwrap();
+            assert_eq!(crate::commands::validate(&c), Ok(()), "{t:?}");
+        }
+    }
+
+    #[test]
     fn questions_are_not_commands() {
         for q in [
             "what is the volume?",
@@ -437,6 +685,9 @@ mod tests {
             "",
             "what time is it in tokyo",
             "explain game mode",
+            "where is the night light",
+            "how do I find a file",
+            "what is my github password",
         ] {
             assert_eq!(m(q), None, "{q:?}");
         }

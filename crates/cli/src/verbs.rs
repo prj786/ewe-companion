@@ -10,8 +10,8 @@ use serde_json::{Value, json};
 use crate::client;
 
 const VERBS: &[&str] = &[
-    "status", "say", "ask", "key", "history", "sessions", "jump", "agents", "version", "help",
-    "debug",
+    "status", "say", "ask", "find", "key", "history", "sessions", "jump", "agents", "version",
+    "help", "debug",
 ];
 
 fn not_running() -> Value {
@@ -101,6 +101,22 @@ pub fn run(argv: &[String]) -> Value {
             }
             ask_within("ask", json!({"text": text}), Duration::from_secs(130))
         }
+        // the finder from a terminal: files and folders under home by name
+        "find" => {
+            let query = a.words.join(" ");
+            if query.trim().is_empty() {
+                return json!({"ok": false, "error": "find needs words to look for"});
+            }
+            ask_within(
+                "find",
+                json!({
+                    "query": query,
+                    "kind": a.flag("kind").unwrap_or("any"),
+                    "limit": a.flag("limit").and_then(|l| l.parse::<u64>().ok()).unwrap_or(20),
+                }),
+                Duration::from_secs(10),
+            )
+        }
         "key" => key(&a),
         "version" | "--version" | "-V" => json!({"ok": true, "version": VERSION}),
         "help" | "--help" | "-h" => json!({
@@ -109,12 +125,14 @@ pub fn run(argv: &[String]) -> Value {
                 "status", "say <text> [--level info|success|warning|danger] [--key k] [--ttl s]",
                 "history [--limit n]", "sessions", "jump <session>",
                 "ask <text>   (a command runs at once; a question goes to your provider)",
+                "find <words> [--kind folder] [--limit n]   (files and folders under home, by name)",
                 "key set <provider>   (the key on stdin; it goes to the keyring) | key clear <provider>",
                 "agents list | install claude | uninstall claude | doctor | usage claude on|off",
                 "statusline   (Claude Code's status line relay, for plan usage)",
                 "hook claude [<Event>]   (the Claude Code relay; reads the hook payload on stdin)",
                 "debug card permission|question|note   (needs a daemon started with EWE_COMPANION_DEBUG=1)",
                 "debug answer <card> <action> [answers-json]",
+                "debug run <command> [args-json]   (a button's click: a row's Copy, Open …)",
             ],
         }),
         other => json!({"ok": false, "error": format!("unknown verb: {other}"), "verbs": VERBS}),
@@ -151,8 +169,24 @@ fn debug(a: &Args) -> Value {
                 Duration::from_secs(130),
             )
         }
+        // a button's click (`command.run`): a row's Copy, Open, Unlock Safe …
+        Some("run") => {
+            let Some(command) = a.words.get(1) else {
+                return json!({"ok": false, "error": "debug run <command> [args-json]"});
+            };
+            let args = a
+                .words
+                .get(2)
+                .and_then(|j| serde_json::from_str::<Value>(j).ok())
+                .unwrap_or_else(|| json!({}));
+            ask_within(
+                "debug.run",
+                json!({"command": command, "args": args}),
+                Duration::from_secs(30),
+            )
+        }
         _ => {
-            json!({"ok": false, "error": "debug card <kind> | debug answer <card> <action> | debug confirm <token> [run|terminal]"})
+            json!({"ok": false, "error": "debug card <kind> | debug answer <card> <action> | debug confirm <token> [run|terminal] | debug run <command> [args-json]"})
         }
     }
 }

@@ -12,6 +12,36 @@ app ("open nemo", "open the browser") and opens apps in a folder ("open
 kitty in documents", "open documents in nemo", "open zed in ewe-companion").
 Plain commands work with no AI.
 
+It works with Safe and ewe browser, and finds your files:
+
+- **Safe** (ewe's password manager): "copy my GitHub password", "copy my
+  GitHub username", "copy my GitHub code", "log me in to GitHub", "lock my
+  safe", "unlock my safe", "is my safe synced?", "how many passwords do I
+  have?". Safe copies the password itself and clears the clipboard later;
+  the companion never sees it. When several logins fit, the island lists
+  them (title, username) and a click copies the one you pick. A locked safe
+  offers **Unlock Safe**: you type the master password in Safe's own
+  window, never in the chat, and the copy happens right after. Logins'
+  names are shown on the island only: they never go to an AI and are never
+  stored.
+- **ewe browser**: "search for …", "look up …", "open github.com", "play
+  …", "find tax in my history", "that site about sheep", "show my tabs",
+  "go to the YouTube tab", "what is this page about?". With an ewe browser
+  that has its command line (newer than 0.1.0-beta), searches use its own
+  engine and come with Undo; with an older one, the page opens as before.
+  A page's text goes to your AI marked as untrusted: if the answer asks to
+  do something, it is a button for you to press, never done by itself.
+- **Files and folders**: "find my resume", "where is the ewe-safe folder",
+  "find pdfs about tax", "search my files for invoice". It looks through
+  your home folder by name (hidden folders, build folders and caches are
+  skipped, at most 1.5 s) and lists what it finds with **Open**, **Show in
+  folder**, **Copy path** and, for a folder, **Open terminal here**. "Open
+  the ewe-safe folder" finds it and opens it. "find" means files; "search",
+  "google" and "look up" mean the web.
+
+All of these work with no AI, and an AI you picked can ask for them too:
+it then hears back only "done" or a count.
+
 It runs shell commands for you, after a click. Ask in your own words ("make
 everything light", "how much space do my downloads take?"): when a command
 does it, the chat shows that exact command with **Run** and **In terminal**,
@@ -31,12 +61,16 @@ login, an API key (Anthropic, OpenAI, Gemini, OpenRouter), or a local model
 computer is like now.
 
 **Status: 0.1.0-beta, P1 and P2 working, plus P2.5 (the notch, the home
-panel, the chat groundwork) and P2.6 (the notch fixes, the ewe knowledge
-pack), 2026-10-14. Not released.**
+panel, the chat groundwork), P2.6 (the notch fixes, the ewe knowledge pack),
+P2.7 (apps and folders), P2.8 (it runs what it suggests, on a click),
+2026-10-14, and P2.9 (Safe, ewe browser, the finder), 2026-10-15. Not
+released.**
 
 - **Why and what:** [`ewe/docs/RFC-007-companion.md`](../ewe/docs/RFC-007-companion.md)
 - **How, phase by phase:** [`docs/PLAN.md`](docs/PLAN.md)
 - **The socket contract:** [`docs/PROTOCOL.md`](docs/PROTOCOL.md)
+- **Working on it** (people and agents): [`AGENTS.md`](AGENTS.md), then
+  [`docs/EXTENDING.md`](docs/EXTENDING.md) and [`docs/TESTING.md`](docs/TESTING.md)
 
 ## What lives here
 
@@ -45,7 +79,7 @@ pack), 2026-10-14. Not released.**
 | `crates/core` | the protocol, Claude Code's hook dialect (card wording, the exact answer JSON), payload trimming, paths. Pure and unit-tested |
 | `crates/daemon` → `ewe-companiond` | the socket, cards and their deadlines, agent sessions, jump-to-terminal, the SQLite store (`~/.local/state/ewe/companion/companion.db`) |
 | `crates/cli` → `ewe-companion` | the CLI (JSON out, exit 0) and `hook claude`, the relay Claude Code's hooks run. Std-only, so it starts in milliseconds |
-| `knowledge` | what the companion knows about ewe: `primer.md` (with every question) and the topics (`apps`, `howto`, `keys`, `fix`). Built into the binary; see *The knowledge pack* |
+| `knowledge` | what the companion knows about ewe: `primer.md` (with every question) and the topics (`apps`, `howto`, `keys`, `fix`, `safe`, `browser`). Built into the binary; see *The knowledge pack* |
 | `integrations/claude-code` | a Claude Code plugin with the hooks, plus a local marketplace for it |
 | `packaging` | the user unit (no `[Install]`: the plugin starts it on demand) and the PKGBUILD |
 
@@ -62,6 +96,9 @@ ewe-companion ask "volume 60"            # a command, no AI needed
 ewe-companion ask "open kitty in documents"    # an app in a folder
 ewe-companion ask '$ df -h'                    # a command, offered with a token
 ewe-companion debug confirm <token>            # (debug daemon) the Run click
+ewe-companion ask "copy my GitHub password"    # Safe copies it; the reply never holds it
+ewe-companion ask "find pdfs about tax"        # the finder: rows on the island
+ewe-companion find resume                      # the finder's paths, as JSON
 ewe-companion ask "how do I pair headphones?"  # answered from the knowledge pack
 ewe-companion ask "what is a swap file?" # a question, to your provider
 ewe-companion key set anthropic < keyfile  # the key goes to the keyring
@@ -120,34 +157,43 @@ provider, nothing leaves the machine.
 - **It runs as you, unsandboxed,** like every ewe plugin. Any process
   running as you can talk to its socket, as it can already drive your
   session.
+- **It never sees a password.** It only asks Safe to copy one (`ewe-safe
+  copy`), and never fills a login itself: the fill stays your click in the
+  browser, or `Super+P`.
+- **The finder is by name only.** It does not read what is inside your
+  files, and it stops after 1.5 s on a very large home folder (the reply
+  says so).
+- **Browser history, tabs, the page and "play" from your library need ewe
+  browser's command line,** which comes after 0.1.0-beta. Until then those
+  say so, and searches and pages open the old way.
 - **Jump to the exact tab needs kitty remote control.** ewe's kitty config
   turns it on (socket-only, in your private runtime dir). In other
   terminals, *Answer in terminal* focuses the window only.
 
 ## Develop
 
+Start with [`AGENTS.md`](AGENTS.md): the rules, the map of the code, how the
+pieces talk, and where each kind of change goes.
+[`docs/EXTENDING.md`](docs/EXTENDING.md) has a recipe per change (a command,
+a knowledge topic, a provider, a card…), [`docs/TESTING.md`](docs/TESTING.md)
+every way to check one.
+
 ```sh
 cargo test && cargo clippy --all-targets -- -D warnings
-cargo build && tests/relay-failsafe.sh     # 26 fail-safe checks over a real socket
+tests/chat.sh && tests/relay-failsafe.sh   # the chat path; the relay's fail-safes
+tests/canary.sh                            # names stay local: Safe's names reach no model, log or store
+tests/island.sh up --scale 1.8             # the island in ewe's nested harness
+tests/island.sh ctl debug card permission  # a card to look at
+tests/island.sh shot card                  # → /tmp/ewe-companion-island/card.png
+tests/island.sh down
 ```
 
-To try the island without installing anything, use ewe's nested harness (the
-`ewe-smoke` skill). Copy the plugin into a scratch payload, run a debug
-daemon on a short socket path, and drive it:
-
-```sh
-export EWE_COMPANION_SOCK=$XDG_RUNTIME_DIR/ewe-companion-smoke.sock
-EWE_COMPANION_DEBUG=1 XDG_STATE_HOME=/tmp/cs target/debug/ewe-companiond &
-# HS_PAYLOAD=<dir with ewe.companion/ + bundle.json> HS_PLUGINS=1 driver.sh up
-target/debug/ewe-companion debug card permission     # or question / note
-target/debug/ewe-companion say "Download done · archlinux.iso · 1.2 GB" --level success
-```
-
-The headless harness has no mouse, so hovers and clicks never happen there:
-`tests/vptr.py` adds a virtual one (see its header for the step script).
-
-Record real hook payloads with `EWE_COMPANION_HOOK_LOG=<file>` in a scratch
-project (`tests/payloads/claude/README.md`). Never test hooks against your
-real `~/.claude`.
+`tests/island.sh` runs a debug daemon on its own socket and the plugin in a
+sandboxed nested shell, with a virtual mouse for hovers and clicks and a
+scratch Claude Code project for real hook runs. The debug daemon still runs
+commands on this machine (volume, brightness, a Run click), and hooks are
+never tested against your real `~/.claude`. Safe and ewe browser are the
+fakes in `tests/fakes/` there and in every test: never your real safe or
+browser.
 
 MIT licence.

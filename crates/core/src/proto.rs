@@ -135,6 +135,10 @@ pub struct Env {
     /// talks to the compositor the island lives in
     #[serde(default)]
     pub hypr: String,
+    /// the shell's `WAYLAND_DISPLAY`, for what the daemon asks Safe to copy
+    /// (a user unit may not have one)
+    #[serde(default)]
+    pub wayland: String,
 }
 
 /// A hook relay's event.

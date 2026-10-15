@@ -3,7 +3,9 @@
 
 The headless nested Hyprland (driver.sh up with HS_HEADLESS=1) has no
 pointer device, so nothing ever gets a hover or a click. This client adds
-one, with the standard library only, and plays a script of steps:
+one, with the standard library only, and plays a script of steps. Use it
+through `tests/island.sh hover <steps-file>`, which moves the cursor and
+takes the shots (docs/TESTING.md); on its own:
 
     tests/vptr.py <wayland-socket> <steps-file>
 
@@ -19,6 +21,7 @@ Steps, one per line:
     sleep S
     mark NAME       prints "MARK NAME" and waits for a line on stdin (the
                     caller takes a shot)
+A "#" starts a comment, to the end of the line.
 Found the notch's hover bug on 2026-10-14. Never point it at the live
 session's socket: it would drive the real pointer.
 """
@@ -29,7 +32,8 @@ import sys
 import time
 
 sock_path = sys.argv[1]
-steps = [l.split() for l in open(sys.argv[2]) if l.strip()]
+# a step per line; "#" starts a comment
+steps = [w for w in (l.split("#", 1)[0].split() for l in open(sys.argv[2])) if w]
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(sock_path)
 next_id = 2

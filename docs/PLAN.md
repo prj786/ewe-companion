@@ -11,10 +11,17 @@ against the live docs or tool at build time.*
 
 ## 0. Status and how to read this
 
-- **Status (2026-10-14):** the owner accepted all nine proposed answers
+- **Status (2026-10-15):** the owner accepted all nine proposed answers
   (RFC-007 → *Owner decisions*). **P1 is done; P2 works end to end** against
-  a real Claude Code 2.1.296 session (scene 1, with the click stood in by
-  `debug answer`). See §25 for what building taught us.
+  a real Claude Code session (scene 1, with the click stood in by
+  `debug answer`); **P2.5 to P2.8 are done** (the notch, the knowledge pack,
+  apps and folders, proposed commands), and **P2.9** (Safe, ewe browser,
+  the finder; TRIO.md §C1) is built on `feat/powers` (2026-10-15). P3 is
+  next. See §25 for what
+  building taught us.
+- **Working on it:** `AGENTS.md` at the repo root is the map for agents
+  (rules, code map, flows, traps); `docs/EXTENDING.md` and
+  `docs/TESTING.md` are the recipes and the checks.
 - **Read in this order:** §1 (what we build), §3 (processes), §20 (phases),
   §21 (the first session). The rest is reference for building each part.
 - **House rules apply unchanged:** the 12 Rules of the House plus C1–C8 from
@@ -130,6 +137,10 @@ talk to the socket. Same uid, same trust; say it honestly in the README.
 ---
 
 ## 4. Repos and file layout
+
+*The layout as planned on 2026-10-13. Much of it (watchers/, providers/,
+tools/, the app/ window, docs/AGENTS.md, PRIVACY.md) does not exist yet;
+`AGENTS.md` → *Layout* lists what does.*
 
 ### `prj786/ewe-companion` (MIT)
 
@@ -945,6 +956,9 @@ notification:
 
 ### Later
 
+- **Done in P2.9 (2026-10-15):** the companion drives ewe browser through
+  its own command line (`docs/CLI.md`): search, open, play, history, tabs,
+  a tab, the page. See §20 P2.9.
 - **The AI button.** The browser's disabled `sparkles` placeholder runs
   `ewe-companion ask --context page`, with the page's URL, title and selection
   sent as **untrusted** context (C4).
@@ -957,6 +971,12 @@ notification:
 
 **Today:** `ewe-pass` is a fill picker over 1Password, Bitwarden and pass.
 Note that it exits 1 on errors, which is a rule-5 gap to fix separately.
+
+**Since 2026-10-15** the manager exists: Safe (`ewe-safe`, RFC-008), and
+P2.9 (§20) follows these principles in code: the companion calls `summary`,
+`match`, `copy`, `lock` and `unlock --ask`, never `show` or `reveal`; names
+show on the island only (`Outcome::private`), and `tests/canary.sh` is the
+canary for them. The events below are still to come.
 
 ### Principles (C3 in practice)
 
@@ -1039,6 +1059,11 @@ and the canary.
 - In a tainted turn, T1+ tools need a click, and the card says why (*This
   request read a web page, so I'm asking first*).
 - Untrusted text is wrapped in `<untrusted source="…">` in the prompt.
+- **In code since P2.9:** "what is this page about?" sends the page as
+  `<untrusted source="web page">`, the persona says such text is data, and
+  an ACTION in that turn's reply comes back as a "Do it" button with the
+  reason. ewe browser's `untrusted` tools (history, tabs, play, the page)
+  never reach a model as text otherwise: it hears a count.
 
 ### Process hygiene
 
@@ -1231,20 +1256,25 @@ Buttons in cards:
 - a 2 MB payload is trimmed;
 - a wrong-uid socket is refused.
 
-**Island smoke** (via the `ewe-smoke` skill):
+**Island smoke** (`tests/island.sh`, on ewe's nested harness; the how-to is
+`docs/TESTING.md`):
 
-- run with `HS_PLUGINS=1 HS_PLUGIN_DIRS=<ewe-plugin-companion>`;
-- `ewe-companion debug card …` and `say` drive each state; screenshot each;
-- remember the ~15 KB-shot = bar-only rule; read `driver.sh log`.
+- the plugin goes in through a scratch payload (`HS_PAYLOAD`, `HS_PLUGINS=1`):
+  a reserved `ewe.` id never loads from `HS_PLUGIN_DIRS`;
+- `ctl debug card …` and `ctl say` drive each state; `shot` each, and read it;
+- `hover` plays a virtual mouse (`tests/vptr.py`) for hovers, clicks and the
+  wheel; `--scale 1.8` matches the owner's laptop;
+- remember the ~15 KB-shot = bar-only rule; read `tests/island.sh log`.
 
 **Standing gotchas:**
 
 - Unset `HYPRLAND_INSTANCE_SIGNATURE` and `WAYLAND_DISPLAY` before calling
   `ewe-plugin` from tests (`--no-restart` is not enough).
 - Never run `colorscheme.sh` on the dev host.
-- Test real Claude Code hooks against a **scratch** project with a fresh
-  `CLAUDE_CONFIG_DIR` (verify the variable) so the owner's real
-  `~/.claude/settings.json` is never touched by a test.
+- Test real Claude Code hooks against a **scratch** project
+  (`tests/island.sh claude-project` / `claude`: hooks in its
+  `.claude/settings.local.json`, the installed plugin off there), so the
+  owner's real `~/.claude/settings.json` is never touched by a test.
 
 ---
 
@@ -1475,6 +1505,68 @@ decision 6 for the shell, before P4's general ConfirmCard.
       hand is there; an automatic second step is not); streaming output.
 - **Gate:** the owner's next try.
 
+### P2.9 — Safe, ewe browser and the finder (M), owner ask 2026-10-15
+
+"I want companion to have the power of using Safe and ewe-browser. When I
+say search something it should use the browser. It should have the power to
+find a file or directory for me." The contract is ewe-safe's `docs/TRIO.md`
+§C1. Branch `feat/powers` in both repos.
+
+- [x] **ewe browser** through its command line (ewe-browser `docs/CLI.md`,
+      `rail-and-cli`): `daemon::browser` asks `ewe-browser commands` for
+      the tools, their tiers and `untrusted` flags, and only when the binary
+      is a script (`#!`): 0.1.0-beta's `ewe-browser` is the Electron binary,
+      which would open "commands" as a page. Reads (tier 0: history, tabs,
+      the page) run in the daemon; acts (tier 1: search, open, play, tab
+      activate) run in the island (`do browser`), so a browser they start
+      belongs to the desktop. The reply's `undo` argv lists become the
+      Undo (only the browser's own undoing verbs). Tier 2 is never run: it
+      becomes a proposal. No command line → `web_search`, `play_music` and
+      `open_url` open a URL as before; history, tabs and the page say why.
+- [x] Words: "search/google/look up X", "open github.com", "find X in my
+      history", "that site about X", "show my tabs", "go to the YouTube
+      tab", "play X"; "what is this page about?" reads `page --text` and
+      asks the model with the text in `<untrusted source="web page">`. That
+      turn is tainted (C4): an ACTION in the reply is a "Do it" button with
+      the reason, never a run.
+- [x] **The finder** (`daemon::finder`, rules in `core::find`): the
+      `ignore` crate's parallel walker under home, hidden folders, build
+      trees and caches skipped, links not followed, 1.5 s; every word in
+      the name, type words as an extension filter, exact > prefix >
+      contains, then newer. Rows: Open, Show in folder, Copy path, Open
+      terminal here. "Open the X folder" falls back to it after `places`.
+      A finder that finds nothing is a miss: the words go on as a question.
+      CLI `ewe-companion find`.
+- [x] **Safe** (`daemon::safe`): `match --query`, `copy <id> --field`,
+      `lock`, `unlock --ask` (through the island, `do safe_unlock`),
+      `summary`; never `show` or `reveal`. One login copies at once, several
+      become rows whose click copies. A locked safe offers Unlock Safe; the
+      command that waited runs when Safe opens. "Log me in to GitHub" opens
+      the login's site in ewe browser; the fill stays a click (or Super+P).
+      `env.wayland` gives Safe's copy the desktop's display.
+- [x] **Names stay local.** An outcome's `private` line is what the
+      conversation keeps (and a Safe request's own words are kept out), so
+      a model hears "done" or a count. `tests/canary.sh`: a fake Safe whose
+      titles, usernames, folders and sites carry `EWE-CANARY-7Q2X`, twenty
+      scripted chats (the matcher, a row's click, a model's ACTION, locked
+      and unlocked); the canary reaches the island and no provider request,
+      no log line at debug level, no store byte. A mutation (keeping `text`
+      instead of `private`) fails it.
+- [x] Knowledge: `knowledge/safe.md` (Safe, copying, import from
+      1Password, passkeys and SSH keys "coming", the phone) and
+      `knowledge/browser.md` (history, tabs, sync, Safe in the browser);
+      `Fill in a password`, `Find a window, an app or a file`, `ewe
+      browser` and `The companion` updated.
+- [x] Tests: core 67, daemon 24; `tests/chat.sh` 50 (29 new, against
+      `tests/fakes/ewe-safe`, `tests/fakes/ewe-browser` and
+      `tests/fake-island.py --do`); `tests/canary.sh` 7; the island harness
+      (rows, the finder's buttons, Unlock Safe clicked with the virtual
+      mouse, a search and a tab switch through `do browser`).
+- [ ] Against the real ewe browser command line once `rail-and-cli` is
+      released, and against the owner's real Safe (by the owner).
+- [ ] Redaction of page text before it goes to a model (§16, P4).
+- **Gate:** the owner's try, once the browser's command line ships.
+
 ### P3 — notifications (L), crosses repos and merges as one wave
 
 - [ ] **ewe:** Plugin API 4 `Shell` members + host `apiVersions [2,3,4]`;
@@ -1548,8 +1640,9 @@ decision 6 for the shell, before P4's general ConfirmCard.
 
 ### P8 — the password manager (when it exists)
 
-- [ ] The manager emits §15 events; companion nudges + onboarding; the canary
-      extended to the vault.
+- [ ] The manager emits §15 events; companion nudges + onboarding.
+- [x] The canary extended to the vault: `tests/canary.sh` (P2.9) plants it
+      in a fake Safe's titles, usernames, folders and sites.
 - **Gate:** scene 10; the canary passes.
 
 ---
@@ -1677,7 +1770,9 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
 - **A timed blink is not free:** 0.65 % of the shell's CPU in the nested
   harness. The blink is event-driven now (§8 corrected).
 - **The shell's `InvertedCorner` paints nothing** (its arc runs the long way
-  round), so the plugin has `Fillet.qml`.
+  round). The plugin first had its own `Fillet.qml`; since P2.6 the fillets
+  are part of one `QtQuick.Shapes` path with the curve renderer (smooth at
+  1.8 scale), and `Fillet.qml` is gone.
 - **Unix socket paths are limited to 108 bytes:** test sockets go in
   `$XDG_RUNTIME_DIR`, not the scratchpad.
 - **A plugin property may not be called `right`** (it is `Item.right`, FINAL),
@@ -1686,3 +1781,24 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   in its terminal.
 - **tracing's macros import `debug`:** a local `let debug` breaks `info!(…,
   debug, …)`.
+- **A Qt `Column` skips zero-width children** (P2.8 follow-up): an empty
+  hint line took no room until a hover filled it, and the notch grew. Give
+  such an item an explicit width. Found only once the harness had a mouse
+  (`tests/vptr.py`, `tests/island.sh hover`).
+- **The installed Claude Code plugin doubles every card in a test project**
+  (2026-10-15): with `ewe-companion@ewe` enabled for the user, its hooks and
+  the scratch project's both reach the scratch daemon. `tests/island.sh
+  claude-project` turns the installed plugin off for that project.
+- **ewe browser 0.1.0-beta has no command line** (2026-10-15): its
+  `ewe-browser` is the Electron binary itself, so `ewe-browser commands`
+  would open a window searching "commands". The new one is a `#!` wrapper;
+  `daemon::browser` asks only a script.
+- **An app a command line starts joins the caller's cgroup** (2026-10-15):
+  `ewe-browser search` starts the browser when it is closed, and from the
+  daemon's unit the browser would die with the unit. Acting verbs run in the
+  island (`do browser`); reads stay in the daemon.
+- **What a command shows is not what a model should hear** (2026-10-15):
+  the conversation used to keep each reply's text, which would have carried
+  Safe's titles and usernames into the next question to a model. Outcomes
+  now carry a `private` line for the conversation; `tests/canary.sh` guards
+  it.

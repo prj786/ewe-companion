@@ -153,13 +153,22 @@ async fn island(hub: Arc<Hub>, mut rd: Reader, mut wr: OwnedWriteHalf) {
                 tokio::spawn(async move {
                     let id = new_id("m");
                     let r = match hub.take_undo(&token) {
-                        Some(call) => {
+                        Some(crate::hub::Undo::Call(call)) => {
                             let out = crate::commands::run(&hub, &call).await;
                             crate::chat::Reply {
                                 kind: if out.ok { "done" } else { "error" },
                                 text: out.line,
                                 undo: None,
                                 command: Some(call.command),
+                                ..Default::default()
+                            }
+                        }
+                        // ewe browser's own undo steps
+                        Some(crate::hub::Undo::Browser(steps)) => {
+                            let out = crate::browser::undo(&hub, &steps).await;
+                            crate::chat::Reply {
+                                kind: if out.ok { "done" } else { "error" },
+                                text: out.line,
                                 ..Default::default()
                             }
                         }
@@ -193,13 +202,8 @@ async fn island(hub: Arc<Hub>, mut rd: Reader, mut wr: OwnedWriteHalf) {
                 tokio::spawn(async move {
                     let id = new_id("m");
                     let out = crate::commands::run(&hub, &call).await;
-                    let r = crate::chat::Reply {
-                        kind: if out.ok { "done" } else { "error" },
-                        text: out.line,
-                        undo: out.undo.map(|u| hub.keep_undo(u)),
-                        command: Some(call.command),
-                        ..Default::default()
-                    };
+                    info!(command = %call.command, ok = out.ok, "button");
+                    let r = crate::chat::reply_of(&hub, &call, out);
                     hub.broadcast(proto::line("chat.reply", crate::chat::reply_json(&id, &r)));
                 });
             }
@@ -453,6 +457,30 @@ async fn cli(hub: &Arc<Hub>, verb: &str, args: &Value) -> Value {
             }
             json!({"ok": true, "chat": hub.snapshot()["chat"]})
         }
+        // the finder from a terminal: what it finds, as paths
+        "find" => {
+            let mut q = companion_core::find::parse(arg(args, "query"));
+            if arg(args, "kind") == "folder" {
+                q.kind = companion_core::find::Kind::Folder;
+            }
+            if q.is_empty() {
+                return json!({"ok": false, "error": "find needs words to look for"});
+            }
+            let limit = args
+                .get("limit")
+                .and_then(Value::as_u64)
+                .unwrap_or(20)
+                .min(200);
+            let (hits, partial) = crate::finder::find(q, limit as usize).await;
+            let results: Vec<Value> = hits
+                .iter()
+                .map(|h| {
+                    json!({"path": h.path, "kind": if h.dir { "folder" } else { "file" },
+                           "modified": h.modified_s()})
+                })
+                .collect();
+            json!({"ok": true, "results": results, "partial": partial})
+        }
         "jump" => match hub.session(arg(args, "session")) {
             Some(s) => term::jump(&s.term, &hub.env().hypr).await,
             None => json!({"ok": false, "error": "no such session"}),
@@ -475,6 +503,19 @@ async fn cli(hub: &Arc<Hub>, verb: &str, args: &Value) -> Value {
         // a stand-in for the Run click, so tests can run a proposal
         "debug.confirm" if hub.debug => {
             let r = crate::chat::confirm(hub, arg(args, "token"), arg(args, "mode")).await;
+            let mut v = crate::chat::reply_json("", &r);
+            v["ok"] = Value::Bool(r.kind != "error");
+            v
+        }
+        // a stand-in for a button's click (`command.run`): a row's Copy,
+        // Open, Unlock Safe …
+        "debug.run" if hub.debug => {
+            let call = companion_core::commands::Call::new(
+                arg(args, "command"),
+                args.get("args").cloned().unwrap_or(json!({})),
+            );
+            let out = crate::commands::run(hub, &call).await;
+            let r = crate::chat::reply_of(hub, &call, out);
             let mut v = crate::chat::reply_json("", &r);
             v["ok"] = Value::Bool(r.kind != "error");
             v

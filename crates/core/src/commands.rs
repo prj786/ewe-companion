@@ -9,11 +9,15 @@
 //! - the daemon's `commands` module runs a [`Call`].
 //!
 //! Adding a command is three steps: a row here, its words in `intent`, its
-//! `run` arm in the daemon. Every command is a desktop action (tier T1:
-//! it runs on its own and says what it did, with Undo where one exists;
-//! decision 6). Anything that changes settings, files or the system (T2/T3)
-//! needs a confirm card first and does not belong in this list until P4's
-//! ConfirmCard exists.
+//! `run` arm in the daemon. Every command is a read (tier T0: it only shows
+//! something, such as found files or the browser's history) or a desktop
+//! action (tier T1: it runs on its own and says what it did, with Undo
+//! where one exists; decision 6). Anything that changes settings, files or
+//! the system (T2/T3) needs a confirm card first and does not belong in
+//! this list until P4's ConfirmCard exists.
+//!
+//! Safe's commands (`safe_*`) never carry a value: Safe copies a password
+//! itself, and a model that asks for one gets back "done" or a count.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -125,19 +129,82 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "web_search",
         args: r#"{"query": "…"}"#,
-        summary: "search the web in the browser",
+        summary: "search the web in ewe browser (its own search engine)",
     },
     CommandInfo {
         name: "play_music",
         args: r#"{"query": "…"}"#,
-        summary: "find a song or artist and play it in the browser",
+        summary: "play a song or artist: from the music library in ewe browser, else YouTube Music",
     },
     CommandInfo {
         name: "open_url",
         args: r#"{"url": "https://…"}"#,
-        summary: "open a web page in the browser",
+        summary: "open a web page in ewe browser",
+    },
+    CommandInfo {
+        name: "browser_history",
+        args: r#"{"query": "tax"}"#,
+        summary: "find pages in ewe browser's history. The pages show on the island; you get only how many",
+    },
+    CommandInfo {
+        name: "browser_tabs",
+        args: "{}",
+        summary: "list ewe browser's open tabs on the island; you get only how many",
+    },
+    CommandInfo {
+        name: "browser_tab",
+        args: r#"{"words": "youtube"}"#,
+        summary: "switch to the open tab in ewe browser whose title or address has these words",
+    },
+    CommandInfo {
+        name: "find_files",
+        args: r#"{"query": "pdfs about tax", "kind": "any"|"file"|"folder" (optional)}"#,
+        summary: "find files and folders in the home folder by their name; type words work (pdfs, photos, \
+                  videos, spreadsheets). The results show on the island; you get only how many",
+    },
+    CommandInfo {
+        name: "open_file",
+        args: r#"{"path": "~/Documents/cv.pdf"}"#,
+        summary: "open a file with its default app",
+    },
+    CommandInfo {
+        name: "safe_copy",
+        args: r#"{"query": "github", "field": "password"|"username"|"otp"}"#,
+        summary: "Safe (the password manager) copies a login's password, username or one-time code to the \
+                  clipboard and clears it later. You never see the value or the login's name: you get back \
+                  done or a count. Never ask the user for a password",
+    },
+    CommandInfo {
+        name: "safe_login",
+        args: r#"{"query": "github"}"#,
+        summary: "open the website of a login in Safe in ewe browser; the user fills it there with a click",
+    },
+    CommandInfo {
+        name: "safe_lock",
+        args: "{}",
+        summary: "lock Safe",
+    },
+    CommandInfo {
+        name: "safe_unlock",
+        args: "{}",
+        summary: "open Safe's unlock prompt (the user types the master password there, never in the chat)",
+    },
+    CommandInfo {
+        name: "safe_status",
+        args: "{}",
+        summary: "Safe's state: locked or not, how many items, whether it is in sync",
     },
 ];
+
+/// What Safe copies: `safe_copy`'s `field`.
+pub const SAFE_FIELDS: &[&str] = &["password", "username", "otp"];
+
+/// The commands that answer from Safe. Their results (a login's title, its
+/// username) are shown on the island only: never in a model's context, never
+/// stored (TRIO.md, "names stay local").
+pub fn is_safe(command: &str) -> bool {
+    command.starts_with("safe_")
+}
 
 /// What `open` opens.
 pub const OPEN_WHAT: &[&str] = &[
@@ -246,6 +313,25 @@ fn path_text(p: &str, command: &str) -> Result<(), String> {
     }
 }
 
+/// Safe's words go to its command line as one argument: never one it
+/// could read as a flag.
+fn safe_words(a: &Value) -> Result<(), String> {
+    match a["query"].as_str() {
+        Some(q) if q.trim_start().starts_with('-') || q.len() > 200 => {
+            Err("Safe: that is not a name to look for".into())
+        }
+        _ => Ok(()),
+    }
+}
+
+/// An id another app gave us (a Safe item's UUID, a browser tab's id):
+/// letters, digits and dashes, nothing a command line could read as more.
+fn token_ok(id: &str) -> bool {
+    (4..=64).contains(&id.len())
+        && !id.starts_with('-')
+        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
 pub fn known(name: &str) -> bool {
     CATALOG.iter().any(|c| c.name == name)
 }
@@ -351,7 +437,80 @@ pub fn validate(call: &Call) -> Result<(), String> {
                 Err("open_url: only http and https pages".into())
             }
         }
-        "lock" => Ok(()),
+        "lock" | "browser_tabs" | "safe_lock" | "safe_status" => Ok(()),
+        "browser_history" => match a.get("query") {
+            None | Some(Value::Null) => Ok(()),
+            Some(Value::String(q)) if q.len() <= 200 => Ok(()),
+            _ => Err("browser_history: \"query\" must be some text".into()),
+        },
+        "browser_tab" => {
+            // the words of a tab ("youtube"), or the browser's own tab id
+            // (a row's click)
+            if let Some(id) = a.get("id").filter(|v| !v.is_null()) {
+                match id.as_str() {
+                    Some(i) if token_ok(i) => Ok(()),
+                    _ => Err("browser_tab: \"id\" is not a tab id".into()),
+                }
+            } else {
+                text("words")
+            }
+        }
+        "find_files" => {
+            text("query")?;
+            if a["query"].as_str().unwrap_or("").len() > 200 {
+                return Err("find_files: \"query\" is too long".into());
+            }
+            match a.get("kind") {
+                None | Some(Value::Null) => Ok(()),
+                Some(_) => one_of("kind", &["any", "file", "folder"]),
+            }
+        }
+        "open_file" => {
+            text("path")?;
+            path_text(a["path"].as_str().unwrap_or(""), &call.command)
+        }
+        "safe_copy" => {
+            match a.get("id").filter(|v| !v.is_null()) {
+                Some(id) if id.as_str().is_some_and(token_ok) => {}
+                Some(_) => return Err("safe_copy: \"id\" is not an item id".into()),
+                None => {
+                    text("query")?;
+                    safe_words(a)?;
+                }
+            }
+            match a.get("field") {
+                None | Some(Value::Null) => {}
+                Some(_) => one_of("field", SAFE_FIELDS)?,
+            }
+            // what the island shows after a row's click; never a value
+            for k in ["title", "username"] {
+                match a.get(k) {
+                    None | Some(Value::Null) => {}
+                    Some(Value::String(s)) if s.len() <= 200 => {}
+                    Some(_) => return Err(format!("safe_copy: \"{k}\" must be text")),
+                }
+            }
+            Ok(())
+        }
+        "safe_login" => {
+            text("query")?;
+            safe_words(a)
+        }
+        "safe_unlock" => match a.get("then").filter(|v| !v.is_null()) {
+            // the command that was waiting for the unlock, run after it
+            None => Ok(()),
+            Some(then) => {
+                let next: Call = serde_json::from_value(then.clone())
+                    .map_err(|_| "safe_unlock: \"then\" must be a command".to_string())?;
+                if !matches!(
+                    next.command.as_str(),
+                    "safe_copy" | "safe_login" | "safe_status"
+                ) {
+                    return Err("safe_unlock: only a Safe command can wait for the unlock".into());
+                }
+                validate(&next)
+            }
+        },
         other => Err(format!("no command called {other}")),
     }
 }
@@ -409,6 +568,16 @@ mod tests {
                 "run_shell",
                 json!({"command": "df -h", "about": "Show free disk space"}),
             ),
+            ("browser_history", json!({"query": "tax"})),
+            ("browser_tabs", json!({})),
+            ("browser_tab", json!({"words": "youtube"})),
+            ("find_files", json!({"query": "pdfs about tax"})),
+            ("open_file", json!({"path": "~/Documents/cv.pdf"})),
+            ("safe_copy", json!({"query": "github", "field": "password"})),
+            ("safe_login", json!({"query": "github"})),
+            ("safe_lock", json!({})),
+            ("safe_unlock", json!({})),
+            ("safe_status", json!({})),
         ];
         assert_eq!(good.len(), CATALOG.len());
         for (name, args) in good {
@@ -439,6 +608,57 @@ mod tests {
         assert!(validate(&Call::new("open_folder", json!({"path": ""}))).is_err());
         assert!(validate(&Call::new("rm_rf", json!({}))).is_err());
         assert!(validate(&Call::new("open", json!({"what": "terminal; rm -rf"}))).is_err());
+    }
+
+    #[test]
+    fn new_powers_check_their_arguments() {
+        let ok = |c: &str, a: Value| validate(&Call::new(c, a));
+        // Safe: an item id from a row's click, or the words; never a value
+        assert_eq!(
+            ok(
+                "safe_copy",
+                json!({"id": "4f9c0d1e-1111-2222-3333-444455556666", "field": "otp", "title": "GitHub"})
+            ),
+            Ok(())
+        );
+        assert_eq!(ok("safe_copy", json!({"query": "github"})), Ok(()));
+        assert!(ok("safe_copy", json!({"id": "--field=password"})).is_err());
+        assert!(ok("safe_copy", json!({"id": "a b"})).is_err());
+        assert!(ok("safe_copy", json!({"query": "github", "field": "notes"})).is_err());
+        assert!(ok("safe_copy", json!({})).is_err());
+        assert!(ok("safe_copy", json!({"query": "--reveal"})).is_err());
+        assert!(ok("safe_login", json!({"query": "-x"})).is_err());
+        // a command waiting for the unlock: only a Safe one
+        assert_eq!(
+            ok(
+                "safe_unlock",
+                json!({"then": {"command": "safe_copy", "args": {"query": "github"}}})
+            ),
+            Ok(())
+        );
+        assert!(
+            ok(
+                "safe_unlock",
+                json!({"then": {"command": "run_shell", "args": {"command": "id"}}})
+            )
+            .is_err()
+        );
+        assert!(ok("safe_unlock", json!({"then": "lock"})).is_err());
+        // the browser: words, or its own tab id
+        assert_eq!(ok("browser_tab", json!({"id": "1002f85c"})), Ok(()));
+        assert!(ok("browser_tab", json!({"id": "-x"})).is_err());
+        assert!(ok("browser_tab", json!({})).is_err());
+        assert_eq!(ok("browser_history", json!({})), Ok(()));
+        assert!(ok("browser_history", json!({"query": 3})).is_err());
+        // files
+        assert!(ok("find_files", json!({"query": ""})).is_err());
+        assert!(ok("find_files", json!({"query": "tax", "kind": "disk"})).is_err());
+        assert_eq!(
+            ok("find_files", json!({"query": "tax", "kind": "folder"})),
+            Ok(())
+        );
+        assert!(ok("open_file", json!({"path": "a\nb"})).is_err());
+        assert!(is_safe("safe_copy") && !is_safe("open_url"));
     }
 
     #[test]

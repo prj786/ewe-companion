@@ -35,6 +35,8 @@ const BUILT_IN: &[(&str, &str)] = &[
     ("howto", include_str!("../../../knowledge/howto.md")),
     ("keys", include_str!("../../../knowledge/keys.md")),
     ("fix", include_str!("../../../knowledge/fix.md")),
+    ("safe", include_str!("../../../knowledge/safe.md")),
+    ("browser", include_str!("../../../knowledge/browser.md")),
 ];
 
 /// A match this strong is an answer on its own: one of the topic's own
@@ -478,6 +480,33 @@ mod tests {
             top("my screen is black after plugging a monitor"),
             "A black screen after plugging a monitor"
         );
+        assert_eq!(
+            top("how do I import from 1password?"),
+            "Import passwords from 1Password"
+        );
+        assert_eq!(top("can safe keep my ssh keys"), "SSH keys in Safe");
+        assert_eq!(top("does it support passkeys"), "Passkeys");
+        assert_eq!(
+            top("how do I get my passwords on my phone"),
+            "Safe on your phone"
+        );
+        assert_eq!(
+            top("what is my password for github"),
+            "Copy a password, a username or a code"
+        );
+        assert_eq!(
+            top("how do I clear my browsing history"),
+            "History in ewe browser"
+        );
+        assert_eq!(
+            top("does the browser sync my tabs from other computers"),
+            "Sync in ewe browser"
+        );
+        assert_eq!(
+            top("how do I fill a password in the browser"),
+            "Safe in ewe browser"
+        );
+        assert_eq!(top("wifi password"), "Connect to Wi-Fi", "still Wi-Fi's");
     }
 
     #[test]
@@ -488,6 +517,7 @@ mod tests {
             "thanks",
             "what's the weather in Tbilisi",
             "tell me a joke",
+            "is it safe to do that",
         ] {
             let best = p.search(q, 1).first().map(|h| h.score).unwrap_or(0.0);
             assert!(best < CONFIDENT, "{q:?} scored {best}");
