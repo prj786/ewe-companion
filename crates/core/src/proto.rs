@@ -105,7 +105,7 @@ pub struct Session {
 }
 
 /// The chat settings the island reads from its plugin settings (Komble →
-/// Plugins → Companion → Options). Never a key: keys go to the keyring.
+/// Plugins → Shaun → Options). Never a key: keys go to the keyring.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ChatSettings {
     /// `none` · `claude-code` · `codex` · `opencode` · `anthropic` · `openai`

@@ -469,7 +469,7 @@ mod tests {
             top("how do i turn on do not disturb"),
             "Do not disturb and notifications"
         );
-        assert_eq!(top("what can you do?"), "The companion");
+        assert_eq!(top("what can you do?"), "Shaun");
         assert_eq!(top("the disk is full"), "The disk is full");
         assert_eq!(top("how do I add a dock"), "The dock");
         assert_eq!(top("what does Super + G do?"), "Shortcuts for windows");

@@ -1,6 +1,6 @@
 # ewe-companion
 
-The desktop companion for ewe: a quiet island in the bar's centre. When
+**Shaun**, the desktop companion for ewe: a quiet island in the bar's centre. When
 Claude Code wants to run something or asks you a question, a card drops out
 of the bar. Click **Allow**, **Deny** or **Always for …**, pick an answer, or
 go to that terminal tab. You never leave what you were doing. It also tells
@@ -63,8 +63,14 @@ computer is like now.
 **Status: 0.1.0-beta, P1 and P2 working, plus P2.5 (the notch, the home
 panel, the chat groundwork), P2.6 (the notch fixes, the ewe knowledge pack),
 P2.7 (apps and folders), P2.8 (it runs what it suggests, on a click),
-2026-10-14, and P2.9 (Safe, ewe browser, the finder), 2026-10-15. Not
-released.**
+2026-10-14, and P2.9 (Safe, ewe browser, the finder), 2026-10-15. First
+release 2026-10-17: the `ewe-companion` package in the [ewe] repository,
+and the island (plugin `ewe.companion` 0.4.0) in ewe 0.29.0-beta's
+plugins.**
+
+**Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
+ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:
+`ewe-companion agents install claude`.
 
 - **Why and what:** [`ewe/docs/RFC-007-companion.md`](../ewe/docs/RFC-007-companion.md)
 - **How, phase by phase:** [`docs/PLAN.md`](docs/PLAN.md)

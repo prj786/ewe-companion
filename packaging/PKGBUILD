@@ -3,8 +3,9 @@
 # ewe-companion — the desktop companion's daemon, CLI and agent hook relay
 # (RFC-007). The island itself is the shell plugin ewe.companion
 # (prj786/ewe-plugin-companion), which ewe vendors into its payload.
-# P1 skeleton: the release workflow (P7) rewrites _tag/pkgver and attaches
-# the built package; until then this builds from a local checkout.
+# The release workflow (.github/workflows/release.yml) rewrites _tag/pkgver
+# from the tag, builds this checkout and attaches the package to the GitHub
+# release; ewe-repo's publish workflow downloads it.
 
 pkgname=ewe-companion
 # The git TAG and the pacman pkgver are different strings (a tag may carry
