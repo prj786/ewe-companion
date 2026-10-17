@@ -275,7 +275,7 @@ fn agents(a: &Args) -> Value {
                     "hooks": ours,
                     "relay": which("ewe-companion").map(|p| p.display().to_string()),
                     "integration": integration_dir().map(|p| p.display().to_string()),
-                    "note": "The hooks only ever ask you; with the companion off, Claude asks in its terminal.",
+                    "note": "The hooks only ever ask you; with Shaun off, Claude asks in its terminal.",
                 }],
                 "daemon": ask("status", json!({})).get("ok").cloned().unwrap_or(Value::Bool(false)),
             })

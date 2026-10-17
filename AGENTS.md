@@ -18,9 +18,15 @@ The island (the QML half) lives in the sibling repo
 
 ## What this is
 
-The desktop companion of **ewe**, an Arch-only Hyprland + Quickshell desktop
-(`../ewe`). A notch hangs from the top bar's centre (the plugin
-`ewe.companion`). It shows what your AI agents are doing, drops a card when
+**Shaun**, the desktop companion of **ewe**, an Arch-only Hyprland +
+Quickshell desktop (`../ewe`). Shaun is the user-facing name (owner,
+2026-10-17): the notch's word, the plugin's name, the persona, the
+knowledge pack. Every id stays `companion` (the package, the binaries, the
+plugin id `ewe.companion`, the IPC target, the socket, the keyring
+service): ids are public API (rule 4).
+
+A notch hangs from the top bar's centre (the plugin `ewe.companion`). It
+shows what your AI agents are doing, drops a card when
 Claude Code wants permission or asks a question, glances at what needs you,
 runs quick actions, and has a small chat that runs commands in plain words,
 opens apps and folders, finds files, works with Safe (the password manager)
@@ -29,7 +35,8 @@ and proposes shell commands that run only on a click.
 
 This repo is the Rust half: the daemon `ewe-companiond`, the CLI and hook
 relay `ewe-companion`, the knowledge pack, the Claude Code plugin, packaging
-and tests. Version **0.1.0-beta**, not released. P1 is done, P2 works end
+and tests. Version **0.1.0-beta**, first released 2026-10-17 (the package in
+[ewe]; the plugin in ewe 0.29.0-beta). P1 is done, P2 works end
 to end with a few tasks left, P2.5 to P2.8 are done (2026-10-14), and P2.9
 (Safe, ewe browser, the finder: ewe-safe's `docs/TRIO.md` §C1) is built
 (2026-10-15); P3 (notifications) is next. The phase list with open tasks
@@ -417,5 +424,7 @@ branch off it first (`feat/…`, `fix/…`). Features that touch several repos
 (this one, the plugin, `ewe`, the vault, the website) merge as one wave:
 one PR per repo, merge commits, branches kept. The plugin repo has no CI;
 this one runs `ci.yml`. Releasing (P7) follows the `ewe-release` skill
-(`../.opencode/skills/ewe-release/SKILL.md`); the companion is not in a
-release yet.
+(`../.opencode/skills/ewe-release/SKILL.md`): a `v*` tag runs
+`.github/workflows/release.yml` (makepkg in `packaging/`, the package on the
+GitHub release), then ewe-repo's publish carries it; the plugin reaches
+users through ewe's payload (`scripts/vendor-plugins.sh`, an ewe release).

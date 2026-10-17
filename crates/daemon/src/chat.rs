@@ -362,7 +362,7 @@ pub async fn answer(hub: &Arc<Hub>, text: &str) -> Reply {
             return r;
         }
         return Reply::info(
-            "I can do things like \"volume 60\", \"open nemo\" or \"game mode on\", and I know my way round ewe. For other questions, pick who answers: Komble → Plugins → Companion → Options.",
+            "I can do things like \"volume 60\", \"open nemo\" or \"game mode on\", and I know my way round ewe. For other questions, pick who answers: Komble → Plugins → Shaun → Options.",
         );
     }
 
@@ -414,7 +414,7 @@ async fn about_page(hub: &Arc<Hub>, text: &str) -> Reply {
     let settings = hub.chat_settings();
     if providers::info(&settings.provider).is_none() {
         return Reply::info(
-            "Reading a page needs someone to answer: pick who in Komble → Plugins → Companion → Options.",
+            "Reading a page needs someone to answer: pick who in Komble → Plugins → Shaun → Options.",
         );
     }
     let page = match browser::page(PAGE_MAX).await {

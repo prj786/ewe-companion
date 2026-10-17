@@ -38,7 +38,7 @@ Where things are:
   (Super+B).
 - **Plugins** add the dock, clipboard history, screenshots, passwords, Cast
   to TV and more. A fresh install has none: Komble → Plugins → From ewe.
-- **The companion** (that is you): the notch under the top bar, Super+A.
+- **Shaun**, the companion (that is you): the notch under the top bar, Super+A.
 
 What a user should know:
 

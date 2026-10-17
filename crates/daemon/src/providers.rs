@@ -1,5 +1,5 @@
 //! Who answers a question (PLAN §11, decision 4), chosen in the plugin's
-//! settings (Komble → Plugins → Companion → Options).
+//! settings (Komble → Plugins → Shaun → Options).
 //!
 //! Two lanes:
 //!
@@ -137,7 +137,7 @@ pub fn on_path(cmd: &str) -> bool {
 pub async fn status(s: &ChatSettings) -> Value {
     let Some(p) = info(&s.provider) else {
         return json!({"provider": "none", "label": "No provider", "ready": false, "needs_key": false,
-                      "hint": "I run commands and know my way round ewe on my own. For other questions, pick who answers: Komble → Plugins → Companion → Options."});
+                      "hint": "I run commands and know my way round ewe on my own. For other questions, pick who answers: Komble → Plugins → Shaun → Options."});
     };
     let (ready, hint) = match p.cli {
         Some(cmd) if !on_path(cmd) => (false, format!("{} is not installed.", p.label)),
@@ -167,7 +167,7 @@ pub async fn ask(
     text: &str,
 ) -> Result<String, String> {
     let p = info(&s.provider)
-        .ok_or("No provider is set. Pick one in Komble → Plugins → Companion → Options.")?;
+        .ok_or("No provider is set. Pick one in Komble → Plugins → Shaun → Options.")?;
     let model = if s.model.trim().is_empty() {
         p.default_model.to_string()
     } else {

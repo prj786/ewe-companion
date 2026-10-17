@@ -85,10 +85,14 @@ drv() { "$DRV" "$@"; }
 nest() { [ -f "$HS_WORK/state" ] || die "not up: tests/island.sh up"; . "$HS_WORK/state"; }
 
 # the scratch daemon, found by its pid file and checked by its binary
+# (after a rebuild the old binary is gone and its exe link ends in
+# " (deleted)": without stripping it, `restart` left the old daemon running
+# and the new one stepped aside, 2026-10-17)
 daemon_pid() {
-  local p
+  local p exe
   p="$(cat "$WORK/daemon.pid" 2>/dev/null)" || return 1
-  [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$BIN/ewe-companiond" ] && echo "$p"
+  exe="$(readlink "/proc/$p/exe" 2>/dev/null)" || return 1
+  [ "${exe% (deleted)}" = "$BIN/ewe-companiond" ] && echo "$p"
 }
 daemon_stop() {
   local p

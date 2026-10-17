@@ -1638,11 +1638,17 @@ find a file or directory for me." The contract is ewe-safe's `docs/TRIO.md`
 
 ### P7 — ship (M), via the `ewe-release` skill
 
-- [ ] PKGBUILD (`ewe-companion`: daemon, CLI, app, unit, Claude Code plugin
-      under `/usr/share`), release workflow attaching `.pkg.tar.zst`.
-- [ ] ewe-repo `publish.yml` pulls the asset; Komble `first_party.rs`
-      `DISCOVER` entry; ewe vendors `plugins/ewe.companion` + `bundle.json`
-      `default:false`.
+- [x] PKGBUILD (`ewe-companion`: daemon, CLI, unit, Claude Code plugin
+      under `/usr/share`; no app yet), release workflow attaching
+      `.pkg.tar.zst` (`.github/workflows/release.yml`, makepkg in
+      `packaging/`, built first in a local `archlinux:base-devel` container;
+      first tag v0.1.0-beta, 2026-10-17, the owner's "make new release").
+- [x] ewe-repo `publish.yml` pulls the asset (opt-in, a warning while there
+      is no release, like ewe-safe); ewe vendors `plugins/ewe.companion`
+      0.4.0 + `bundle.json` `default:false`, `migrate:false` (ewe
+      0.29.0-beta).
+- [ ] Komble `first_party.rs` `DISCOVER` entry (Safe has none either: the
+      package is found by Komble's pacman search of [ewe]).
 - [ ] Website `/docs/cli/ewe-companion` + a companion page; vault (§22).
 - [ ] QEMU e2e: fresh ISO → Komble → Companion → a Claude prompt approved from
       the island.
@@ -1812,3 +1818,20 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   Safe's titles and usernames into the next question to a model. Outcomes
   now carry a `private` line for the conversation; `tests/canary.sh` guards
   it.
+- **The notch did not match the bar** (owner, 2026-10-17: "it feels
+  different, in dark mode and even more on light"). Both paint
+  `Theme.barGround`, but with Glass that is translucent: the bar sits on the
+  wallpaper (its exclusive zone keeps windows out), the notch over windows,
+  so the plain blur showed the window under the notch (bar 16, notch 13 over
+  a terminal on the owner's laptop; 12 against 52 over a light page in the
+  harness). The blur rule is `xray` now: both blur the wallpaper and match
+  to the level. The fill is also clipped at the bar's edge: with xray, any
+  half-covered row over the bar shows as a seam.
+- **The name is Shaun** (owner, 2026-10-17): the notch's word, the
+  plugin's name in Komble, the persona and the knowledge pack say Shaun.
+  Every id stays `companion` (rule 4: the IPC target, the plugin id, the
+  package, the binaries, the socket, the keyring service).
+- **`tests/island.sh restart` kept the old daemon after a rebuild**
+  (2026-10-17): the old process's exe link ends in " (deleted)", so the
+  binary check failed, nothing was stopped, and the new daemon stepped aside
+  for the old one. The check strips the suffix now.

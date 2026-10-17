@@ -7,7 +7,7 @@
 
 ## Shortcuts for opening things
 keys: shortcut, shortcuts, keybind, keybinds, hotkey, key, keys, keyboard shortcut, open launcher, open terminal, open settings, open files
-Super is the Windows key. Tap Super alone for the Overview. Super+D opens the launcher (press it again to close), Super+Return a terminal (kitty), Super+E the file manager (Nemo), Super+B the browser, Super+, Settings, Super+N Quick settings, Super+C the calendar, and Super+A the companion.
+Super is the Windows key. Tap Super alone for the Overview. Super+D opens the launcher (press it again to close), Super+Return a terminal (kitty), Super+E the file manager (Nemo), Super+B the browser, Super+, Settings, Super+N Quick settings, Super+C the calendar, and Super+A Shaun (the companion).
 
 Super+Shift+B shows or hides the top bar, Super+Space switches the keyboard layout, Super+Alt+L locks the screen, Super+Ctrl+R reloads the desktop's config and Super+Ctrl+Q logs out. Super+Shift+W arranges desktop widgets (Esc ends it). Settings → Shortcuts lists them all.
 
@@ -39,7 +39,7 @@ A short press of the power button opens Quick settings asking "Shut down this co
 
 ## Plugin shortcuts
 keys: plugin shortcut, print screen, print key, screenshot key, password shortcut, cast shortcut, super p, super a
-These exist only while the plugin is installed and on. Screenshot: Print takes the screen, Shift+Print a region, Super+Print the window. Passwords: Super+P fills a login. Cast to TV: Super+Shift+C opens the TV list or hangs up. Companion: Super+A. Clipboard history has no key: it is the scissors in the bar.
+These exist only while the plugin is installed and on. Screenshot: Print takes the screen, Shift+Print a region, Super+Print the window. Passwords: Super+P fills a login. Cast to TV: Super+Shift+C opens the TV list or hangs up. Shaun (the companion): Super+A. Clipboard history has no key: it is the scissors in the bar.
 
 ## Make your own shortcut
 keys: own shortcut, custom shortcut, add shortcut, new shortcut, change shortcut, rebind, bind a key, custom keybind
