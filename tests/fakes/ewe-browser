@@ -90,9 +90,9 @@ TOOLS = [("help", 0, False), ("commands", 0, False), ("tabs", 0, True), ("histor
          ("tab_unpin", 1, True), ("tab_reopen", 1, True), ("tab_close", 2, True),
          ("bookmark_add", 1, True), ("bookmark_remove", 2, True)]
 # ewe browser 0.4 (wave 2, Contract 1)
-TOOLS_04 = [("site", 0, True), ("workspaces", 0, True), ("workspace_activate", 1, True),
-            ("workspace_next", 1, True), ("workspace_prev", 1, True), ("workspace_create", 1, True),
-            ("workspace_rename", 1, True), ("workspace_remove", 2, True), ("back", 1, True),
+TOOLS_04 = [("site", 0, True), ("workspaces", 0, False), ("workspace_activate", 1, False),
+            ("workspace_next", 1, False), ("workspace_prev", 1, False), ("workspace_create", 1, False),
+            ("workspace_rename", 1, False), ("workspace_remove", 2, False), ("back", 1, True),
             ("forward", 1, True), ("download_open", 1, True), ("download_show", 1, True)]
 SCHEMAS = {
     "search": ["query", "newWindow"] + ([] if V03 else ["site"]),
@@ -101,6 +101,8 @@ SCHEMAS = {
 
 
 def tool_json(n, t, u):
+    if n == "search" and not V03:
+        u = True
     tool = {"name": n, "tier": t, "untrusted": u}
     if n in SCHEMAS:
         tool["schema"] = {"type": "object", "properties": {k: {"type": "string"} for k in SCHEMAS[n]}}
