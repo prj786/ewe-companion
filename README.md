@@ -97,7 +97,9 @@ login, an API key (Anthropic, OpenAI, Gemini, OpenRouter), or a local model
 (Ollama, LM Studio). They are told what the pack knows and what this
 computer is like now.
 
-**Status: 0.1.0-beta, P1 and P2 working, plus P2.5 (the notch, the home
+**Status: 0.2.0-beta (wave 2, 2026-10-18: a site's own search, more of the
+browser, the desktop's switches, timers, sums, every ewe command-line tool),
+P1 and P2 working, plus P2.5 (the notch, the home
 panel, the chat groundwork), P2.6 (the notch fixes, the ewe knowledge pack),
 P2.7 (apps and folders), P2.8 (it runs what it suggests, on a click),
 2026-10-14, and P2.9 (Safe, ewe browser, the finder), 2026-10-15. First
