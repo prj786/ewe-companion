@@ -106,8 +106,8 @@ P2.7 (apps and folders), P2.8 (it runs what it suggests, on a click),
 release 2026-10-17: the `ewe-companion` package in the [ewe] repository,
 and the island (plugin `ewe.companion` 0.4.0) in ewe 0.29.0-beta's
 plugins. Wave 2 (2026-10-18, P2.10: a site's search, more of the browser,
-the desktop's switches, timers, sums, the CLI knowledge) is built, for the
-next release.**
+the desktop's switches, timers, sums, the CLI knowledge) shipped as
+0.2.0-beta the same day.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:

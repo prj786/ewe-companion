@@ -48,7 +48,7 @@ keys: find in page, find on page, search this page, ctrl+f in the browser, find 
 
 ## Gestures and mouse buttons in ewe browser
 keys: browser gestures, swipe back, two finger swipe, swipe to go back, mouse side buttons, back button on mouse, four finger swipe browser
-(0.4) Swipe two fingers left or right on the touchpad to go back or forward: an arrow at the page's edge fills as you swipe, and letting go before it is full does nothing (Settings turns it off). The side buttons of a mouse go back and forward too. Four fingers left or right switch ewe browser's workspaces while the browser is in front; three fingers stay the desktop's.
+(0.4) Swipe two fingers to the right on the touchpad to go back and to the left to go forward (with natural scrolling, ewe's default; the other way round without it): an arrow at the page's edge fills as you swipe, and letting go before it is full does nothing (Settings turns it off). The side buttons of a mouse go back and forward too. Four fingers left or right switch ewe browser's workspaces while the browser is in front; three fingers stay the desktop's.
 
 ## Right-click menus in ewe browser
 keys: right click in the browser, right-click menu, context menu, open link in new tab, save image, copy image, inspect element, open link in new workspace

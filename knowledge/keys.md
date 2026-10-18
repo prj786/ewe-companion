@@ -32,7 +32,7 @@ The Pen is a hidden workspace for windows you want out of the way: Super+S (or S
 
 ## Touchpad gestures
 keys: touchpad, gesture, gestures, swipe, three fingers, four fingers, trackpad
-Swipe left or right with three fingers to switch workspaces, up for the Overview, and down to go to a new empty desktop (ewe never piles up empty ones). From ewe 0.30, four fingers left or right switch ewe browser's own workspaces while the browser is in front, and do nothing elsewhere. In ewe browser, two fingers left or right go back and forward. Touchpad settings (tap to click, natural scrolling, speed) are in Settings → Keyboard and mouse.
+Swipe left or right with three fingers to switch workspaces, up for the Overview, and down to go to a new empty desktop (ewe never piles up empty ones). From ewe 0.30, four fingers left or right switch ewe browser's own workspaces while the browser is in front, and do nothing elsewhere. In ewe browser, two fingers to the right go back and to the left go forward (with natural scrolling, ewe's default; the other way round without it). Touchpad settings (tap to click, natural scrolling, speed) are in Settings → Keyboard and mouse.
 
 ## Media and hardware keys
 keys: volume key, brightness key, media keys, play pause key, power button, lid, keyboard backlight, function keys
