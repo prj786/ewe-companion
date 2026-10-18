@@ -43,7 +43,16 @@ user's words: it changes nothing that matters for long, says in one line
 what it did, and offers Undo where there is a way back (volume, Do not
 disturb, opening things). If it changes settings, files or the system, it is
 **not** T1: it belongs behind a confirm (today: a `run_shell` proposal,
-recipe 5; later: P4's ConfirmCard).
+recipe 5, or a catalog command that only proposes; later: P4's ConfirmCard).
+
+**A command that only proposes** (T2/T3: `theme_mode`, `power`,
+`empty_trash`): a catalog row and words like any other, its name in
+`commands::PROPOSALS`, and a run arm that returns
+`Outcome { propose: Some((exact command, about)), .. }` and never runs
+anything (`daemon/desktop.rs` `proposal`). `chat::reply_of` turns it into a
+`confirm` through `shell::assess`, so only the Run click runs it. Read the
+state first when that saves a click ("Ewe Light is already on", "the trash
+is already empty"), and teach the guard why it is risky (recipe 5).
 
 The catalog has three users: the offline matcher, the persona (which shows
 the list to models) and the daemon. One command is four edits.
@@ -109,7 +118,12 @@ name and its args must never be renamed, only added to.
 **Tests.** A row in `intent.rs` tests for the words; `validate` tests for
 the bad calls (`bad_calls_are_refused`). Add a `tests/chat.sh` check only for
 a command that is safe to run on the dev machine (see TESTING.md: the test
-daemon acts for real).
+daemon acts for real), or one whose tool is a PATH shim: a fake in
+`tests/fakes/` named like the tool (`nmcli`, `ewe-bt`, `qs`, `notify-send`
+…) that keeps its state and a log in `$EWE_FAKE_DIR`. Add the tool to the
+guard loops at the top of `tests/chat.sh` and `tests/canary.sh` (they refuse
+to run when a shim is not first on the daemon's PATH) before the first
+check. `ewe-companion debug undo <token>` clicks the reply's Undo.
 
 **Docs.** README (the list of things to say), PLAN §20, and the quick
 actions in the plugin if it deserves a button (recipe 12).
@@ -177,7 +191,14 @@ r(r"(?:turn |switch )?(?:the )?night ?light (on|off)|(warm|cool) (?:the )?screen
 - **Order.** Specific rules first. Rules in the middle catch a lot:
   `find_files` takes anything starting with find or locate (unless it ends
   in "online"), `web_search` anything starting with search, google or look
-  up, and `play_music` anything starting with play. Safe's rules sit before
+  up, and `play_music` anything starting with play. A site's own search
+  ("search X on Y", "search Y for X") sits right before the finder's
+  `find …` and declines (`site_of`) when Y is a place here, the web as a
+  whole, a day, or longer than three words. The calculator rule is first
+  and matches everything, but declines unless `calc::eval` reads a sum.
+  "go back" stays the music's; "go back a page" is the browser's. The
+  desktop's workspaces are numbers, so a browser workspace by number needs
+  the word "browser". Safe's rules sit before
   `lock`, so "lock my safe" is Safe's. The last four are
   deliberately generic: an app in a folder, two folder rules, and
   `open|launch|start|run X`. A new rule starting with one of those words must
@@ -436,8 +457,10 @@ settings table.
 machine, never synced.
 
 - A new table or column is a new file
-  `crates/daemon/src/store/migrations/002_<what>.sql`, appended to
-  `MIGRATIONS` in `store.rs`. `PRAGMA user_version` records the last one
+  `crates/daemon/src/store/migrations/00N_<what>.sql`, appended to
+  `MIGRATIONS` in `store.rs` (the example: `002_timers.sql`, the timers
+  that must survive a daemon restart; `Store::timer_add` and friends, a
+  test in `store.rs`). `PRAGMA user_version` records the last one
   applied. Never edit a migration that has shipped.
 - `001_init.sql` already has the tables later phases fill (notifications,
   chats, messages, memory, nudges, usage): use them before adding one.
@@ -516,10 +539,21 @@ both sides. A new command on top is recipe 1, with these rules:
   (`chat::about_page`), never as plain context.
 - **Detect, then fall back.** `browser::cli()` asks `commands` once per
   binary (and only a `#!` script: 0.1.0-beta's binary would open a page);
-  without it, `web_search` and friends open a URL the old way.
+  without it, `web_search` and friends open a URL the old way. A tool the
+  browser does not list answers "update it in Komble"; an argument a tool
+  is new to (`search`'s `site`, `open`'s `workspace`) is checked with
+  `Cli::takes`, which reads the tool's schema, and an older browser gets
+  the old behaviour, said in the line.
+- **New verbs by their argv.** A verb whose JSON argument names the
+  browser's docs do not spell out (`workspace activate <name>`, `back`,
+  `download show <id>`) runs in its command-line form through
+  `browser::act_verb` (tier checked by the tool's name), not through `call`
+  with guessed names. Its `undo` steps must be in `undo_steps`' list.
 - **Tests:** teach the fake (`tests/fakes/ewe-safe`, `tests/fakes/ewe-browser`)
   the new verb, then a check in `tests/chat.sh` (the scripted island
-  `tests/fake-island.py --do` runs the island's half). Never the real
+  `tests/fake-island.py --do` runs the island's half). A verb that shows
+  names: put `$FAKE_BROWSER_MARK` into what the fake answers and a chat
+  in `tests/canary.sh` that asks for it. Never the real
   `ewe-safe` or `ewe-browser`: they reach the owner's safe and browser
   profile. `EWE_COMPANION_SAFE` and `EWE_COMPANION_BROWSER` point the
   daemon at the fakes.

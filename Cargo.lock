@@ -130,7 +130,7 @@ dependencies = [
 
 [[package]]
 name = "companion-core"
-version = "0.1.0-beta"
+version = "0.2.0-beta"
 dependencies = [
  "libc",
  "regex",
@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "ewe-companion"
-version = "0.1.0-beta"
+version = "0.2.0-beta"
 dependencies = [
  "companion-core",
  "libc",
@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "ewe-companiond"
-version = "0.1.0-beta"
+version = "0.2.0-beta"
 dependencies = [
  "companion-core",
  "ignore",

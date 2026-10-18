@@ -36,6 +36,14 @@ What the nested shell performs stays in the sandbox (opening Settings,
 launching apps, Do not disturb, screenshots). Test with those, or with
 `$ echo …` for Run, and put back anything you changed at once.
 
+Wave 2's switches never reach the machine in a test: `tests/chat.sh`,
+`tests/canary.sh` and `tests/island.sh` start the daemon with
+`tests/fakes` first on its PATH, so Wi-Fi (`nmcli`), Bluetooth (`ewe-bt`),
+Insomnia (`qs ipc`), a timer's `notify-send`, the theme (`ewe-theme`) and
+the trash (`gio`) are fakes. The two scripts refuse to start when a shim is
+not first on the PATH. Dark or light mode, power and the trash are
+proposals: a test checks the command offered, never presses Run on it.
+
 Also never:
 
 - point a test at the owner's `~/.claude` (hooks are tested in a scratch
@@ -93,15 +101,31 @@ touch the real ones:
   `EWE_COMPANION_BROWSER`. They keep state and a log of every call in
   `$EWE_FAKE_DIR` (`safe.json`, `safe.log`, `browser.log`); a file
   `browser-old` there makes the browser answer like 0.1.0-beta (no command
-  line), and touching the fake makes the daemon ask again; a file
-  `safe-gone` makes Safe answer like a service that went away.
+  line), `browser-v03` like 0.3 (no site search, no workspaces, back,
+  forward or download verbs), `browser-closed` makes the download verbs
+  answer not-running, `browser-lies` reports closing a tab as tier 1, and
+  touching the fake makes the daemon ask again; a file `safe-gone` makes Safe answer like a service that went
+  away. The browser fake knows Contract 1 of wave 2 as the wave plan
+  writes it (`search --site` with `unknown-site`, `workspace …`, `back`,
+  `forward`, `download open|show`, `open --workspace`).
+- PATH shims, also in `tests/fakes/`: `nmcli` (`nmcli.json`: Wi-Fi on or
+  off), `ewe-bt` (`bt.json`: the adapter and three paired devices; a file
+  `bt-none` means no adapter), `qs` (only `ipc call ewe.insomnia …`,
+  `insomnia.json`; a file `insomnia-gone` means no plugin), `notify-send`
+  (`notify.log`), `ewe-theme` (`scheme list`; `theme.json` names the
+  current scheme) and `gio` (`gio.log`: a line there means a proposal ran,
+  which a test must never do). Each logs its argv to `<name>.log`.
+- `$FAKE_BROWSER_MARK` is added to every title, name and file name the
+  browser and ewe-bt fakes hold (`tests/canary.sh` sets it to the canary).
 - `tests/fake-island.py --do` answers the daemon's `do` requests: it runs
   `browser` and `safe_unlock` with the binary the daemon names (the fakes)
   and answers the rest ok, printing `do …` and `chat.reply …` lines.
 - The daemon runs with `HOME` set to a scratch tree, so the finder's
   answers are known.
 - `debug run <command> <args-json>` stands in for a button's click (a row's
-  Copy, Unlock Safe).
+  Copy, Unlock Safe), and `debug undo <token>` for the Undo under a reply.
+- The last check stops the daemon with a reminder pending and starts it
+  again: the reminder must fire from `companion.db`.
 
 ## tests/canary.sh
 
@@ -110,7 +134,10 @@ titles, usernames, folders and sites carry `EWE-CANARY-7Q2X`
 (`FAKE_SAFE_ITEMS`); 22 scripted chats ask Safe for things through the
 matcher, a row's click, a model's ACTION, a locked safe and its unlock, try
 two commands that would print what Safe holds (refused, never run), then
-ask the model about it. The canary must reach the island (or the test proves
+ask the model about it. Since wave 2 the browser's tabs, bookmarks,
+downloads and workspaces and ewe-bt's devices carry it too
+(`FAKE_BROWSER_MARK`), with 19 more chats and a row's click, and the
+canary must reach the island from them as well. The canary must reach the island (or the test proves
 nothing), and must be in no request the mock provider got, no line of the
 daemon's log at `EWE_COMPANION_LOG=debug`, and no byte of `companion.db`,
 its WAL or any table row. Run it after any change to the chat, Safe, the

@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""A stand-in for Quickshell's `qs ipc call`, for the companion's tests:
+the real one reaches the owner's live shell. It knows the Insomnia plugin
+(`qs ipc call ewe.insomnia status|on|off|toggle`); anything else, or every
+call while $EWE_FAKE_DIR/insomnia-gone exists, fails like a target that is
+not there (a message on stderr, exit 1). State and a log in $EWE_FAKE_DIR:
+insomnia.json, qs.log.
+"""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "qs.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+state_file = os.path.join(D, "insomnia.json")
+try:
+    on = json.load(open(state_file))["on"]
+except (OSError, ValueError, KeyError):
+    on = False
+if argv[:3] != ["ipc", "call", "ewe.insomnia"] or len(argv) != 4 or os.path.exists(os.path.join(D, "insomnia-gone")):
+    print("No target found", file=sys.stderr)
+    sys.exit(1)
+fn = argv[3]
+if fn == "status":
+    print(json.dumps({"on": on, "autoOff": 0, "minutesLeft": 0, "until": 0}))
+    sys.exit(0)
+if fn in ("on", "off", "toggle"):
+    on = (not on) if fn == "toggle" else fn == "on"
+    json.dump({"on": on}, open(state_file, "w"))
+    sys.exit(0)
+print("No function " + fn, file=sys.stderr)
+sys.exit(1)

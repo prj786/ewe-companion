@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""A stand-in for glib's gio, for the companion's tests: `gio trash
+--empty` would empty the owner's real trash. It only logs its argv to
+$EWE_FAKE_DIR/gio.log; a test that finds a line there ran a proposal it
+must only have shown."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+with open(os.path.join(D, "gio.log"), "a") as f:
+    f.write(json.dumps(sys.argv[1:]) + "\n")

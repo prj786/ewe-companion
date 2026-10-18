@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""A stand-in for libnotify's notify-send, for the companion's tests: the
+real one puts banners on the owner's desktop. It logs its argv, one JSON
+line each, to $EWE_FAKE_DIR/notify.log, and exits 0."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+with open(os.path.join(D, "notify.log"), "a") as f:
+    f.write(json.dumps(sys.argv[1:]) + "\n")

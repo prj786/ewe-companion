@@ -11,7 +11,25 @@ use companion_core::proto::{Card, Session};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 
-const MIGRATIONS: &[&str] = &[include_str!("store/migrations/001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("store/migrations/001_init.sql"),
+    include_str!("store/migrations/002_timers.sql"),
+];
+
+/// A timer or a reminder waiting in the store.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Timer {
+    pub id: String,
+    /// epoch milliseconds
+    pub due: i64,
+    pub created: i64,
+    /// what a timer was set for; None for a reminder at a time of day
+    pub seconds: Option<i64>,
+    /// a reminder ("remind me in 5 minutes"), not a timer
+    pub reminder: bool,
+    /// the user's words ("call mum"); empty for a plain timer
+    pub text: String,
+}
 
 /// How long events and cards are kept (PLAN §6 retention; a setting later).
 const KEEP_DAYS: i64 = 30;
@@ -196,6 +214,60 @@ impl Store {
             .collect()
     }
 
+    // ── timers and reminders (002) ───────────────────────────────────────
+
+    pub fn timer_add(&self, t: &Timer) -> bool {
+        self.db
+            .execute(
+                "INSERT INTO timers(id, due, created, seconds, kind, text) VALUES(?1,?2,?3,?4,?5,?6)",
+                params![
+                    t.id,
+                    t.due,
+                    t.created,
+                    t.seconds,
+                    if t.reminder { "reminder" } else { "timer" },
+                    t.text
+                ],
+            )
+            .is_ok()
+    }
+
+    pub fn timer_remove(&self, id: &str) -> bool {
+        self.db
+            .execute("DELETE FROM timers WHERE id=?1", params![id])
+            .is_ok_and(|n| n > 0)
+    }
+
+    fn timers_where(&self, sql: &str, arg: i64) -> Vec<Timer> {
+        let Ok(mut st) = self.db.prepare(&format!(
+            "SELECT id, due, created, seconds, kind, text FROM timers {sql} ORDER BY due"
+        )) else {
+            return vec![];
+        };
+        st.query_map(params![arg], |r| {
+            Ok(Timer {
+                id: r.get(0)?,
+                due: r.get(1)?,
+                created: r.get(2)?,
+                seconds: r.get(3)?,
+                reminder: r.get::<_, String>(4)? == "reminder",
+                text: r.get(5)?,
+            })
+        })
+        .map(|rows| rows.flatten().collect())
+        .unwrap_or_default()
+    }
+
+    /// Every timer waiting, soonest first.
+    pub fn timers(&self) -> Vec<Timer> {
+        self.timers_where("WHERE ?1 = ?1", 0)
+    }
+
+    /// The timers due by `now_ms`.
+    pub fn timers_due(&self, now_ms: i64) -> Vec<Timer> {
+        self.timers_where("WHERE due <= ?1", now_ms)
+    }
+
     pub fn count(&self, table: &str) -> i64 {
         // table names come from our own code, never from a client
         self.db
@@ -230,6 +302,34 @@ mod tests {
         let h = s.history(10);
         assert_eq!(h.len(), 2);
         assert!(h.iter().any(|e| e["title"] == "two"));
+    }
+
+    #[test]
+    fn timers_wait_in_the_store() {
+        let s = Store::memory();
+        let t = |id: &str, due: i64| Timer {
+            id: id.into(),
+            due,
+            created: 1,
+            seconds: Some(60),
+            reminder: false,
+            text: String::new(),
+        };
+        assert!(s.timer_add(&t("t2", 2_000)));
+        assert!(s.timer_add(&Timer {
+            text: "call mum".into(),
+            seconds: None,
+            ..t("t1", 1_000)
+        }));
+        assert_eq!(
+            s.timers().iter().map(|t| t.id.as_str()).collect::<Vec<_>>(),
+            ["t1", "t2"]
+        );
+        assert_eq!(s.timers()[0].text, "call mum");
+        assert_eq!(s.timers_due(1_500).len(), 1);
+        assert!(s.timer_remove("t1"));
+        assert!(!s.timer_remove("t1"));
+        assert_eq!(s.timers().len(), 1);
     }
 
     #[test]

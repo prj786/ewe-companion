@@ -328,10 +328,14 @@ messages(chat TEXT, seq INT, role TEXT, content JSON, usage JSON, ts INT)
 memory(id INT PK, fact TEXT, source TEXT, created INT, last_used INT)
 nudges(topic TEXT PK, last_shown INT, dismissals INT, muted_until INT, never INT)
 usage(provider TEXT, day TEXT, input_tokens INT, output_tokens INT, cost_usd REAL)
+-- 002 (wave 2): a timer or reminder waits here until it fires, then goes
+timers(id TEXT PK, due INT /* epoch ms */, created INT, seconds INT /* null: at a time of day */,
+       kind TEXT /* timer | reminder */, text TEXT /* the user's words, never logged */)
 ```
 
 **Retention.** Events and notifications are kept 30 days, chats until
-deleted, `session_edits` 14 days. All three are settings.
+deleted, `session_edits` 14 days. All three are settings. A timer's row
+lives until it fires or is cancelled.
 `ewe-companion forget all|chats|notifications|memory` wipes for real (`VACUUM`).
 
 ---
@@ -1577,6 +1581,93 @@ find a file or directory for me." The contract is ewe-safe's `docs/TRIO.md`
 - [ ] Redaction of page text before it goes to a model (§16, P4).
 - **Gate:** the owner's try, once the browser's command line ships.
 
+### P2.10 — more powers (M), wave 2, owner ask 2026-10-18
+
+"More Shaun features: more browser integration, more knowledge about ewe,
+more commands, e.g. 'search men's shoes on zara' goes straight to Zara's
+results in ewe browser." The contract is the wave plan's Contract 2 (on top
+of the browser's Contract 1, ewe browser 0.4.0-beta, and the 4-finger
+gesture, Contract 3). Branch `feat/more-powers` in both repos.
+
+- [x] **A site's own search** (`web_search {query, site?}`): "search X on
+      Y", "find/look up/shop for/show me X on Y", "search Y for X", "go to
+      Y and search for X", before the generic search rule and the finder's
+      `find …`. `site` only when Y is short (one to three words or a
+      domain) and not a place here ("my desktop"), the web as a whole
+      ("online", "the web", "google"), a day or "for …". The browser's
+      `search --site` (detected from `commands`' schema, `Cli::takes`);
+      `unknown-site` or a browser without `site` → a plain search of "X on
+      Y", and the line says so. Must-not-steal sentences are tests.
+- [x] **The browser** on top of Contract 1: "bookmark this page" (Undo =
+      the browser's `bookmark remove`), bookmarks (rows), back, forward,
+      reload, reopen, mute/unmute/pin/unpin a tab (by words or the tab in
+      front; several → rows), close a tab (the browser's tier 2 → a
+      proposal), workspaces (list, switch by name or with "browser" by
+      number, next, previous, new "called X"), a site in a named workspace,
+      downloads (rows: Open, Show in folder; the browser's `download
+      open|show` while it runs, else the file), the browser's own pages
+      (`app://history/` …). Contract 1's new acts run by their documented
+      argv (`act_verb`: `workspace activate <name>`, `back`), not guessed
+      JSON names; `search`'s `site` and `open`'s `workspace` are the
+      contract's JSON arguments.
+- [x] **The desktop**: Wi-Fi (`nmcli radio wifi`), Bluetooth (`ewe-bt
+      power`), a paired device by name (`ewe-bt status` → `connect|
+      disconnect <MAC>`), airplane mode (ewe has none: Wi-Fi and Bluetooth
+      off, what was on comes back), keep the screen awake (`qs ipc call
+      ewe.insomnia`), each T1 with Undo read first; "install X" opens
+      Komble's search (T1, it only opens); a calculator (`core::calc`, T0,
+      offline: + - * / ^, %, of, off).
+- [x] **Timers and reminders** ("set a timer for 5 minutes", "remind me in
+      10 minutes to …", "remind me at 5pm to …"): `companion.db` migration
+      002, a scheduler task woken by `Hub::timers`, `notify-send` as Shaun
+      (normal urgency, 30 s banner; the island's peek when there is no
+      notification server), Undo cancels, `timers` lists with Cancel. They
+      survive a daemon restart; one due meanwhile fires at the next start
+      with "(due at HH:MM)".
+- [x] **Proposals in the catalog** (T2/T3, `commands::PROPOSALS`):
+      `theme_mode` (`ewe-theme scheme apply`, "already on" when it is),
+      `power` (ewe's `power.sh suspend|reboot|poweroff|logout`), and
+      `empty_trash` (`gio trash --empty`, "already empty" otherwise). Their
+      run arm returns `Outcome::propose`, never runs; the guard marks logout
+      and emptying the trash risky.
+- [x] **Knowledge:** `knowledge/cli.md` (18 topics: every ewe command-line
+      tool, `qs ipc` targets, ewe-pass), `browser.md` rewritten (12 topics:
+      the bottom bar and workspaces, a site's search, shortcuts, find in
+      page, gestures, right-click, privacy and security, Safe-only filling;
+      0.4 parts marked), `safe.md` (passkeys and the SSH agent shipped,
+      Quick Access, scripts), `howto.md` (airplane mode, timers, sums, the
+      trash; the audit's fixes: hidden networks, idle timings, 5 % hibernates,
+      the plugin list, VPN secrets), `keys.md` (the Pen toggle, Super+Shift+R,
+      Super+Shift+P, 4 fingers), `apps.md` (no ewe-sync tray icon, Discover
+      has the AUR, Shaun's new words), the primer's one-line CLI index.
+- [x] Review fixes (2026-10-18): the calculator caps its input (200
+      bytes) and its nesting (64; the daemon runs with panic = abort), a
+      sign binds looser than a power (-2^2 = -4), "555-1234" and dates are
+      not sums; "search Y for X" and "find/show me X on Y" need a known site
+      or a domain ("search gifts for mum" is a plain search); switching a
+      browser workspace needs the word "browser"; closing a tab is always a
+      proposal, whatever tier the browser reports; a download opens the
+      file the browser's own list names, never a path passed in; a
+      workspace's and a failed site search's lines stay on the island;
+      undo urls must be http(s)://; airplane mode keeps what it turned off
+      across a second "on" and a half failure; at most 50 timers wait, a
+      backlog fires as one notification, the fallback peek stores nothing,
+      and "remind me in 5 minutes" is a reminder (`kind` in 002, not yet
+      shipped); the trash is counted off the async threads.
+- [x] Tests: core 81, daemon 31; `tests/chat.sh` 112 (59 new, every
+      desktop tool a PATH shim: `tests/fakes/nmcli`, `ewe-bt`, `qs`,
+      `notify-send`, `ewe-theme`, `gio`, and a guard that refuses to run
+      when a shim is not first on the daemon's PATH); `tests/canary.sh` 9
+      (the browser's and Bluetooth's names carry the canary too; a mutation
+      dropping a device line's `private` fails it); `debug undo` stands in
+      for the Undo click. The island harness: the new row icons (timer,
+      Bluetooth, download, workspace).
+- [ ] Against the real ewe browser 0.4 command line (Contract 1 is coded
+      against the plan: tool names, argv, `unknown-site`, `undo`), the real
+      `ewe-bt` with a paired device, the Insomnia plugin, and a real
+      notification banner for a timer (by the owner, after the release).
+- **Gate:** the owner's try after `pacman -Syu`.
+
 ### P3 — notifications (L), crosses repos and merges as one wave
 
 - [ ] **ewe:** Plugin API 4 `Shell` members + host `apiVersions [2,3,4]`;
@@ -1831,6 +1922,25 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   plugin's name in Komble, the persona and the knowledge pack say Shaun.
   Every id stays `companion` (rule 4: the IPC target, the plugin id, the
   package, the binaries, the socket, the keyring service).
+- **A key with a hyphen counts twice** (2026-10-18): `words()` splits
+  "ewe-browser" into "ewe browser", so a topic with both keys scored each
+  and outweighed every other browser topic. One spelling per key.
+- **A browser act's line was private twice over** (2026-10-18): `acted()`
+  keeps an untrusted tool's line off the conversation already, so a
+  mutation that dropped `plain()` from "bookmark this page" did not fail
+  the canary. The canary's mutation check now drops a line that has no
+  second guard (a Bluetooth device's name).
+- **ewe has no airplane mode and no "empty trash"** (2026-10-18): the
+  companion supplies both (Wi-Fi + Bluetooth with their states kept;
+  `gio trash --empty` as a proposal). ewe's Bluetooth comes back on at
+  boot (`AutoEnable`), so airplane mode does not survive a reboot.
+- **A store guard lives to the end of its statement** (2026-10-18): the
+  timer scheduler read the due list and removed each row in one chained
+  expression, locking the store twice on one thread; the daemon hung the
+  first time a timer fired. `tests/chat.sh` caught it.
+- **A critical notification is not sticky in ewe** (2026-10-18): the
+  shell's banners expire after 5 s whatever the urgency, and Do not
+  disturb hides them all; a timer asks for 30 s instead (`-t 30000`).
 - **`tests/island.sh restart` kept the old daemon after a rebuild**
   (2026-10-17): the old process's exe link ends in " (deleted)", so the
   binary check failed, nothing was stopped, and the new daemon stepped aside

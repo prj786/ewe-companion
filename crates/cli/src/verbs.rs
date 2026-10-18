@@ -169,6 +169,17 @@ fn debug(a: &Args) -> Value {
                 Duration::from_secs(130),
             )
         }
+        // the Undo click on a reply
+        Some("undo") => {
+            let Some(token) = a.words.get(1) else {
+                return json!({"ok": false, "error": "debug undo <token>"});
+            };
+            ask_within(
+                "debug.undo",
+                json!({"token": token}),
+                Duration::from_secs(30),
+            )
+        }
         // a button's click (`command.run`): a row's Copy, Open, Unlock Safe …
         Some("run") => {
             let Some(command) = a.words.get(1) else {
@@ -186,7 +197,7 @@ fn debug(a: &Args) -> Value {
             )
         }
         _ => {
-            json!({"ok": false, "error": "debug card <kind> | debug answer <card> <action> | debug confirm <token> [run|terminal] | debug run <command> [args-json]"})
+            json!({"ok": false, "error": "debug card <kind> | debug answer <card> <action> | debug confirm <token> [run|terminal] | debug run <command> [args-json] | debug undo <token>"})
         }
     }
 }

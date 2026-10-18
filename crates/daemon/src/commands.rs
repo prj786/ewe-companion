@@ -21,7 +21,7 @@ use serde_json::{Value, json};
 use tokio::process::Command;
 
 use crate::hub::Hub;
-use crate::{browser, finder, places, safe};
+use crate::{browser, desktop, finder, places, safe, timers};
 
 const BUDGET: Duration = Duration::from_secs(5);
 
@@ -84,7 +84,7 @@ impl Outcome {
 /// What the island answers when no app goes by that name.
 const NOT_FOUND: &str = "not-found";
 
-async fn run_argv(cmd: &str, args: &[&str], hypr: &str) -> Result<String, String> {
+pub(crate) async fn run_argv(cmd: &str, args: &[&str], hypr: &str) -> Result<String, String> {
     let mut c = Command::new(cmd);
     c.args(args).stdin(Stdio::null()).kill_on_drop(true);
     if !hypr.is_empty() {
@@ -297,9 +297,13 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
         // opened as before (the island's `browse`)
         "web_search" => {
             let q = a["query"].as_str().unwrap_or("").trim();
-            match browser::cli().await {
-                Some(cli) => browser::search(hub, &cli, q).await,
-                None => browse(hub, call).await,
+            let site = a.get("site").and_then(Value::as_str).map(str::trim);
+            match (browser::cli().await, site) {
+                (Some(cli), Some(site)) if !site.is_empty() => {
+                    browser::site_search(hub, &cli, q, site).await
+                }
+                (Some(cli), _) => browser::search(hub, &cli, q).await,
+                (None, _) => browse(hub, call).await,
             }
         }
         "play_music" => {
@@ -309,7 +313,48 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
                 None => browse(hub, call).await,
             }
         }
-        "open_url" => browser::open_url(hub, a["url"].as_str().unwrap_or("")).await,
+        "open_url" => {
+            browser::open_url(
+                hub,
+                a["url"].as_str().unwrap_or(""),
+                a.get("workspace").and_then(Value::as_str),
+            )
+            .await
+        }
+        "browser_bookmark" => browser::bookmark(hub).await,
+        "browser_bookmarks" => {
+            browser::bookmarks(hub, a.get("query").and_then(Value::as_str).unwrap_or("")).await
+        }
+        "browser_nav" => browser::nav(hub, a["action"].as_str().unwrap_or("")).await,
+        "browser_tab_do" => {
+            browser::tab_do(
+                hub,
+                a["action"].as_str().unwrap_or(""),
+                a.get("id").and_then(Value::as_str),
+                a.get("words").and_then(Value::as_str).unwrap_or(""),
+            )
+            .await
+        }
+        "browser_workspace" => {
+            browser::workspace(
+                hub,
+                a["action"].as_str().unwrap_or(""),
+                a.get("name").and_then(Value::as_str),
+            )
+            .await
+        }
+        "browser_downloads" => browser::downloads(hub).await,
+        "browser_download" => {
+            // `path` is the island's to show; the file opened is the one
+            // ewe browser's own list names for the id
+            browser::download(
+                hub,
+                a["id"].as_str().unwrap_or(""),
+                a["action"].as_str().unwrap_or(""),
+            )
+            .await
+        }
+        "browser_page" => browser::page_open(hub, a["page"].as_str().unwrap_or("")).await,
         "browser_history" => {
             browser::history(hub, a.get("query").and_then(Value::as_str).unwrap_or("")).await
         }
@@ -396,6 +441,23 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
             };
             show_folder(hub, &p).await
         }
+        "timer" => timers::set(hub, a),
+        "timers" => timers::list(hub),
+        "timer_cancel" => timers::cancel(hub, a.get("id").and_then(Value::as_str)),
+        "calc" => {
+            let e = a["expr"].as_str().unwrap_or("").trim();
+            match companion_core::calc::eval(e) {
+                Some(v) => done(format!("{e} = {}", companion_core::calc::show(v)), None),
+                None => failed("That is not a sum I can work out."),
+            }
+        }
+        "wifi" => desktop::wifi(a["on"].as_bool().unwrap_or(true)).await,
+        "bluetooth" => desktop::bluetooth(a["on"].as_bool().unwrap_or(true)).await,
+        "bluetooth_device" => desktop::bluetooth_device(a).await,
+        "airplane_mode" => desktop::airplane(a).await,
+        "keep_awake" => desktop::keep_awake(a["on"].as_bool().unwrap_or(true)).await,
+        // T2/T3: shown with Run, never run from here
+        "theme_mode" | "power" | "empty_trash" => desktop::proposal(call).await,
         // never from here: a proposal waits for its Run click (chat.rs)
         "run_shell" => failed("A shell command runs from its Run button in the chat."),
         other => failed(format!("No command called {other}.")),
@@ -408,6 +470,16 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
 pub(crate) async fn browse(hub: &Arc<Hub>, call: &Call) -> Outcome {
     let a = &call.args;
     let q = a.get("query").and_then(Value::as_str).unwrap_or("").trim();
+    // a site's own search needs ewe browser's command line: the whole
+    // phrase goes to the web instead
+    let whole;
+    let q = match a.get("site").and_then(Value::as_str).map(str::trim) {
+        Some(site) if !site.is_empty() && call.command == "web_search" => {
+            whole = format!("{q} on {site}");
+            whole.as_str()
+        }
+        _ => q,
+    };
     let (url, line) = match call.command.as_str() {
         "web_search" => (catalog::search_url(q), format!("Searching the web for {q}")),
         "play_music" => (
@@ -438,7 +510,7 @@ pub(crate) async fn browse(hub: &Arc<Hub>, call: &Call) -> Outcome {
 
 /// A folder in the file manager; a file shows in its folder. The file
 /// manager is the one Settings → Default apps chose, else Nemo (Super+E).
-async fn show_folder(hub: &Arc<Hub>, p: &std::path::Path) -> Outcome {
+pub(crate) async fn show_folder(hub: &Arc<Hub>, p: &std::path::Path) -> Outcome {
     let dir = if p.is_dir() {
         p.to_path_buf()
     } else {
@@ -460,7 +532,7 @@ async fn show_folder(hub: &Arc<Hub>, p: &std::path::Path) -> Outcome {
 
 /// A file in its default app (Settings → Default apps, through xdg-mime);
 /// a folder in the file manager.
-async fn open_file(hub: &Arc<Hub>, words: &str) -> Outcome {
+pub(crate) async fn open_file(hub: &Arc<Hub>, words: &str) -> Outcome {
     let Some(p) = places::resolve(words) else {
         return failed("That file is not there any more.");
     };

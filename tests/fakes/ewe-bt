@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""A stand-in for ewe's ewe-bt (bluez over D-Bus), for the companion's
+tests: the real one powers the owner's Bluetooth and connects their
+headphones. One JSON object, exit 0, like the real one; errors are
+{"ok": false, "error": "<sentence>"}.
+  status · power on|off · connect <MAC> · disconnect <MAC>
+State and a log in $EWE_FAKE_DIR: bt.json, bt.log. A file bt-none there
+answers like a computer with no adapter. $FAKE_BROWSER_MARK, when set, is
+added to the device names (tests/canary.sh).
+"""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+MARK = os.environ.get("FAKE_BROWSER_MARK", "")
+argv = sys.argv[1:]
+with open(os.path.join(D, "bt.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+state_file = os.path.join(D, "bt.json")
+try:
+    state = json.load(open(state_file))
+except (OSError, ValueError):
+    state = {"powered": True, "connected": []}
+
+
+def out(o):
+    print(json.dumps(o))
+    sys.exit(0)
+
+
+DEVICES = [
+    ("AA:BB:CC:00:00:01", "Sam's AirPods Pro" + MARK, "audio-headphones"),
+    ("AA:BB:CC:00:00:02", "Sony WH-1000XM4" + MARK, "audio-headset"),
+    ("AA:BB:CC:00:00:03", "Sony SRS-XB13" + MARK, "audio-speaker"),
+]
+if os.path.exists(os.path.join(D, "bt-none")):
+    if argv[:1] == ["status"]:
+        out({"ok": True, "adapter": None, "devices": []})
+    out({"ok": False, "error": "No Bluetooth adapter found"})
+if argv[:1] == ["status"]:
+    devs = [{"address": a, "name": n, "icon": i, "paired": True, "trusted": True,
+             "connected": a in state["connected"], "blocked": False, "rssi": None, "battery": None}
+            for a, n, i in DEVICES]
+    out({"ok": True, "adapter": {"address": "00:11:22:33:44:55", "alias": "laptop", "powered": state["powered"],
+                                  "discoverable": False, "discovering": False, "pairable": True},
+         "devices": sorted(devs, key=lambda d: not d["connected"])})
+if argv[:1] == ["power"] and len(argv) == 2 and argv[1] in ("on", "off"):
+    state["powered"] = argv[1] == "on"
+    if not state["powered"]:
+        state["connected"] = []
+    json.dump(state, open(state_file, "w"))
+    out({"ok": True, "powered": state["powered"]})
+if argv[:1] in (["connect"], ["disconnect"]) and len(argv) == 2:
+    mac = argv[1].upper()
+    if mac not in [a for a, _, _ in DEVICES]:
+        out({"ok": False, "error": "The device is gone — search again"})
+    if not state["powered"]:
+        out({"ok": False, "error": "Bluetooth is off"})
+    conn = set(state["connected"])
+    if argv[0] == "connect":
+        conn.add(mac)
+    else:
+        conn.discard(mac)
+    state["connected"] = sorted(conn)
+    json.dump(state, open(state_file, "w"))
+    out({"ok": True, "connected": argv[0] == "connect"})
+out({"ok": False, "error": "unknown verb or arguments: " + " ".join(argv)})

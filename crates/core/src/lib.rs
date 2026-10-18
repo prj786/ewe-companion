@@ -11,10 +11,12 @@
 //!   for one.
 //! - [`find`]: what "find pdfs about tax" asks for, and how well a name
 //!   answers it (the daemon's finder walks the disk with it).
+//! - [`calc`]: plain arithmetic and percentages ("15% of 80"), offline.
 //!
 //! Pure code only: no I/O beyond reading the environment, so every rule here
 //! is unit-tested.
 
+pub mod calc;
 pub mod claude;
 pub mod commands;
 pub mod find;

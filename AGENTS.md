@@ -30,16 +30,21 @@ shows what your AI agents are doing, drops a card when
 Claude Code wants permission or asks a question, glances at what needs you,
 runs quick actions, and has a small chat that runs commands in plain words,
 opens apps and folders, finds files, works with Safe (the password manager)
-and ewe browser, answers questions about ewe from a built-in knowledge pack,
-and proposes shell commands that run only on a click.
+and ewe browser (a site's own search, bookmarks, tabs, workspaces,
+downloads), flips the desktop's switches (Wi-Fi, Bluetooth and its devices,
+airplane mode, keep awake), keeps timers and reminders, does sums, answers
+questions about ewe (and every ewe command-line tool) from a built-in
+knowledge pack, and proposes shell commands that run only on a click.
 
 This repo is the Rust half: the daemon `ewe-companiond`, the CLI and hook
 relay `ewe-companion`, the knowledge pack, the Claude Code plugin, packaging
-and tests. Version **0.1.0-beta**, first released 2026-10-17 (the package in
-[ewe]; the plugin in ewe 0.29.0-beta). P1 is done, P2 works end
+and tests. Version **0.2.0-beta** (2026-10-18, wave 2); first released as
+0.1.0-beta on 2026-10-17 (the package in [ewe]; the plugin in ewe
+0.29.0-beta, 0.5.0 in ewe 0.30.0-beta). P1 is done, P2 works end
 to end with a few tasks left, P2.5 to P2.8 are done (2026-10-14), and P2.9
 (Safe, ewe browser, the finder: ewe-safe's `docs/TRIO.md` §C1) is built
-(2026-10-15); P3 (notifications) is next. The phase list with open tasks
+(2026-10-15), and so is P2.10 (wave 2, 2026-10-18: more powers, for the next
+release); P3 (notifications) is next. The phase list with open tasks
 is `docs/PLAN.md` §20.
 
 | document | holds |
@@ -120,24 +125,28 @@ RFC-007's rules, in code:
   knowledge `run:` lines stretch this.
 
 The owner's decision 6 sets the tiers: **T1** desktop actions (volume, Do not
-disturb, opening things) run at once with an Undo; **T2/T3** (settings,
-files, the system) always ask first. Every command in the catalog is T0 (a
-read that shows rows: the finder, the browser's history and tabs, Safe's
-state) or T1, except `run_shell`, which never runs from the catalog: it only
-ever becomes a proposal with Run. ewe browser's own tiers are respected: a
-tool it marks tier 2 becomes a proposal too.
+disturb, opening things, Wi-Fi, Bluetooth, a timer) run at once with an
+Undo; **T2/T3** (settings, files, the system) always ask first. Every command
+in the catalog is T0 (a read that shows rows: the finder, the browser's
+history and tabs, Safe's state, a sum) or T1, except the ones in
+`commands::PROPOSALS` (`run_shell`, `theme_mode`, `power`, `empty_trash`),
+which never run from the catalog: they only ever become a proposal with
+Run. ewe browser's own tiers are respected: a tool it marks tier 2 (closing
+a tab) becomes a proposal too.
 
 ## Commands
 
 ```sh
 cargo build                                   # debug: target/debug/ewe-companion{,d}
-cargo test                                    # core 69, daemon 25 unit tests
+cargo test                                    # core 81, daemon 31 unit tests
 cargo clippy --all-targets -- -D warnings     # CI runs it with --locked
 cargo fmt --all --check
-tests/chat.sh                                 # 53 checks: the chat path vs a mock LLM, Safe,
-                                              #   ewe browser and the finder vs tests/fakes/
+tests/chat.sh                                 # 112 checks: the chat path vs a mock LLM, Safe,
+                                              #   ewe browser, the finder and the desktop's
+                                              #   switches vs tests/fakes/ (PATH shims)
 tests/relay-failsafe.sh                       # 26 checks: the hook relay's fail-safes
-tests/canary.sh                               # 8 checks: Safe's names reach no model, log or store
+tests/canary.sh                               # 9 checks: Safe's, the browser's and Bluetooth's
+                                              #   names reach no model, log or store
 BIN=target/release tests/relay-failsafe.sh    # the same against a release build
 tests/island.sh up --scale 1.8                # the island in ewe's nested harness
 ```
@@ -153,7 +162,7 @@ harness and read the screenshot before you report.
 
 ```
 Cargo.toml              workspace: crates/core, crates/daemon, crates/cli; pinned deps
-VERSION                 0.1.0-beta (every binary reports it)
+VERSION                 0.2.0-beta (every binary reports it)
 crates/core/            companion-core: pure code, no I/O, every rule unit-tested
   src/lib.rs            the module list
   src/proto.rs          the socket protocol: Inbound messages, Card, Action, Peek, Env; decode(), line()
@@ -161,8 +170,11 @@ crates/core/            companion-core: pure code, no I/O, every rule unit-teste
   src/trim.rs           shrink a hook payload (2 KiB strings, diffs up to 256 KiB)
   src/paths.rs          the socket path, the state dir, the private-dir check
   src/id.rs             short time-ordered ids
-  src/commands.rs       the command CATALOG, validate(), the Settings/Komble/Quick settings pages
-  src/intent.rs         the offline matcher: plain words → a Call (regex rules, order matters); about_page()
+  src/commands.rs       the command CATALOG, validate(), PROPOSALS, the Settings/Komble/Quick settings
+                        pages, the browser's own pages
+  src/intent.rs         the offline matcher: plain words → a Call (regex rules, order matters); about_page();
+                        site_of (a site's search), duration_secs and clock_of (timers)
+  src/calc.rs           the calculator: arithmetic and percentages, offline
   src/find.rs           the finder's rules: what "find pdfs about tax" asks for, rank()
   src/persona.rs        the system prompt (Brief) and the one-line ACTION protocol
   src/knowledge.rs      the knowledge pack: parse, search, CONFIDENT, Topic::answer
@@ -172,12 +184,17 @@ crates/daemon/          ewe-companiond (tokio)
   src/server.rs         per-connection: hello (island), agent (hook), cli; the CLI verbs
   src/hub.rs            the state (one Mutex) and the store (its own); push_state(), shell_do(), tokens
   src/store.rs          SQLite (WAL) at ~/.local/state/ewe/companion/companion.db; migrations
-  src/store/migrations/ numbered .sql files, compiled in
+  src/store/migrations/ numbered .sql files, compiled in (001 the schema, 002 timers)
   src/chat.rs           one chat line in, one Reply out: matcher → pack → provider; proposals; confirm()
   src/commands.rs       runs a catalog Call (argv only, never a shell); Outcome {ok, line, undo, miss,
                         rows, action, private, propose}
-  src/browser.rs        ewe browser's command line: detect (commands), read (tier 0), act via the
-                        island (tier 1), undo steps; search, open, play, history, tabs, tab, page
+  src/browser.rs        ewe browser's command line: detect (commands, the schemas' args), read (tier 0),
+                        act via the island (tier 1; act_verb for 0.4's verbs), undo steps; search,
+                        site_search, open (in a workspace), play, history, bookmarks, tabs, tab, tab_do,
+                        nav, workspace, downloads, download, page_open, page
+  src/desktop.rs        Wi-Fi (nmcli), Bluetooth and its devices (ewe-bt), airplane mode, keep awake
+                        (qs ipc ewe.insomnia); the proposals: dark/light, power, the trash
+  src/timers.rs         timers and reminders: set, list, cancel, the scheduler, notify-send when due
   src/safe.rs           Safe's command line: copy, login, lock, unlock (and what waited for it), status
   src/finder.rs         files and folders under home by name (the ignore crate, 1.5 s), rows
   src/places.rs         folders by the words people use; default apps via xdg-mime
@@ -193,11 +210,12 @@ crates/cli/             ewe-companion (std-only: it starts in milliseconds)
   src/hook.rs           the hook relay: Claude Code stdin → daemon → Claude's JSON, or nothing
   src/statusline.rs     forwards rate_limits for the plan-usage bars, then runs your old status line
   src/client.rs         connect within a budget, check the peer uid, one line out, one back
-knowledge/              the pack (Markdown, compiled in): primer.md + apps, howto, keys, fix, safe, browser
+knowledge/              the pack (Markdown, compiled in): primer.md + apps, howto, keys, fix, safe, browser, cli
 integrations/claude-code/  a Claude Code plugin (hooks.json) + a local marketplace
 packaging/              PKGBUILD, ewe-companion.service (user unit, no [Install])
 tests/                  chat.sh, relay-failsafe.sh, canary.sh, island.sh, vptr.py, mock-llm.py,
-                        fake-island.py (--do answers `do`), fakes/ewe-safe, fakes/ewe-browser,
+                        fake-island.py (--do answers `do`), fakes/ (ewe-safe, ewe-browser, and the PATH
+                        shims nmcli, ewe-bt, qs, notify-send, ewe-theme, gio),
                         payloads/claude/*.json (recorded hook payloads)
 docs/                   PLAN.md, PROTOCOL.md, EXTENDING.md, TESTING.md
 ```
@@ -368,6 +386,23 @@ edits need the release build (the pack is compiled in).
   harness use `tests/fakes/` (`EWE_COMPANION_SAFE`,
   `EWE_COMPANION_BROWSER`); `tests/island.sh` sets them unless you name
   others. Never point them at the real ones.
+- **The scratch daemon's new switches are fakes in tests.** Wi-Fi,
+  Bluetooth, Insomnia, timers' notifications, the theme and the trash go
+  through tools on PATH; `tests/chat.sh`, `tests/canary.sh` and
+  `tests/island.sh` put `tests/fakes` first, and the two scripts refuse to
+  run otherwise. A daemon you start by hand has the real ones: never type
+  "wifi off" or "bluetooth off" into it.
+- **ewe browser 0.4 is coded against the wave plan's Contract 1.** Its new
+  acts run by their documented argv (`workspace activate <name>`, `back`,
+  `download show <id>`); `search`'s `site` and `open`'s `workspace` are
+  JSON arguments, used only when `commands`' schema names them. If the
+  browser's final CLI differs, the fake and `browser.rs` change together.
+- **A store guard lives to the end of its statement.**
+  `hub.store().list().into_iter().filter(|t| hub.store().remove(..))`
+  locks the store twice on one thread: the timer scheduler deadlocked the
+  daemon the first time a timer fired. Take the list into a `let` first.
+- **A key with a hyphen counts twice** in the pack's search ("ewe-browser"
+  is the words of "ewe browser"): keep one spelling per key.
 - **QML traps** (a Qt Column skips zero-width children, layer windows blink
   when they grow, focus grabs die when an exclusive layer takes the
   keyboard …) are in the plugin's AGENTS.md.
@@ -388,6 +423,7 @@ edits need the release build (the pack is compiled in).
 | `EWE_COMPANION_SAFE` | daemon | the `ewe-safe` to run instead of the one on PATH (tests: `tests/fakes/ewe-safe`) |
 | `EWE_COMPANION_BROWSER` | daemon | the `ewe-browser` to run instead of the one on PATH (tests: `tests/fakes/ewe-browser`) |
 | `EWE_FAKE_DIR`, `FAKE_SAFE_ITEMS`, `FAKE_SAFE_LOCKED` | the fakes | their state and log dir; the fake Safe's items (a JSON file); start it locked |
+| `FAKE_BROWSER_MARK` | the browser and ewe-bt fakes | added to every title, name and file name they hold (the canary) |
 | `XDG_STATE_HOME` | daemon | the store goes in `$XDG_STATE_HOME/ewe/companion/` |
 | `ISLAND_WORK`, `EWE_DIR`, `PLUGIN_DIR` | `tests/island.sh` | the harness's work dir and the sibling checkouts |
 
