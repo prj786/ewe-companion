@@ -73,7 +73,9 @@ ewe browser's history and tabs.
                       {"label": "Copy path", "copy": "/home/you/Projects/ewe/ewe-safe"}]}]
 ```
 
-- `icon`: `folder` · `file` · `web` · `key`.
+- `icon`: `folder` · `file` · `web` · `key`; since wave 2 also `download`
+  (ewe browser's downloads) · `workspace` (its workspaces) · `timer` ·
+  `bluetooth`. An island that does not know an icon draws a chevron.
 - A click on the row does its first action; the others are small buttons.
 - An action with `command` is sent back as `command.run` (a catalog
   command, validated like any other). An action with `copy` never leaves
@@ -91,6 +93,38 @@ waited for the unlock) · `safe_status {}`. `web_search`, `play_music` and
 `open_url` use ewe browser's command line (`search`, `play`, `open`) when it
 has one. What these find is shown on the island; the conversation, and so a
 model, keeps a line without names ("done", a count).
+
+Wave 2 (added, nothing renamed; a quick action may use any of them):
+
+| command | args | tier | what |
+|---|---|---|---|
+| `web_search` | `query`, `site?` | 1 | with `site` (a name or a domain, one short argument): ewe browser's `search --site`; `unknown-site` or a browser without it → a plain search of "`query` on `site`" |
+| `open_url` | `url`, `workspace?` | 1 | `open … --workspace` (JSON `workspace`); an unknown name says so |
+| `browser_bookmark` | — | 1 | `bookmark_add` of the page in front (`page`); Undo is the browser's `bookmark remove <url>` |
+| `browser_bookmarks` | `query?` | 0 | rows with Open |
+| `browser_nav` | `action`: `back` · `forward` · `reload` · `reopen` | 1 | `back` / `forward` (0.4), `tab_reload` of the tab in front, `tab_reopen` |
+| `browser_tab_do` | `action`: `mute` · `unmute` · `pin` · `unpin` · `close`, `words?` \| `id?` | 1 (close: the browser's 2, a proposal) | the tab these words fit, else the one in front; several → rows |
+| `browser_workspace` | `action`: `list` · `switch` · `next` · `prev` · `new`, `name?` | 0 / 1 | `workspaces`, `workspace activate|next|prev|create` (0.4); the words for switching need "browser" |
+| `browser_downloads` | — | 0 | rows: Open and Show in folder (finished), Show in folder (others) |
+| `browser_download` | `id`, `action`: `open` · `show`, `path?` | 1 | `download open|show <id>` (0.4) while the browser runs, else the file ewe browser's own list names for the id (`path` is never opened) |
+| `browser_page` | `page`: `home` · `history` · `settings` · `files` · `music` | 1 | `home`, or `open app://<page>/` |
+| `wifi` | `on` | 1 | `nmcli radio wifi on|off` |
+| `bluetooth` | `on` | 1 | `ewe-bt power on|off` |
+| `bluetooth_device` | `name` \| `mac`, `connect` | 1 | `ewe-bt status` finds the paired device, then `connect|disconnect <MAC>`; several → rows |
+| `airplane_mode` | `on`, `wifi?`, `bluetooth?` | 1 | Wi-Fi and Bluetooth off; off puts back what was on (the Undo carries it in `wifi`/`bluetooth`) |
+| `keep_awake` | `on` | 1 | `qs ipc call ewe.insomnia on|off` (read first with `status`) |
+| `calc` | `expr` | 0 | arithmetic and percentages, offline (`companion_core::calc`) |
+| `timer` | `seconds` \| `at` ("17:30"), `text?`, `reminder?` | 1 | kept in `companion.db` (`timers`, 50 at most); `notify-send` as Shaun when due (several due at once: one notification); Undo cancels |
+| `timers` | — | 0 | rows with Cancel |
+| `timer_cancel` | `id?` | 1 | that one; no id: the only one, or rows |
+| `theme_mode` | `mode`: `dark` · `light` | 2 | a proposal: `ewe-theme scheme apply ewe-dark|ewe-light` (or "already on") |
+| `power` | `action`: `suspend` · `restart` · `shutdown` · `logout` | 3 | a proposal: `~/.config/hypr/scripts/power.sh suspend|reboot|poweroff|logout` |
+| `empty_trash` | — | 3 | a proposal: `gio trash --empty` (or "already empty") |
+
+`theme_mode`, `power` and `empty_trash` never run from a call
+(`commands::PROPOSALS`): their reply carries `confirm`, like `run_shell`,
+and only the Run click runs them. Names stay local here too: a tab's,
+bookmark's, download's, workspace's or device's name is on the island only.
 
 `launch_app` takes `app` (a name: "nemo", "zed", "the browser", "terminal")
 and an optional `path` (words or a path: "documents", "~/Projects/ewe",
@@ -220,3 +254,4 @@ there is no daemon.
 | `debug.answer` | `id`, `action`, `answers` | `ok`. Same condition: a stand-in for a click, so tests can run without a pointer |
 | `debug.confirm` | `token`, `mode` | a chat reply with `output`. Same condition: a stand-in for the Run click |
 | `debug.run` | `command`, `args` | a chat reply. Same condition: a stand-in for a button's `command.run` (a row's Copy, Unlock Safe) |
+| `debug.undo` | `token` | a chat reply. Same condition: a stand-in for the Undo click (`ewe-companion debug undo <token>`) |

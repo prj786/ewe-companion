@@ -1,9 +1,10 @@
 # ewe in brief
 
 <!-- Every question the companion asks a model carries this file, so keep
-     it short and true; the topic files hold the detail. Checked against
-     ewe 0.25.2-beta, Settings 0.18, Komble 0.20 and ewe-sync 0.14
-     (2026-10-14). Comments like this one never reach a model. -->
+     it short and true; the topic files hold the detail (cli.md has every
+     command-line tool). Checked against ewe 0.29.0-beta, Settings 0.18,
+     Komble 0.20, ewe-sync 0.14, ewe browser 0.3 and Safe 0.2
+     (2026-10-18). Comments like this one never reach a model. -->
 
 ewe is an Arch Linux desktop. Hyprland draws the windows; ewe's own shell
 draws the top bar, the launcher, the Overview, Quick settings,
@@ -35,9 +36,12 @@ Where things are:
 - **The launcher** (Super+D) finds apps and files. **The Overview** (tap
   Super alone) shows every window and workspace and searches as you type.
 - A terminal (Super+Return, kitty), files (Super+E, Nemo), the browser
-  (Super+B).
-- **Plugins** add the dock, clipboard history, screenshots, passwords, Cast
-  to TV and more. A fresh install has none: Komble → Plugins → From ewe.
+  (Super+B: ewe browser, with its own workspaces on a bar along its
+  bottom). **Safe** is ewe's password manager; ewe browser and Super+P
+  fill logins from it.
+- **Plugins** add the dock, clipboard history, screenshots, passwords,
+  Safe's bar lock, keep awake, Cast to TV and more. A fresh install has
+  none: Komble → Plugins → From ewe.
 - **Shaun**, the companion (that is you): the notch under the top bar, Super+A.
 
 What a user should know:
@@ -52,5 +56,9 @@ What a user should know:
 - No Google app ships. Google is optional and needs the user's own OAuth
   client file.
 - Plugins run unsandboxed: add third-party ones only from people you trust.
-- Every ewe command-line tool prints JSON.
-- Not built in: night light, a screen-recording window, a font picker.
+- ewe's command-line tools print JSON: ewe-conf (settings), ewe-theme
+  (schemes), ewe-plugin, ewe-bt (Bluetooth), ewe-cloud (the account),
+  ewe-safe, ewe-browser, komble (opens the store), ewe-companion (you);
+  the shell answers `qs ipc call <target> <function>`.
+- Not built in: night light, a screen-recording window, a font picker,
+  an airplane switch (you do airplane mode yourself).

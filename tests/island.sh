@@ -108,9 +108,11 @@ daemon_start() {
          EWE_COMPANION_BROWSER="${EWE_COMPANION_BROWSER:-$HERE/fakes/ewe-browser}" \
          EWE_FAKE_DIR="${EWE_FAKE_DIR:-$WORK/fakes}"
   # env -u: the daemon must not reach the host's compositor until the
-  # island's `env` names the nested one
+  # island's `env` names the nested one. PATH starts with tests/fakes: Wi-Fi,
+  # Bluetooth, Insomnia (`qs ipc`), timers' notify-send, the theme and the
+  # trash reach the fakes, never the owner's radios or live shell
   env -u HYPRLAND_INSTANCE_SIGNATURE EWE_COMPANION_DEBUG=1 EWE_COMPANION_SOCK="$SOCK" \
-    XDG_STATE_HOME="$WORK/state" setsid "$BIN/ewe-companiond" >"$WORK/daemon.log" 2>&1 </dev/null &
+    PATH="$HERE/fakes:$PATH" XDG_STATE_HOME="$WORK/state" setsid "$BIN/ewe-companiond" >"$WORK/daemon.log" 2>&1 </dev/null &
   echo $! >"$WORK/daemon.pid"
   for _ in $(seq 100); do [ -S "$SOCK" ] && return 0; sleep 0.05; done
   die "the daemon did not start: $WORK/daemon.log"

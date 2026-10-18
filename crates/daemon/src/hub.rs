@@ -83,6 +83,8 @@ pub struct Hub {
     /// how long a hook may wait for a human: 108 s, shorter only in debug
     /// runs (`EWE_COMPANION_WAIT_MS`, for the timeout test)
     pub wait: std::time::Duration,
+    /// wakes the timer scheduler when a timer is set or cancelled
+    pub timers: tokio::sync::Notify,
 }
 
 /// How long a session stays listed after its last event.
@@ -103,6 +105,7 @@ impl Hub {
             next: AtomicU64::new(1),
             debug,
             wait: crate::server::WAIT,
+            timers: tokio::sync::Notify::new(),
         }
     }
 

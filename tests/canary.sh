@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # tests/canary.sh: names stay local (TRIO.md, RFC-007 C3, PLAN §16 "the
 # canary test"). A fake Safe whose logins' titles, usernames, folders and
-# websites carry the canary EWE-CANARY-7Q2X; a scripted island; a mock
-# provider. Twenty scripted chats ask Safe for things in every way (the
-# offline matcher, a row's click, a model's ACTION, a locked safe and its
-# unlock), then keep asking the model questions. The canary must reach the
-# island, and must not be found in any provider request, in the daemon's log
-# (at debug level) or in the store (companion.db and its WAL).
+# websites carry the canary EWE-CANARY-7Q2X, and (wave 2) a fake ewe browser
+# whose tabs, bookmarks, downloads and workspaces, and a fake ewe-bt whose
+# devices, carry it too; a scripted island; a mock provider. Scripted chats
+# ask Safe, the browser and Bluetooth for things in every way (the offline
+# matcher, a row's click, a model's ACTION, a locked safe and its unlock),
+# then keep asking the model questions. The canary must reach the island,
+# and must not be found in any provider request, in the daemon's log (at
+# debug level) or in the store (companion.db and its WAL).
 #   cargo build && tests/canary.sh
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN="${BIN:-$ROOT/target/debug}"
 W="$(mktemp -d)"; chmod 700 "$W"
 mkdir -p "$W/bin" "$W/fakes" "$W/home"
-cp "$ROOT/tests/fakes/ewe-safe" "$ROOT/tests/fakes/ewe-browser" "$W/bin/"
+cp "$ROOT"/tests/fakes/* "$W/bin/"
 CANARY=7Q2X
 cat >"$W/items.json" <<'EOF'
 [
@@ -30,7 +32,14 @@ cat >"$W/items.json" <<'EOF'
 EOF
 export EWE_COMPANION_SOCK="$W/c.sock" XDG_STATE_HOME="$W/state" MOCK_LOG="$W/mock.jsonl" \
        EWE_COMPANION_SAFE="$W/bin/ewe-safe" EWE_COMPANION_BROWSER="$W/bin/ewe-browser" \
-       EWE_FAKE_DIR="$W/fakes" FAKE_SAFE_ITEMS="$W/items.json"
+       EWE_FAKE_DIR="$W/fakes" FAKE_SAFE_ITEMS="$W/items.json" FAKE_BROWSER_MARK=" EWE-CANARY-7Q2X"
+# the desktop tools are the fakes too (ewe-bt's devices carry the canary)
+DPATH="$W/bin:$PATH"
+for t in nmcli ewe-bt qs notify-send ewe-theme gio; do
+  if [ "$(PATH="$DPATH" command -v "$t")" != "$W/bin/$t" ]; then
+    echo "FAIL  the fake $t is not first on the daemon's PATH: refusing to run"; exit 1
+  fi
+done
 PORT=$((20000 + RANDOM % 20000))
 pass=0 fail=0
 ok() { echo "ok    $*"; pass=$((pass + 1)); }
@@ -40,7 +49,7 @@ cleanup() { kill "$MP" "$DP" "$IP" 2>/dev/null; wait 2>/dev/null; rm -rf "$W"; }
 trap cleanup EXIT
 
 python3 "$ROOT/tests/mock-llm.py" "$PORT" & MP=$!
-env -u HYPRLAND_INSTANCE_SIGNATURE -u WAYLAND_DISPLAY HOME="$W/home" EWE_COMPANION_DEBUG=1 \
+env -u HYPRLAND_INSTANCE_SIGNATURE -u WAYLAND_DISPLAY HOME="$W/home" PATH="$DPATH" EWE_COMPANION_DEBUG=1 \
   EWE_COMPANION_LOG=debug "$BIN/ewe-companiond" >"$W/daemon.log" 2>&1 & DP=$!
 for _ in $(seq 100); do [ -S "$EWE_COMPANION_SOCK" ] && break; sleep 0.02; done
 python3 "$ROOT/tests/fake-island.py" --do --env '{"wayland": "wayland-test"}' >"$W/island.log" 2>&1 & IP=$!
@@ -74,15 +83,30 @@ run safe_unlock '{"then": {"command": "safe_copy", "args": {"query": "bank", "fi
 for _ in $(seq 60); do grep -q "chat.reply done Copied the Bank" "$W/island.log" && break; sleep 0.1; done
 # 14–22: the model is asked about what just happened
 for q in "what did you just do" "which logins did you find for me" "tell me the name of my bank login" \
-         "what was my last request" "who am I on github" "summarise our chat" "what is 2+2" \
+         "what was my last request" "who am I on github" "summarise our chat" "what is 2+2, in words" \
          "repeat everything above" "list what safe told you"; do
+  ask "$q"
+done
+# 23–40 (wave 2): ewe browser's tabs, bookmarks, downloads and workspaces,
+# and Bluetooth's devices, then the model is asked about them
+for q in "show my bookmarks" "find pasta in my bookmarks" "bookmark this page" "what did i download" \
+         "show my browser workspaces" "switch to my work workspace in the browser" "next browser workspace" \
+         "mute the youtube tab" "pin the github tab" "reopen the closed tab" "go back a page" \
+         "connect my airpods" "connect my sony" "disconnect my airpods"; do
+  ask "$q"
+done
+run bluetooth_device '{"mac": "AA:BB:CC:00:00:02", "connect": true}'
+for q in "which bookmarks did you find" "what did I download" "which headphones did you connect" \
+         "name my browser workspaces"; do
   ask "$q"
 done
 
 requests=$(wc -l <"$W/mock.jsonl")
-check '[ "$requests" -ge 11 ]' "the provider was asked ($requests requests)" ""
+check '[ "$requests" -ge 15 ]' "the provider was asked ($requests requests)" ""
 check 'grep -q "Bank EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "EWE-CANARY-7Q2X" "$W/island.log"' \
       "the canary reached the island (the test is not empty)" "$(head -c 300 "$W/replies.jsonl")"
+check 'grep -q "Pasta recipes EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "AirPods Pro EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "Work EWE-CANARY-7Q2X" "$W/replies.jsonl"' \
+      "the browser's and Bluetooth's names reached the island too" "$(grep -o "[A-Za-z ]*EWE-CANARY-7Q2X" "$W/replies.jsonl" | sort -u | head -8)"
 check '! grep -Eq "\"(read|reveal|show|list|search)\"" "$W/fakes/safe.log"' \
       "a command that would print a value or a name was refused, never run" "$(grep -E "reveal|read|list" "$W/fakes/safe.log" | head -2)"
 check '! grep -qi "$CANARY" "$W/mock.jsonl"' "no provider request carries a title, username, folder or site" \

@@ -164,6 +164,8 @@ fn risky_rules() -> &'static [Rule] {
             (r"\bsystemctl\s+(\S+\s+)*(stop|disable|mask|kill)\b", "It stops a service."),
             (r"\b(kill|pkill|killall)\b", "It ends programs, and their unsaved work."),
             (r"\b(reboot|poweroff|shutdown|halt)\b|\bsystemctl\s+(\S+\s+)*(reboot|poweroff|suspend|hibernate)\b", "It restarts, suspends or shuts down the computer."),
+            (r"\bpower\.sh\s+logout\b|\bloginctl\s+(\S+\s+)*terminate-(session|user)\b|\bhyprctl\s+dispatch\s+exit\b", "It logs you out: open apps close, and what they did not save is lost."),
+            (r"\bgio\s+trash\s+(\S+\s+)*--empty\b", "It deletes what is in the trash for good."),
             (r"\bgit\s+(reset\s+--hard|clean\s+-\S*f|push\s+(\S+\s+)*(-f|--force))", "It throws away work in git."),
             (r"\bmv\b", "It can overwrite a file of the same name."),
             (r"(^|[^>])>([^>]|$)", "It can overwrite a file."),
@@ -432,6 +434,9 @@ mod tests {
             "echo hi > notes.txt",
             "reboot",
             "systemctl suspend",
+            "~/.config/hypr/scripts/power.sh reboot",
+            "~/.config/hypr/scripts/power.sh logout",
+            "gio trash --empty",
         ] {
             assert!(risky(c), "{c}: {:?}", assess(c));
         }

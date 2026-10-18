@@ -152,34 +152,7 @@ async fn island(hub: Arc<Hub>, mut rd: Reader, mut wr: OwnedWriteHalf) {
                 let hub = hub.clone();
                 tokio::spawn(async move {
                     let id = new_id("m");
-                    let r = match hub.take_undo(&token) {
-                        Some(crate::hub::Undo::Call(call)) => {
-                            let out = crate::commands::run(&hub, &call).await;
-                            crate::chat::Reply {
-                                kind: if out.ok { "done" } else { "error" },
-                                text: out.line,
-                                undo: None,
-                                command: Some(call.command),
-                                ..Default::default()
-                            }
-                        }
-                        // ewe browser's own undo steps
-                        Some(crate::hub::Undo::Browser(steps)) => {
-                            let out = crate::browser::undo(&hub, &steps).await;
-                            crate::chat::Reply {
-                                kind: if out.ok { "done" } else { "error" },
-                                text: out.line,
-                                ..Default::default()
-                            }
-                        }
-                        None => crate::chat::Reply {
-                            kind: "info",
-                            text: "Nothing to undo.".into(),
-                            undo: None,
-                            command: None,
-                            ..Default::default()
-                        },
-                    };
+                    let r = crate::chat::undo(&hub, &token).await;
                     hub.broadcast(proto::line("chat.reply", crate::chat::reply_json(&id, &r)));
                 });
             }
@@ -503,6 +476,13 @@ async fn cli(hub: &Arc<Hub>, verb: &str, args: &Value) -> Value {
         // a stand-in for the Run click, so tests can run a proposal
         "debug.confirm" if hub.debug => {
             let r = crate::chat::confirm(hub, arg(args, "token"), arg(args, "mode")).await;
+            let mut v = crate::chat::reply_json("", &r);
+            v["ok"] = Value::Bool(r.kind != "error");
+            v
+        }
+        // a stand-in for the Undo click
+        "debug.undo" if hub.debug => {
+            let r = crate::chat::undo(hub, arg(args, "token")).await;
             let mut v = crate::chat::reply_json("", &r);
             v["ok"] = Value::Bool(r.kind != "error");
             v

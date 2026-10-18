@@ -37,6 +37,7 @@ const BUILT_IN: &[(&str, &str)] = &[
     ("fix", include_str!("../../../knowledge/fix.md")),
     ("safe", include_str!("../../../knowledge/safe.md")),
     ("browser", include_str!("../../../knowledge/browser.md")),
+    ("cli", include_str!("../../../knowledge/cli.md")),
 ];
 
 /// A match this strong is an answer on its own: one of the topic's own
@@ -507,6 +508,124 @@ mod tests {
             "Safe in ewe browser"
         );
         assert_eq!(top("wifi password"), "Connect to Wi-Fi", "still Wi-Fi's");
+    }
+
+    #[test]
+    fn wave_two_questions_find_their_topic() {
+        // cli.md: every tool by its name
+        for (q, t) in [
+            (
+                "what does ewe-conf do",
+                "ewe-conf, the settings file's tool",
+            ),
+            (
+                "how do I use ewe-theme to import a base24 scheme",
+                "ewe-theme, schemes from the terminal",
+            ),
+            (
+                "how do I install a plugin with ewe-plugin",
+                "ewe-plugin, plugins from the terminal",
+            ),
+            ("what is ewe-bt", "ewe-bt, Bluetooth from the terminal"),
+            (
+                "how do I mount nextcloud with ewe-files",
+                "ewe-cloud, ewe-files and ewe-drive: your account and its folders",
+            ),
+            (
+                "what does ewe-caldav print",
+                "ewe-mail and ewe-caldav: mail and the calendar",
+            ),
+            (
+                "what is ewe-auth for",
+                "ewe-auth, the optional Google sign-in",
+            ),
+            (
+                "ewe-globalshortcuts list",
+                "ewe-globalshortcuts, apps' global shortcuts",
+            ),
+            (
+                "what does ewe-sync --check do",
+                "ewe-sync from the terminal",
+            ),
+            (
+                "when do I run ewe-setup",
+                "ewe-setup, install.sh and the installer",
+            ),
+            (
+                "what can the ewe-browser cli do",
+                "ewe-browser, the browser's command line",
+            ),
+            ("komble --search from a script", "komble from the terminal"),
+            (
+                "how do I use ewe-companion ask",
+                "ewe-companion, me from the terminal",
+            ),
+            (
+                "which qs ipc targets are there",
+                "The shell's own commands (qs ipc)",
+            ),
+            ("where is ewe-pass", "ewe-pass, the Passwords plugin's tool"),
+            (
+                "what command line tools does ewe have",
+                "The ewe command-line tools",
+            ),
+            // browser.md: the bottom bar, this wave's features
+            (
+                "how do browser workspaces work",
+                "The bottom bar and workspaces in ewe browser",
+            ),
+            (
+                "can I search zara from the browser",
+                "Search a site from ewe browser",
+            ),
+            ("what are the browser shortcuts", "Shortcuts in ewe browser"),
+            (
+                "how do I find text on a page",
+                "Find on a page in ewe browser",
+            ),
+            (
+                "can I swipe back in the browser with two fingers",
+                "Gestures and mouse buttons in ewe browser",
+            ),
+            (
+                "how do I turn on secure dns",
+                "Privacy and security in ewe browser",
+            ),
+            (
+                "a site wants my camera permission",
+                "Privacy and security in ewe browser",
+            ),
+            (
+                "does the bitwarden extension work in ewe browser",
+                "Safe in ewe browser",
+            ),
+            (
+                "how do I open link in new workspace",
+                "Right-click menus in ewe browser",
+            ),
+            // safe.md
+            (
+                "how do I use ewe-safe run with an env file",
+                "Use Safe from scripts",
+            ),
+            ("what does quick access do", "Quick Access"),
+            ("can safe be my ssh agent", "SSH keys in Safe"),
+            // howto.md: what Shaun does now
+            ("how do I turn on airplane mode", "Airplane mode"),
+            ("can you set a timer", "Timers and reminders"),
+            ("remind me later", "Timers and reminders"),
+            ("is there a calculator", "Do a sum"),
+            ("how do I empty the trash", "Empty the trash"),
+            ("my screen keeps turning off", "Keep the computer awake"),
+        ] {
+            assert_eq!(top(q), t, "{q:?}");
+        }
+        let p = pack();
+        assert!(p.primer.contains("ewe-conf (settings)"), "the CLI index");
+        assert!(
+            p.primer.len() < 4_000,
+            "the primer goes with every question: keep it small"
+        );
     }
 
     #[test]

@@ -13,6 +13,7 @@ mod browser;
 mod chat;
 mod commands;
 mod context;
+mod desktop;
 mod finder;
 mod glance;
 mod hub;
@@ -24,6 +25,7 @@ mod safe;
 mod server;
 mod store;
 mod term;
+mod timers;
 
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
@@ -108,6 +110,9 @@ async fn run() -> i32 {
             }
         });
     }
+
+    // timers and reminders: the ones kept from before a restart, then new ones
+    tokio::spawn(timers::run(hub.clone()));
 
     // 0600 from birth: bind under a umask, then chmod to be sure
     // SAFETY: umask only changes this process's file-creation mask.

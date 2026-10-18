@@ -255,6 +255,31 @@ pub fn reply_of(hub: &Arc<Hub>, call: &Call, out: commands::Outcome) -> Reply {
     }
 }
 
+/// The Undo click: the call a reply kept, or ewe browser's own steps.
+pub async fn undo(hub: &Arc<Hub>, token: &str) -> Reply {
+    match hub.take_undo(token) {
+        Some(Undo::Call(call)) => {
+            let out = commands::run(hub, &call).await;
+            Reply {
+                kind: if out.ok { "done" } else { "error" },
+                text: out.line,
+                command: Some(call.command),
+                ..Default::default()
+            }
+        }
+        // ewe browser's own undo steps
+        Some(Undo::Browser(steps)) => {
+            let out = browser::undo(hub, &steps).await;
+            Reply {
+                kind: if out.ok { "done" } else { "error" },
+                text: out.line,
+                ..Default::default()
+            }
+        }
+        None => Reply::info("Nothing to undo."),
+    }
+}
+
 /// Keep a turn for the next question. A reply with a `private` line is
 /// kept as that line, and a Safe request's own words stay out too.
 fn remember(hub: &Arc<Hub>, text: &str, r: &Reply) {

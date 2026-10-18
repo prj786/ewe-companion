@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+"""A stand-in for NetworkManager's nmcli, for the companion's tests: the
+real one switches the owner's Wi-Fi. tests/chat.sh puts tests/fakes first
+on the daemon's PATH. It knows only what the companion asks:
+  nmcli -t -f WIFI radio        → enabled | disabled
+  nmcli radio wifi on|off
+State and a log of every call in $EWE_FAKE_DIR: nmcli.json {"wifi": bool},
+nmcli.log (one JSON argv per line).
+"""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "nmcli.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+state_file = os.path.join(D, "nmcli.json")
+try:
+    state = json.load(open(state_file))
+except (OSError, ValueError):
+    state = {"wifi": True}
+
+if argv == ["-t", "-f", "WIFI", "radio"]:
+    print("enabled" if state["wifi"] else "disabled")
+    sys.exit(0)
+if argv[:2] == ["radio", "wifi"] and len(argv) == 3 and argv[2] in ("on", "off"):
+    state["wifi"] = argv[2] == "on"
+    json.dump(state, open(state_file, "w"))
+    sys.exit(0)
+print("Error: the fake nmcli does not know that.", file=sys.stderr)
+sys.exit(2)

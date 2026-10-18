@@ -2,7 +2,9 @@
 
 <!-- What a user can do themselves, from project-map/11-How-We-Work/
      Troubleshooting Knowledge.md, ewe/docs/TROUBLESHOOTING.md and the
-     website's troubleshooting page. Developer-only fixes stay out. -->
+     website's troubleshooting page. Developer-only fixes stay out.
+     Re-checked 2026-10-18 against ewe 0.29.0-beta: every command and
+     path still holds. -->
 
 ## Something from a plugin is missing
 keys: missing dock, no dock, missing clipboard, no screenshot, missing tile, plugin missing, plugin not working, shortcut not working, icon missing
@@ -73,7 +75,7 @@ Update everything (`sudo pacman -Syu`) for a newer kernel and firmware. On Intel
 ## The disk is full
 keys: disk full, storage full, no space, low disk space, free space, clean up, cleanup, disk space
 run: sudo paccache -rk1
-Clear pacman's package cache with `sudo paccache -rk1` (keeps one old version), empty the trash in Nemo, and look for big folders with `du -sh ~/* | sort -h`. I show a disk past 85 % in my panel.
+Clear pacman's package cache with `sudo paccache -rk1` (keeps one old version), empty the trash (in Nemo, or ask me "empty the trash"), and look for big folders with `du -sh ~/* | sort -h`. I show a disk past 85 % in my panel.
 
 ## What to send with a bug report
 keys: report bug, bug report, logs, diagnostics, status commands, help me debug

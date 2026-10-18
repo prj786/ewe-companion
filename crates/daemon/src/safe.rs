@@ -317,7 +317,7 @@ pub async fn login(hub: &Arc<Hub>, q: &str) -> Outcome {
 }
 
 async fn open_site(hub: &Arc<Hub>, url: &str) -> Outcome {
-    let out = browser::open_url(hub, url).await;
+    let out = browser::open_url(hub, url, None).await;
     if !out.ok {
         return out.private("The site did not open.");
     }

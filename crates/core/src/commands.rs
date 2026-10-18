@@ -10,11 +10,13 @@
 //!
 //! Adding a command is three steps: a row here, its words in `intent`, its
 //! `run` arm in the daemon. Every command is a read (tier T0: it only shows
-//! something, such as found files or the browser's history) or a desktop
-//! action (tier T1: it runs on its own and says what it did, with Undo
-//! where one exists; decision 6). Anything that changes settings, files or
-//! the system (T2/T3) needs a confirm card first and does not belong in
-//! this list until P4's ConfirmCard exists.
+//! something, such as found files, the browser's history or a sum) or a
+//! desktop action (tier T1: it runs on its own and says what it did, with
+//! Undo where one exists; decision 6). Anything that changes settings,
+//! files or the system (T2/T3: dark or light mode, suspend, restart, shut
+//! down, log out, emptying the trash) is in the list only as a *proposal*
+//! ([`PROPOSALS`]): its run arm never runs it, it shows the exact command
+//! with Run, and only that click runs it (P4's ConfirmCard will take over).
 //!
 //! Safe's commands (`safe_*`) never carry a value: Safe copies a password
 //! itself, and a model that asks for one gets back "done" or a count.
@@ -128,8 +130,8 @@ pub const CATALOG: &[CommandInfo] = &[
     },
     CommandInfo {
         name: "web_search",
-        args: r#"{"query": "…"}"#,
-        summary: "search the web in ewe browser (its own search engine)",
+        args: r#"{"query": "men's shoes", "site": "zara" (optional: a site's name or domain)}"#,
+        summary: "search the web in ewe browser (its own search engine); with site, that site's own search",
     },
     CommandInfo {
         name: "play_music",
@@ -138,8 +140,8 @@ pub const CATALOG: &[CommandInfo] = &[
     },
     CommandInfo {
         name: "open_url",
-        args: r#"{"url": "https://…"}"#,
-        summary: "open a web page in ewe browser",
+        args: r#"{"url": "https://…", "workspace": "Work" (optional: ewe browser's workspace)}"#,
+        summary: "open a web page in ewe browser, in one of its workspaces if named",
     },
     CommandInfo {
         name: "browser_history",
@@ -194,6 +196,121 @@ pub const CATALOG: &[CommandInfo] = &[
         args: "{}",
         summary: "Safe's state: locked or not, how many items, whether it is in sync",
     },
+    // ── ewe browser beyond search and open ──
+    CommandInfo {
+        name: "browser_bookmark",
+        args: "{}",
+        summary: "bookmark the page open in ewe browser (Undo removes it)",
+    },
+    CommandInfo {
+        name: "browser_bookmarks",
+        args: r#"{"query": "recipes" (optional)}"#,
+        summary: "find ewe browser's bookmarks; they show on the island, you get only how many",
+    },
+    CommandInfo {
+        name: "browser_nav",
+        args: r#"{"action": "back"|"forward"|"reload"|"reopen"}"#,
+        summary: "in ewe browser: go back or forward a page, reload it, or reopen the tab closed last",
+    },
+    CommandInfo {
+        name: "browser_tab_do",
+        args: r#"{"action": "mute"|"unmute"|"pin"|"unpin"|"close", "words": "youtube" (optional: else the tab in front)}"#,
+        summary: "mute, unmute, pin or unpin a tab in ewe browser; close asks first",
+    },
+    CommandInfo {
+        name: "browser_workspace",
+        args: r#"{"action": "list"|"switch"|"next"|"prev"|"new", "name": "Work" (switch: a name or number; new: optional)}"#,
+        summary: "ewe browser's own workspaces (the bottom bar): list them, switch, the next or previous one, a new one",
+    },
+    CommandInfo {
+        name: "browser_downloads",
+        args: "{}",
+        summary: "ewe browser's downloads, with Open and Show in folder, on the island; you get only how many",
+    },
+    CommandInfo {
+        name: "browser_download",
+        args: r#"{"id": "<download id>", "action": "open"|"show", "path": "<its file>"}"#,
+        summary: "open a download, or show it in its folder (the ids come from browser_downloads)",
+    },
+    CommandInfo {
+        name: "browser_page",
+        args: r#"{"page": "home"|"history"|"settings"|"files"|"music"}"#,
+        summary: "open one of ewe browser's own pages",
+    },
+    // ── the desktop ──
+    CommandInfo {
+        name: "wifi",
+        args: r#"{"on": true|false}"#,
+        summary: "turn Wi-Fi on or off",
+    },
+    CommandInfo {
+        name: "bluetooth",
+        args: r#"{"on": true|false}"#,
+        summary: "turn Bluetooth on or off",
+    },
+    CommandInfo {
+        name: "bluetooth_device",
+        args: r#"{"name": "airpods", "connect": true|false}"#,
+        summary: "connect or disconnect a paired Bluetooth device by its name",
+    },
+    CommandInfo {
+        name: "airplane_mode",
+        args: r#"{"on": true|false}"#,
+        summary: "airplane mode: Wi-Fi and Bluetooth off (off puts them back as they were)",
+    },
+    CommandInfo {
+        name: "keep_awake",
+        args: r#"{"on": true|false}"#,
+        summary: "keep the screen awake (no dimming, lock or sleep) until turned off",
+    },
+    CommandInfo {
+        name: "calc",
+        args: r#"{"expr": "15% of 80"}"#,
+        summary: "work out plain arithmetic and percentages exactly (+ - * / ^, %, of, off)",
+    },
+    CommandInfo {
+        name: "timer",
+        args: r#"{"seconds": 300, "text": "tea" (optional)}  or  {"at": "17:30", "text": "call mum"}; "reminder": true for "remind me" with no words"#,
+        summary: "a timer or a reminder: a notification when it is due (cancellable, kept across restarts)",
+    },
+    CommandInfo {
+        name: "timers",
+        args: "{}",
+        summary: "the timers and reminders waiting, with Cancel",
+    },
+    CommandInfo {
+        name: "timer_cancel",
+        args: r#"{"id": "<timer id>" (optional: the only one)}"#,
+        summary: "cancel a timer or reminder",
+    },
+    CommandInfo {
+        name: "theme_mode",
+        args: r#"{"mode": "dark"|"light"}"#,
+        summary: "switch the whole desktop to dark or light mode (asks first: shows the command with Run)",
+    },
+    CommandInfo {
+        name: "power",
+        args: r#"{"action": "suspend"|"restart"|"shutdown"|"logout"}"#,
+        summary: "suspend, restart, shut down or log out (asks first: shows the command with Run)",
+    },
+    CommandInfo {
+        name: "empty_trash",
+        args: "{}",
+        summary: "empty the trash for good (asks first: shows the command with Run)",
+    },
+];
+
+/// The commands that never run from a call: their run arm shows the exact
+/// command with Run (T2/T3, decision 6), and only that click runs it.
+pub const PROPOSALS: &[&str] = &["run_shell", "theme_mode", "power", "empty_trash"];
+
+/// ewe browser's own pages (`browser_page`) and the address each has.
+pub const BROWSER_PAGES: &[(&str, &str)] = &[
+    ("home", "app://home/"),
+    ("history", "app://history/"),
+    ("settings", "app://settings/"),
+    ("files", "app://files/"),
+    ("music", "app://music/"),
 ];
 
 /// What Safe copies: `safe_copy`'s `field`.
@@ -332,6 +449,33 @@ fn token_ok(id: &str) -> bool {
         && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
+/// A name the user gave something (a site, a workspace, a device): one
+/// argument on another app's command line, never one it could read as a
+/// flag.
+fn name_ok(s: &str, max: usize) -> bool {
+    let t = s.trim();
+    !t.is_empty() && t.len() <= max && !t.starts_with('-') && !t.chars().any(char::is_control)
+}
+
+/// A Bluetooth address: `AA:BB:CC:DD:EE:FF`.
+pub fn is_mac(s: &str) -> bool {
+    let parts: Vec<&str> = s.split(':').collect();
+    parts.len() == 6
+        && parts
+            .iter()
+            .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+/// A time of day, `17:30` or `9:05`, as (hour, minute).
+pub fn clock(s: &str) -> Option<(u32, u32)> {
+    let (h, m) = s.trim().split_once(':')?;
+    let (h, m): (u32, u32) = (h.parse().ok()?, m.parse().ok()?);
+    (h < 24 && m < 60 && s.trim().len() <= 5).then_some((h, m))
+}
+
+/// The longest timer: a week.
+pub const TIMER_MAX_S: i64 = 7 * 86_400;
+
 pub fn known(name: &str) -> bool {
     CATALOG.iter().any(|c| c.name == name)
 }
@@ -372,6 +516,21 @@ pub fn validate(call: &Call) -> Result<(), String> {
             _ => Err(format!("{}: \"{k}\" must be true or false", call.command)),
         }
     };
+    // an optional name: a site, a workspace, a device
+    let opt_name = |k: &str, max: usize| -> Result<(), String> {
+        match a.get(k) {
+            None | Some(Value::Null) => Ok(()),
+            Some(Value::String(v)) if name_ok(v, max) => Ok(()),
+            _ => Err(format!("{}: \"{k}\" must be a short name", call.command)),
+        }
+    };
+    let opt_text = |k: &str, max: usize| -> Result<(), String> {
+        match a.get(k) {
+            None | Some(Value::Null) => Ok(()),
+            Some(Value::String(v)) if v.len() <= max && !v.chars().any(char::is_control) => Ok(()),
+            _ => Err(format!("{}: \"{k}\" must be some text", call.command)),
+        }
+    };
     match call.command.as_str() {
         "volume_set" => int("percent", 0, 150),
         "volume_change" | "brightness_change" => int("delta", -100, 100),
@@ -400,7 +559,11 @@ pub fn validate(call: &Call) -> Result<(), String> {
                 Err(format!("open: {what} has no page \"{page}\""))
             }
         }
-        "web_search" | "play_music" => text("query"),
+        "web_search" => {
+            text("query")?;
+            opt_name("site", 64)
+        }
+        "play_music" => text("query"),
         "launch_app" => {
             text("app")?;
             if a["app"].as_str().unwrap_or("").len() > 100 {
@@ -431,13 +594,97 @@ pub fn validate(call: &Call) -> Result<(), String> {
         "open_url" => {
             text("url")?;
             let u = a["url"].as_str().unwrap_or("");
-            if u.starts_with("https://") || u.starts_with("http://") {
-                Ok(())
-            } else {
-                Err("open_url: only http and https pages".into())
+            if !(u.starts_with("https://") || u.starts_with("http://")) {
+                return Err("open_url: only http and https pages".into());
+            }
+            opt_name("workspace", 64)
+        }
+        "lock" | "browser_tabs" | "safe_lock" | "safe_status" | "browser_bookmark"
+        | "browser_downloads" | "timers" | "empty_trash" => Ok(()),
+        "browser_bookmarks" => opt_text("query", 200),
+        "browser_nav" => one_of("action", &["back", "forward", "reload", "reopen"]),
+        "browser_tab_do" => {
+            one_of("action", &["mute", "unmute", "pin", "unpin", "close"])?;
+            match a.get("id").filter(|v| !v.is_null()) {
+                Some(id) if id.as_str().is_some_and(token_ok) => Ok(()),
+                Some(_) => Err("browser_tab_do: \"id\" is not a tab id".into()),
+                None => opt_name("words", 100),
             }
         }
-        "lock" | "browser_tabs" | "safe_lock" | "safe_status" => Ok(()),
+        "browser_workspace" => {
+            one_of("action", &["list", "switch", "next", "prev", "new"])?;
+            opt_name("name", 64)?;
+            if a["action"] == "switch" && a.get("name").is_none_or(Value::is_null) {
+                return Err("browser_workspace: switch needs the workspace's name".into());
+            }
+            Ok(())
+        }
+        "browser_download" => {
+            one_of("action", &["open", "show"])?;
+            match a.get("id").and_then(Value::as_str) {
+                Some(id)
+                    if !id.is_empty()
+                        && id.len() <= 64
+                        && !id.starts_with('-')
+                        && id
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c)) => {}
+                _ => return Err("browser_download: \"id\" is not a download id".into()),
+            }
+            match a.get("path") {
+                None | Some(Value::Null) => Ok(()),
+                Some(Value::String(p)) => path_text(p, &call.command),
+                Some(_) => Err("browser_download: \"path\" must be text".into()),
+            }
+        }
+        "browser_page" => {
+            let pages: Vec<&str> = BROWSER_PAGES.iter().map(|(p, _)| *p).collect();
+            one_of("page", &pages)
+        }
+        "wifi" | "bluetooth" | "keep_awake" => flag("on", true),
+        // the Undo of airplane mode carries how Wi-Fi and Bluetooth were
+        "airplane_mode" => {
+            flag("on", true)?;
+            flag("wifi", false)?;
+            flag("bluetooth", false)
+        }
+        "bluetooth_device" => {
+            flag("connect", true)?;
+            match a.get("mac").filter(|v| !v.is_null()) {
+                Some(m) if m.as_str().is_some_and(is_mac) => Ok(()),
+                Some(_) => Err("bluetooth_device: \"mac\" is not a Bluetooth address".into()),
+                None => match a.get("name").and_then(Value::as_str) {
+                    Some(n) if name_ok(n, 100) => Ok(()),
+                    _ => Err("bluetooth_device: \"name\" must be the device's name".into()),
+                },
+            }
+        }
+        "calc" => {
+            text("expr")?;
+            if a["expr"].as_str().unwrap_or("").len() > 200 {
+                return Err("calc: that sum is too long".into());
+            }
+            Ok(())
+        }
+        "timer" => {
+            let secs = a.get("seconds").filter(|v| !v.is_null());
+            let at = a.get("at").filter(|v| !v.is_null());
+            match (secs, at) {
+                (Some(_), None) => int("seconds", 1, TIMER_MAX_S)?,
+                (None, Some(t)) if t.as_str().and_then(clock).is_some() => {}
+                (None, Some(_)) => return Err("timer: \"at\" must be a time like 17:30".into()),
+                _ => return Err("timer: give \"seconds\" or \"at\", one of them".into()),
+            }
+            flag("reminder", false)?;
+            opt_text("text", 200)
+        }
+        "timer_cancel" => match a.get("id").filter(|v| !v.is_null()) {
+            None => Ok(()),
+            Some(id) if id.as_str().is_some_and(token_ok) => Ok(()),
+            Some(_) => Err("timer_cancel: \"id\" is not a timer id".into()),
+        },
+        "theme_mode" => one_of("mode", &["dark", "light"]),
+        "power" => one_of("action", &["suspend", "restart", "shutdown", "logout"]),
         "browser_history" => match a.get("query") {
             None | Some(Value::Null) => Ok(()),
             Some(Value::String(q)) if q.len() <= 200 => Ok(()),
@@ -578,6 +825,35 @@ mod tests {
             ("safe_lock", json!({})),
             ("safe_unlock", json!({})),
             ("safe_status", json!({})),
+            ("browser_bookmark", json!({})),
+            ("browser_bookmarks", json!({"query": "recipes"})),
+            ("browser_nav", json!({"action": "back"})),
+            ("browser_tab_do", json!({"action": "mute"})),
+            (
+                "browser_workspace",
+                json!({"action": "switch", "name": "Work"}),
+            ),
+            ("browser_downloads", json!({})),
+            (
+                "browser_download",
+                json!({"id": "d-1", "action": "show", "path": "~/Downloads/a.iso"}),
+            ),
+            ("browser_page", json!({"page": "history"})),
+            ("wifi", json!({"on": false})),
+            ("bluetooth", json!({"on": true})),
+            (
+                "bluetooth_device",
+                json!({"name": "airpods", "connect": true}),
+            ),
+            ("airplane_mode", json!({"on": true})),
+            ("keep_awake", json!({"on": true})),
+            ("calc", json!({"expr": "15% of 80"})),
+            ("timer", json!({"seconds": 300, "text": "tea"})),
+            ("timers", json!({})),
+            ("timer_cancel", json!({})),
+            ("theme_mode", json!({"mode": "light"})),
+            ("power", json!({"action": "suspend"})),
+            ("empty_trash", json!({})),
         ];
         assert_eq!(good.len(), CATALOG.len());
         for (name, args) in good {
@@ -659,6 +935,98 @@ mod tests {
         );
         assert!(ok("open_file", json!({"path": "a\nb"})).is_err());
         assert!(is_safe("safe_copy") && !is_safe("open_url"));
+    }
+
+    #[test]
+    fn wave_two_commands_check_their_arguments() {
+        let ok = |c: &str, a: Value| validate(&Call::new(c, a));
+        // a site or a workspace is one argument, never a flag
+        assert_eq!(
+            ok(
+                "web_search",
+                json!({"query": "men's shoes", "site": "zara"})
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            ok("web_search", json!({"query": "kettle", "site": "h&m"})),
+            Ok(())
+        );
+        assert!(ok("web_search", json!({"query": "x", "site": "--new-window"})).is_err());
+        assert!(ok("web_search", json!({"query": "x", "site": ""})).is_err());
+        assert!(
+            ok(
+                "open_url",
+                json!({"url": "https://a.org", "workspace": "-x"})
+            )
+            .is_err()
+        );
+        assert_eq!(
+            ok(
+                "open_url",
+                json!({"url": "https://a.org", "workspace": "Work"})
+            ),
+            Ok(())
+        );
+        // the browser
+        assert!(ok("browser_nav", json!({"action": "home"})).is_err());
+        assert!(ok("browser_tab_do", json!({"action": "close", "id": "-all"})).is_err());
+        assert_eq!(
+            ok(
+                "browser_tab_do",
+                json!({"action": "pin", "words": "github"})
+            ),
+            Ok(())
+        );
+        assert!(ok("browser_workspace", json!({"action": "switch"})).is_err());
+        assert_eq!(ok("browser_workspace", json!({"action": "new"})), Ok(()));
+        assert!(
+            ok(
+                "browser_workspace",
+                json!({"action": "remove", "name": "x"})
+            )
+            .is_err()
+        );
+        assert!(ok("browser_download", json!({"id": "--x", "action": "open"})).is_err());
+        assert!(ok("browser_download", json!({"id": "7", "action": "delete"})).is_err());
+        assert!(ok("browser_page", json!({"page": "file:///etc"})).is_err());
+        // the desktop
+        assert!(ok("wifi", json!({})).is_err());
+        assert!(ok("bluetooth_device", json!({"connect": true})).is_err());
+        assert_eq!(
+            ok(
+                "bluetooth_device",
+                json!({"mac": "AA:BB:CC:DD:EE:0F", "connect": false})
+            ),
+            Ok(())
+        );
+        assert!(
+            ok(
+                "bluetooth_device",
+                json!({"mac": "AA:BB:CC:DD:EE", "connect": false})
+            )
+            .is_err()
+        );
+        assert!(ok("bluetooth_device", json!({"name": "-r", "connect": true})).is_err());
+        assert_eq!(
+            ok("timer", json!({"at": "17:30", "text": "call mum"})),
+            Ok(())
+        );
+        assert!(ok("timer", json!({"at": "25:00"})).is_err());
+        assert!(ok("timer", json!({"seconds": 0})).is_err());
+        assert!(ok("timer", json!({"seconds": 60, "at": "17:30"})).is_err());
+        assert!(ok("timer", json!({"seconds": 999_999_999})).is_err());
+        assert!(ok("timer", json!({"seconds": 60, "text": "a\nb"})).is_err());
+        assert!(ok("timer_cancel", json!({"id": "x;y"})).is_err());
+        assert!(ok("theme_mode", json!({"mode": "blue"})).is_err());
+        assert!(ok("power", json!({"action": "format"})).is_err());
+        assert!(ok("calc", json!({"expr": ""})).is_err());
+        for p in PROPOSALS {
+            assert!(known(p), "{p}");
+        }
+        assert_eq!(clock("9:05"), Some((9, 5)));
+        assert_eq!(clock("24:00"), None);
+        assert!(is_mac("aa:bb:cc:dd:ee:ff") && !is_mac("aa:bb"));
     }
 
     #[test]
