@@ -101,10 +101,11 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "open",
         args: r#"{"what": "settings"|"komble"|"quicksettings"|"overview"|"sync"|"terminal"|"files", "page": "…" (optional)}"#,
-        summary: "open an ewe app or panel. ewe Settings pages: appearance accessibility animations layout windowrules \
-                  displays network bluetooth wallpaper input saver power defaults startup shortcuts time user system \
+        summary: "open an ewe app or panel. ewe Settings pages: appearance wallpaper animations accessibility layout \
+                  windowrules displays startup shortcuts network bluetooth input power saver defaults time user system \
                   (ewe Settings opens on Appearance whatever the page, so say which page to pick). Komble pages: updates \
-                  plugins settings search=<words> options=<plugin id>. Quick settings pages: home wifi bt audio cal notifs",
+                  plugins settings search=<words> options=<plugin id>. Quick settings pages: home wifi bt audio cal notifs \
+                  remote power, and the plugins' vpn ssh mobile mail cast",
     },
     CommandInfo {
         name: "launch_app",
@@ -334,28 +335,29 @@ pub const OPEN_WHAT: &[&str] = &[
     "files",
 ];
 
-/// The Settings app's pages: its sidebar ids (ewe-settings `App.svelte`)
-/// and their labels. Settings 0.18 opens on Appearance whatever page is
-/// asked for, so a reply names the page to pick.
+/// The Settings app's pages: its pane ids and their labels, in nav order
+/// (ewe-settings 0.22 `src/lib/pages.js`: Look, Desktop, Devices, System).
+/// ewe Settings (0.18 to 0.22) opens on Appearance whatever page is asked
+/// for, so a reply names the page to pick.
 pub const SETTINGS_PAGES: &[(&str, &str)] = &[
     ("appearance", "Appearance"),
-    ("accessibility", "Accessibility"),
+    ("wallpaper", "Wallpaper"),
     ("animations", "Animations"),
+    ("accessibility", "Accessibility"),
     ("layout", "Layout"),
     ("windowrules", "Window rules"),
     ("displays", "Displays"),
-    ("network", "Networking"),
+    ("startup", "Startup apps"),
+    ("shortcuts", "Keyboard shortcuts"),
+    ("network", "Network"),
     ("bluetooth", "Bluetooth"),
-    ("wallpaper", "Wallpaper"),
     ("input", "Keyboard and mouse"),
-    ("saver", "Screensaver"),
     ("power", "Power"),
+    ("saver", "Screensaver"),
     ("defaults", "Default apps"),
-    ("startup", "Startup"),
-    ("shortcuts", "Shortcuts"),
     ("time", "Time and place"),
     ("user", "User"),
-    ("system", "System"),
+    ("system", "About this computer"),
 ];
 
 /// Komble's pages (`komble --<page>`); `search=<words>` and
@@ -366,9 +368,10 @@ pub const KOMBLE_PAGES: &[(&str, &str)] = &[
     ("settings", "Komble's settings"),
 ];
 
-/// Quick settings' tabs (`Shell.openQuickSettings`). Plugin tabs (vpn, ssh,
-/// mobile, mail, cast) exist only while their plugin is on; an unknown tab
-/// opens Home.
+/// Quick settings' pages (`Shell.openQuickSettings`; ewe 0.39 has no rail,
+/// a page opens in place of home). Plugin pages (vpn, ssh, mobile, mail,
+/// cast) exist only while their plugin is on, labelled as their manifests'
+/// `quickPage.label`; an unknown page opens home.
 pub const QS_TABS: &[(&str, &str)] = &[
     ("home", "Quick settings"),
     ("wifi", "Wi-Fi"),
@@ -376,9 +379,11 @@ pub const QS_TABS: &[(&str, &str)] = &[
     ("audio", "Sound"),
     ("cal", "Calendar"),
     ("notifs", "Notifications"),
+    ("remote", "Sharing"),
+    ("power", "Power"),
     ("vpn", "VPN"),
     ("ssh", "SSH"),
-    ("mobile", "Phone"),
+    ("mobile", "Mobile"),
     ("mail", "Mail"),
     ("cast", "Cast"),
 ];
@@ -1049,6 +1054,19 @@ mod tests {
         assert!(ok("komble", "options=../../etc").is_err());
         assert_eq!(page_label("settings", "input"), Some("Keyboard and mouse"));
         assert_eq!(page_label("quicksettings", "bt"), Some("Bluetooth"));
+        // ewe Settings 0.22's labels (lib/pages.js), ewe 0.39's pages
+        assert_eq!(page_label("settings", "network"), Some("Network"));
+        assert_eq!(page_label("settings", "startup"), Some("Startup apps"));
+        assert_eq!(
+            page_label("settings", "shortcuts"),
+            Some("Keyboard shortcuts")
+        );
+        assert_eq!(
+            page_label("settings", "system"),
+            Some("About this computer")
+        );
+        assert_eq!(page_label("quicksettings", "power"), Some("Power"));
+        assert_eq!(ok("quicksettings", "remote"), Ok(()));
     }
 
     #[test]
