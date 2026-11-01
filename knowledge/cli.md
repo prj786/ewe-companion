@@ -13,6 +13,12 @@
      0.20.2-beta (src-tauri/src/lib.rs), ewe-sync 0.14.4-beta (lib.rs),
      ewe-settings 0.18.0-beta (takes no arguments), ewe-cast 0.12.3-beta
      (PKGBUILD: only ewe-castd), ewe-companion as of wave 2 (crates/cli/src/verbs.rs).
+     Re-checked 2026-11-01 for the UI revamp: ewe 0.39.0-beta
+     (bin/ewe-plugin's place; QuickSettings.qml's pages incl. remote and
+     power; ewe.sysmon 2.0.0's IPC), ewe Settings 0.22 (still no
+     arguments), Komble 0.21 (--options opens the plugin's sheet), ewe
+     Safe 0.4 (crates/cli/src/ssh.rs: takeover, connect, services, test,
+     hosts, sign-commits; docs/GATE.md).
      Rule 5 holds for most; the exceptions are named where they bite.
      Comments never reach a model. -->
 
@@ -34,7 +40,7 @@ keys: ewe-theme, ewe theme, scheme apply, scheme list, scheme import, import a s
 
 ## ewe-plugin, plugins from the terminal
 keys: ewe-plugin, ewe plugin, plugin command, plugins from the terminal, ewe-plugin install, ewe-plugin list
-`ewe-plugin list` shows what is installed and on (`--json` adds the plugins from ewe you can still install), `ewe-plugin install ewe.dock` installs one from ewe, `ewe-plugin add <git url>` someone else's (plugins run unsandboxed: only from people you trust), `ewe-plugin enable|disable|remove <id>` (each restarts the shell), `ewe-plugin get <id>` and `ewe-plugin set <id> <key> <value>` read and change a plugin's options, and `ewe-plugin bar <id> on|off` shows it in the bar. It prints text for a person unless you add `--json`; install, get, set and bar always answer JSON. Plugins live in ~/.config/ewe/plugins/<id>/.
+`ewe-plugin list` shows what is installed and on (`--json` adds the plugins from ewe you can still install), `ewe-plugin install ewe.dock` installs one from ewe, `ewe-plugin add <git url>` someone else's (plugins run unsandboxed: only from people you trust), `ewe-plugin enable|disable|remove <id>` (each restarts the shell), `ewe-plugin get <id>` and `ewe-plugin set <id> <key> <value>` read and change a plugin's options, `ewe-plugin bar <id> on|off` shows it in the bar, and `ewe-plugin place <id> --visible on|off` shows its widget on the desktop (`--pinned`, `--locked` and `--reset` too): the same switches as its sheet in Komble. It prints text for a person unless you add `--json`; install, get, set and bar always answer JSON. Plugins live in ~/.config/ewe/plugins/<id>/.
 
 ## ewe-bt, Bluetooth from the terminal
 keys: ewe-bt, ewe bt, bluetooth from the terminal, bluetooth command, bluetoothctl
@@ -66,7 +72,7 @@ keys: ewe-setup, ewe setup, install.sh, ewe-install, installer, reinstall ewe, s
 
 ## ewe-safe, ewe Safe's command line
 keys: ewe-safe command, ewe-safe commands, safe command line, safe cli, ewe-safe status, ewe-safe lock
-`ewe-safe status` says whether ewe Safe is set up and locked, how many items and how it syncs; `ewe-safe unlock --ask` opens ewe Safe's own prompt; `ewe-safe lock`; `ewe-safe search <words>` and `ewe-safe list` find items; `ewe-safe copy <id> --field password` puts a value on the clipboard and clears it later; `ewe-safe generate --length 24` makes a password; `ewe-safe import 1pux <file>` brings in a 1Password export; `ewe-safe ssh …` runs the SSH agent; `ewe-safe passkey list` lists passkeys. Passwords are typed into ewe Safe's prompt or piped in, never put on the command line. It answers JSON, except the script commands (`read`, `run`, `inject`, `git-credential`), which work like 1Password's `op`. I only ask ewe Safe to copy, lock, unlock and count: nothing that prints a password or a login's name goes through me.
+`ewe-safe status` says whether ewe Safe is set up and locked, how many items and how it syncs; `ewe-safe unlock --ask` opens ewe Safe's own prompt; `ewe-safe lock`; `ewe-safe search <words>` and `ewe-safe list` find items; `ewe-safe copy <id> --field password` puts a value on the clipboard and clears it later; `ewe-safe generate --length 24` makes a password; `ewe-safe import 1pux <file>` brings in a 1Password export; `ewe-safe ssh …` runs the SSH gate (`ssh enable|disable`, `ssh status`, `ssh takeover --dry-run` moves SSH over from ~/.ssh and other agents, `ssh connect github` sets up a key for a service, `ssh services` lists them, `ssh test <host>`, `ssh hosts`, `ssh sign-commits <key id>|--off`); `ewe-safe passkey list` lists passkeys. Passwords are typed into ewe Safe's prompt or piped in, never put on the command line. It answers JSON, except the script commands (`read`, `run`, `inject`, `git-credential`), which work like 1Password's `op`. I only ask ewe Safe to copy, lock, unlock and count: nothing that prints a password or a login's name goes through me.
 
 ## ewe-browser, the browser's command line
 keys: ewe-browser command, ewe-browser cli, browser command line, browser from the terminal, browser cli
@@ -74,11 +80,11 @@ keys: ewe-browser command, ewe-browser cli, browser command line, browser from t
 
 ## komble from the terminal
 keys: komble command, komble --search, komble flags, komble cli, open komble from the terminal, komble updates command
-`komble` opens Komble; `komble --updates`, `komble --plugins`, `komble --settings`, `komble --search <words>` and `komble --options=<plugin id>` open those pages (a Komble already open switches page). `komble ~/Downloads/app.AppImage`, or a `.pkg.tar.zst`, opens its install page. It has no JSON commands: installing and updating happen in its window, after you confirm. Updating from a terminal is `sudo pacman -Syu`.
+`komble` opens Komble; `komble --updates`, `komble --plugins`, `komble --settings` and `komble --search <words>` open those pages, and `komble --options=<plugin id>` opens that plugin's sheet in Plugins (a Komble already open switches page). `komble ~/Downloads/app.AppImage`, or a `.pkg.tar.zst`, opens its install page. It has no JSON commands: installing and updating happen in its window, after you confirm. Updating from a terminal is `sudo pacman -Syu`.
 
 ## ewe Settings from the terminal
 keys: ewe-settings command, ewe-settings, settings from the terminal, open a settings page from the terminal, hypr-settings
-`ewe-settings` opens ewe Settings, like Super+,; it takes no options and always opens on Appearance, so pick the page in the sidebar. To change a setting from a terminal, use `ewe-conf set <key> <value>`.
+`ewe-settings` opens ewe Settings, like Super+,; it takes no options and always opens on Appearance, so pick the page in its list, or press Ctrl+F (Find a setting) and type what you want. To change a setting from a terminal, use `ewe-conf set <key> <value>`.
 
 ## ewe-companion, me from the terminal
 keys: ewe-companion, ewe companion, companion command, shaun from the terminal, ewe-companion ask, ewe-companion say, ewe-companiond
@@ -86,9 +92,9 @@ keys: ewe-companion, ewe companion, companion command, shaun from the terminal, 
 
 ## The shell's own commands (qs ipc)
 keys: qs ipc, qs ipc call, ipc, quickshell ipc, ipc target, shell command, keybind command, qs ipc show
-The bar, the launcher and the panels answer `qs ipc call <target> <function>`: `applauncher toggle` (the launcher), `overview toggle`, `quicksettings toggle`, `quicksettings tab wifi` (also bt, audio, cal, notifs and the plugins' pages), `quicksettings powerdialog` (the shut-down question), `settings toggle`, `lock lock`, `bar toggle`, `widgets arrange`, `display reset` (every screen back on), `saver toggle`, `store toggle` (Komble), `welcome toggle`. `qs ipc show` lists what answers right now. Use `toggle` rather than `show`: `qs ipc call <target> show` lists targets instead.
+The bar, the launcher and the panels answer `qs ipc call <target> <function>`: `applauncher toggle` (the launcher), `overview toggle`, `quicksettings toggle`, `quicksettings tab wifi` (also bt, audio, cal, notifs, remote for Sharing, power, and the plugins' pages; the name says which page, there is no rail of tabs), `quicksettings powerdialog` (the shut-down question), `settings toggle`, `lock lock`, `bar toggle`, `widgets arrange`, `display reset` (every screen back on), `saver toggle`, `store toggle` (Komble), `welcome toggle`. `qs ipc show` lists what answers right now. Use `toggle` rather than `show`: `qs ipc call <target> show` lists targets instead.
 
-Plugins add their own while they are on: `ewe.insomnia on|off|status`, `ewe.screenshot shoot full|region|window`, `ewe.passwords toggle`, `ewe.safe toggle|lock|unlock|status`, `ewe.cast toggle`, `ewe.clipboard toggle`, `ewe.places toggle`, `ewe.mail refresh` and `ewe.companion toggle`. Your own keys can run any of these: `ewe-conf set desktop.keybinds '[{"combo": "SUPER + U", "exec": "qs ipc call ewe.insomnia toggle"}]'`.
+Plugins add their own while they are on: `ewe.insomnia on|off|status`, `ewe.screenshot shoot full|region|window`, `ewe.passwords toggle`, `ewe.safe toggle|lock|unlock|status`, `ewe.cast toggle`, `ewe.clipboard toggle`, `ewe.places toggle`, `ewe.mail refresh`, `ewe.sysmon toggle|hide` (the System monitor's card) and `ewe.companion toggle`. Your own keys can run any of these: `ewe-conf set desktop.keybinds '[{"combo": "SUPER + U", "exec": "qs ipc call ewe.insomnia toggle"}]'`.
 
 ## ewe-pass, the Passwords plugin's tool
 keys: ewe-pass, ewe pass, passwords plugin command, password fill command

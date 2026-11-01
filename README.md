@@ -109,7 +109,10 @@ plugins. Wave 2 (2026-10-18, P2.10: a site's search, more of the browser,
 the desktop's switches, timers, sums, the CLI knowledge) shipped as
 0.2.0-beta the same day. 0.2.2-beta (2026-11-01) names the other apps
 the way the desktop now does: ewe Settings, ewe Sync, ewe Browser, ewe
-Safe and ewe Cast.**
+Safe and ewe Cast. 0.2.3-beta (2026-11-01) knows ewe 0.39's UI revamp:
+Quick settings without the rail, the System monitor in the bar, Komble's
+plugin sheet, ewe Settings' four groups, ewe Sync's words, ewe Browser's
+save prompt and ewe Safe as the SSH gate.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:
@@ -183,8 +186,9 @@ and never reach a model.
 - **It must follow ewe.** When a page, a label or a shortcut changes in ewe,
   change the pack in the same change. `cargo test` checks that every topic
   parses and that every `open:` line is a valid command.
-- **ewe Settings ignores page links today** (0.18 opens on Appearance), so
-  answers name the page to pick. Komble and Quick settings pages do open.
+- **ewe Settings ignores page links today** (0.18 to 0.22 open on
+  Appearance), so answers name the page to pick. Komble and Quick settings
+  pages do open.
 
 What a provider is told with each question: the primer, the topics that fit,
 and *this computer now*: the ewe and kernel versions, which ewe apps and

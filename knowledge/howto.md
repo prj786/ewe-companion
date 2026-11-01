@@ -1,11 +1,14 @@
 # How to
 
-<!-- Everyday tasks, with the exact labels from the apps (Settings 0.18,
-     Komble 0.20, ewe-sync 0.14, the shell 0.29.0-beta; re-checked
-     2026-10-18: power.sh, zzz.sh, Battery.qml, Settings.qml's idle stages,
-     bundle.json, the plugins' manifests and READMEs). Settings opens on
-     Appearance whatever page is asked for (it ignores --page in 0.18),
-     so every answer names the page to pick in the sidebar. What I can do
+<!-- Everyday tasks, with the exact labels from the apps (ewe Settings
+     0.22: src/lib/search.js holds every row title; Komble 0.21's plugin
+     sheet; ewe Sync 0.16; the shell 0.39.0-beta's QuickSettings.qml and
+     the plugins' manifests; re-checked 2026-11-01 after the UI revamp,
+     on top of 2026-10-18's power.sh, zzz.sh, Battery.qml and the idle
+     stages). ewe Settings opens on Appearance whatever page is asked for
+     (it still ignores --page in 0.22), so every answer names the page to
+     pick. Quick settings has no rail since 0.39: a page opens from a
+     tile's arrow, a shortcut or the header. What I can do
      myself (wave 2: Wi-Fi, Bluetooth, airplane mode, keeping awake,
      timers, sums, the proposals) is checked against this repo's
      commands. -->
@@ -35,7 +38,7 @@ ewe Settings → Appearance: Scheme picks the colours (Ewe Dark, Ewe Light, an i
 ## Make the bar see-through (Glass)
 keys: glass, transparent, transparency, translucent, blur, see-through, bar opacity, frosted, opacity
 open: settings appearance
-ewe Settings → Appearance → Glass and transparency. The Glass switch turns it on (80 % the first time, your last value after that), and Bar opacity sets how solid the bar, the dock and the lock card are. App blur and Window transparency are separate switches for app windows.
+ewe Settings → Appearance → Glass. The Glass switch turns it on (80 % the first time, your last value after that), and Opacity, shown once Glass is on, sets how solid the bar, the dock and the lock card are. App blur and Window transparency, under Windows on the same page, are separate switches for app windows.
 
 ## Animations and motion
 keys: animation, animations, motion, reduce motion, slow animations, fast animations, transitions, turn off animations, effects
@@ -45,7 +48,7 @@ ewe Settings → Animations sets the Speed and Character of how windows, workspa
 ## Change the top bar
 keys: top bar, bar, bar size, bar icons, hide bar, status icons, bar height, status row, panel
 open: settings layout
-ewe Settings → Layout → Top bar. Bar icons sets Small, Normal or Large, the Top bar switch hides it (Super+Shift+B does the same), and "What the status row shows" picks the icons on the right: sound, microphone, network, Bluetooth, battery, power profile, keyboard layout, tray, tiling. Plugin icons are switched in Komble → Plugins → the plugin → Options → Show in bar.
+ewe Settings → Layout → Top bar. Bar icons sets Small, Normal or Large, and the Top bar switch hides it (Super+Shift+B does the same). Status row, below it, picks the icons on the right: Sound, Microphone in use, Network, Bluetooth, Battery, Power profile, Keyboard layout, System tray, Tiling or floating. A plugin's icon or readout (the System monitor's, say) is switched in Komble → Plugins → the plugin → Show in the bar.
 
 ## Make text bigger
 keys: text size, font size, bigger text, larger text, small text, zoom, readability, font, fonts
@@ -55,19 +58,19 @@ ewe Settings → Accessibility → Text size: 100 %, 115 % or 130 %. The same pa
 ## Connect to Wi-Fi
 keys: wifi, wi-fi, wifi password, wi-fi password, wireless, network, internet, connect, hotspot, ethernet, wired
 open: quicksettings wifi
-Quick settings → Wi-Fi: pick the network, type its password, press Join. Saved networks never ask again, and the Wired switch is for a cable. VPNs and connection details are in ewe Settings → Networking. I can switch Wi-Fi itself: "wifi off", "wifi on" (with Undo).
+In Quick settings, click the arrow on the Wi-Fi tile, pick the network, type its password and press Join. Saved networks never ask again, and Wired (Ethernet) on the same page is for a cable. VPNs, saved networks and connection details are in ewe Settings → Network. I can switch Wi-Fi itself: "wifi off", "wifi on" (with Undo).
 
 ## Pair a Bluetooth device
 keys: bluetooth, pair, pairing, headphones, earbuds, airpods, speaker, controller, mouse pairing, keyboard pairing
 open: quicksettings bt
-Quick settings → Bluetooth, or ewe Settings → Bluetooth → Nearby devices, then click the device. Put it in pairing mode first (usually hold its button until a light blinks). When a code shows, ewe asks you to confirm it on screen.
+The arrow on the Bluetooth tile in Quick settings, or ewe Settings → Bluetooth → Nearby devices, then click the device. Put it in pairing mode first (usually hold its button until a light blinks). When a code shows, ewe asks you to confirm it on screen.
 
 Once a device is paired, I can do the rest: "bluetooth on", "bluetooth off", "connect my airpods", "disconnect my headphones" (with Undo). I find the device by the words in its name; when several fit, I list them.
 
 ## Change the sound output or microphone
 keys: sound, audio, speakers, headphones output, output device, input device, microphone, mic, sound output, audio device
 open: quicksettings audio
-Quick settings → Sound lists Output and Input devices; click the one to use. The volume keys, the slider in Quick settings or scrolling on the clock pill change the volume. I can also do it: say "volume 40" or "mute".
+In Quick settings, the arrow beside the volume slider opens Sound, with Output and Input devices; click the one to use. The volume keys, that slider or scrolling on the clock pill change the volume. I can also do it: say "volume 40" or "mute".
 
 ## Change displays and scaling
 keys: display, displays, monitor, monitors, screen, resolution, refresh rate, scale, scaling, hidpi, rotate, mirror, external monitor, second screen, primary display
@@ -81,7 +84,7 @@ ewe has no night light yet. A light scheme (ewe Settings → Appearance) or lowe
 ## Do not disturb and notifications
 keys: do not disturb, dnd, notifications, notification, silence, quiet, banners, notification history, clear notifications
 open: quicksettings notifs
-Banners appear at the top right: click one to jump to its app, right-click to dismiss it. The history is in Quick settings → Notifications, with Clear all. Do not disturb is a tile on Quick settings' home and a switch on the Notifications tab; I can switch it too: "dnd on".
+Banners appear at the top right: click one to jump to its app, right-click to dismiss it. The newest show in Quick settings; Show all opens the whole list, with Clear all. Do not disturb is a tile in Quick settings and a switch on the Notifications page; I can switch it too: "dnd on".
 
 ## Take a screenshot
 keys: screenshot, screen shot, screen capture, capture screen, print screen, snip, snipping
@@ -93,15 +96,15 @@ There is no recording window in ewe. `gpu-screen-recorder` is installed for the 
 
 ## Lock, sleep, restart and shut down
 keys: lock, sleep, suspend, hibernate, restart, reboot, shut down, shutdown, power off, log out, sign out, logout
-open: quicksettings
-Super+Alt+L locks. The Power button in Quick settings offers Lock, Suspend, Sign out, Restart and Shut down (the last three ask first, because open apps close) and the power mode. Left alone, the screen dims after about 4 minutes 40 seconds and locks at 5; on battery, with Low power mode on (the default), about half that, and it also suspends at 15 minutes and hibernates two hours later. You unlock with your login password.
+open: quicksettings power
+Super+Alt+L locks, and so does Lock in Quick settings' header. Power, next to it, opens a page with Suspend, Sign out, Restart and Shut down (the last three ask first, because open apps close). Left alone, the screen dims after about 4 minutes 40 seconds and locks at 5; on battery, with Low power mode on (the default), about half that, and it also suspends at 15 minutes and hibernates two hours later. You unlock with your login password.
 
-Ask me: "lock" locks at once; "suspend", "restart", "shut down" and "log out" show ewe's own command (the one the Power button runs) with Run, and nothing happens until you press it.
+Ask me: "lock" locks at once; "suspend", "restart", "shut down" and "log out" show ewe's own command (the one the Power page runs) with Run, and nothing happens until you press it.
 
 ## Battery and power settings
 keys: battery, power, power profile, power mode, performance, power saver, charge limit, battery health, lid, laptop lid, low battery, keyboard backlight
 open: settings power
-ewe Settings → Power: what the lid does (Suspend even when docked), a battery Charge limit, the Keyboard backlight level, the Power profile, and Low power mode on battery. Quick settings' Power button switches Power saver, Balanced and Performance quickly. ewe warns at 20 % and 10 % battery and hibernates at 5 % (or suspends, when it cannot hibernate).
+ewe Settings → Power: what the lid does (Suspend even when docked), a battery Charge limit, the Keyboard backlight level, the Power profile, and Low power mode on battery. The foot of Quick settings shows the battery and switches Power saver, Balanced and Performance quickly. ewe warns at 20 % and 10 % battery and hibernates at 5 % (or suspends, when it cannot hibernate).
 
 ## Screensaver and auto-lock
 keys: screensaver, screen saver, auto lock, idle, timeout, require password, lock after
@@ -127,34 +130,34 @@ Click the updates icon in the bar (a count means updates wait), then Komble → 
 ## Install or remove an app
 keys: install, install app, install software, uninstall, remove app, app store, store, aur, appimage, flatpak, software, download app, package
 open: komble
-Komble → Discover searches the Arch repositories, the AUR and AppImages; AUR builds community packages (read the PKGBUILD first, then the build button appears); For you lists apps from your other machines. Remove apps from Komble → Installed or the app's page. Say "install obs studio" and I open Komble's search for it; installing stays your click.
+Komble → Discover searches the Arch repositories, the AUR and AppImages; AUR builds community packages (read the PKGBUILD first, then the build button appears); For you lists apps from your other computers. Remove apps from Komble → Installed or the app's page. Say "install obs studio" and I open Komble's search for it; installing stays your click.
 
 ## Add, remove or set up a plugin
-keys: plugin, plugins, add-on, addon, extension, dock plugin, enable plugin, disable plugin, plugin settings, plugin options
+keys: plugin, plugins, add-on, addon, extension, dock plugin, enable plugin, disable plugin, plugin settings, plugin options, plugin sheet, add plugin
 open: komble plugins
-Komble → Plugins → From ewe: pick one (installing restarts the shell). Each plugin's settings, and whether it shows in the bar, are under its Options. From a terminal: `ewe-plugin install ewe.dock`, `ewe-plugin enable|disable <id>`, `ewe-plugin list`. A fresh ewe has none of them.
+Komble → Plugins lists every plugin as a row: Install when it is not here, a switch when it is (installing or switching restarts the shell). Click a plugin to open its sheet: version, where it comes from, what it adds and what it needs, its options, Show in the bar and Show on the desktop, and Update or Remove. "Add plugin…" adds one from a git address (plugins run unsandboxed: only from people you trust). From a terminal: `ewe-plugin install ewe.dock`, `ewe-plugin enable|disable <id>`, `ewe-plugin list`. A fresh ewe has none of them.
 
-The plugins from ewe: Dock; Clipboard & emoji (history and an emoji picker under the scissors); Screenshot (Print keys); Passwords (Super+P fills a login from ewe Safe, 1Password, Bitwarden or pass); ewe Safe (a lock in the bar, Quick Access on Super+Shift+P; needs the ewe-safe package); Insomnia (keep the screen awake); System monitor (CPU and memory); SSH (your ~/.ssh/config hosts); VPN (NetworkManager VPNs); Music (what plays, any player); Places (a small file browser); Phone (KDE Connect); Mail (unread IMAP or Gmail mail); Cast to TV (Super+Shift+C); Shaun (me, Super+A; needs the ewe-companion package).
+The plugins from ewe: Dock; Clipboard & emoji (history and an emoji picker under the scissors); Screenshot (Print keys); Passwords (Super+P fills a login from ewe Safe, 1Password, Bitwarden or pass); ewe Safe (a lock in the bar, Quick Access on Super+Shift+P; needs the ewe-safe package); Insomnia (keep the screen awake); System monitor (CPU, memory and internet speed in the bar); SSH (your ~/.ssh/config hosts); VPN (NetworkManager VPNs); Music (what plays, any player); Places (a small file browser); Phone (KDE Connect); Mail (unread IMAP or Gmail mail); Cast to TV (Super+Shift+C); Shaun (me, Super+A; needs the ewe-companion package).
 
 ## The dock
 keys: dock, taskbar, pinned apps, app dock, dock size, autohide dock
 open: komble options=ewe.dock
-There is no dock until you install the Dock plugin (Komble → Plugins → From ewe). Its auto-hide and icon size are in Komble → Plugins → Dock → Options; ewe Settings → Layout → Dock options opens the same place.
+There is no dock until you install the Dock plugin (Komble → Plugins → From ewe). Its Intelligent auto-hide and Icon size are in its sheet: click Dock in Komble → Plugins. ewe Settings → Layout → Dock options opens the same place.
 
 ## Sign in to your account and sync
 keys: account, nextcloud, sign in, login account, cloud, sync, synchronise, synchronize, settings sync, ewe-sync, my files
 open: sync
 Open ewe Sync → Account and sign in with your Nextcloud server's address; your browser opens your server's own login page. Then your files are in ~/Nextcloud, your calendar shows in Quick settings, and your settings back up. ewe cannot make an account: get one from a Nextcloud provider or your own server.
 
-## Back up and restore this machine
-keys: backup, back up, restore, new computer, new machine, reinstall, migrate, transfer settings
+## Back up and restore this computer
+keys: backup, back up, restore, new computer, new machine, reinstall, migrate, transfer settings, bring everything back
 open: sync
-ewe Sync → This machine: "Back up this machine", "Sync now", the Auto-sync switch, and "Restore…". A new machine that signs in to the same account is offered the backup in Welcome. Passwords are not in the backup (they stay in the keyring), so a restored machine asks for them once. Folder pairs to keep in sync are in ewe Sync → Folders.
+ewe Sync → Settings & apps: "Sync now" backs up this computer's settings and apps, the Auto-sync switch keeps doing it whenever something changes, and "Restore…" brings the account's copy back. A new computer that signs in to the same account is offered the backup in Welcome, and ewe Sync's Overview offers "Bring everything back". ewe Safe keeps passwords in your account itself, and other apps' passwords stay in the keyring, so a restored computer may ask for some once. Folders to keep in sync are in ewe Sync → Folders.
 
 ## Arrange windows and tiling
 keys: tiling, tile windows, floating windows, layout, dwindle, master, scrolling, gaps, borders, window gaps, corner radius
 open: settings layout
-Windows tile by default. ewe Settings → Layout: Tiling on or off, the Tiling style (Dwindle, Master or Scrolling), Inner and Outer gaps, Border width and Corner radius. The tiling switch in the bar flips tiling quickly.
+Windows tile by default. ewe Settings → Layout: Tiling on or off, the Tiling style (Dwindle, Master, Scrolling or Monocle), Inner and Outer gaps, Border width and Corner radius. The tiling switch in the bar flips tiling quickly.
 
 ## Open an app on a chosen workspace
 keys: window rule, window rules, always open, open on workspace, float app, app rule
@@ -164,12 +167,12 @@ ewe Settings → Window rules → Add rule: choose the app, then the workspace i
 ## Default apps
 keys: default app, default apps, default browser, open with, default editor, default viewer, default mail, default file manager
 open: settings defaults
-ewe Settings → Default apps chooses the Browser, Mail, Text Editor, Image Viewer, Video Player and File Manager. Super+B opens the browser chosen there.
+ewe Settings → Default apps chooses the Browser, Mail, Text editor, Image viewer, Video player and File manager. Super+B opens the browser chosen there.
 
 ## Start apps when you sign in
 keys: startup, autostart, start at login, launch at login, startup apps, login items
 open: settings startup
-ewe Settings → Startup → Add app, then pick it.
+ewe Settings → Startup apps → Add app…, then pick it. Each app there has a switch to skip it for now and an × to remove it; changes apply the next time you sign in.
 
 ## Time zone, clock and language
 keys: time zone, timezone, time, clock, date, language, locale, display language, network time
@@ -179,7 +182,7 @@ ewe Settings → Time and place: Set the time zone automatically (or pick a Regi
 ## Your name and picture
 keys: user, username, my name, profile picture, avatar, user picture, account picture
 open: settings user
-ewe Settings → User: Your picture, Your name and the Picture shape. The account section there opens ewe Sync.
+ewe Settings → User: Change picture… (or Use account picture), click your name to change it, and the Picture shape. The account itself (sign-in, backups, Google) is in ewe Sync: "Open ewe Sync" at the top of that page.
 
 ## Open an app or a folder by asking
 keys: open app, open apps, open an app, launch app, launch apps, start app, open folder, open a folder, open terminal in, terminal in folder, open in terminal, open with
@@ -190,18 +193,18 @@ I open any installed app, and apps in a folder. Tell me in the chat (Super+A): "
 ## Find a window, an app or a file
 keys: find window, search, find app, find file, overview, launcher, search files, all windows, expose, find a folder, where is my file
 open: overview
-Tap Super for the Overview: window cards at the top, workspaces at the bottom, and typing searches apps, open windows and files. Drop a window card on a workspace to move it. Super+D opens the launcher, which searches apps and files; clicking an app that is open already jumps to its window.
+Tap Super for the Overview: the windows spread out so you can click the one you want, and the workspaces wait along the top (drop a window on one to move it there). Super+D opens the launcher, which searches apps and files; clicking an app that is open already jumps to its window.
 
 Or ask me: "find my resume", "where is the ewe-safe folder", "find pdfs about tax". I look through your home folder by name (not hidden folders or build folders) and list what I find, with Open, Show in folder, Copy path and, for a folder, Open terminal here.
 
 ## Cast to a TV
 keys: cast, casting, tv, chromecast, miracast, mirror to tv, screen mirroring, smart tv
 open: quicksettings cast
-With the Cast plugin: Quick settings → Cast, or Super+Shift+C, then pick the TV. Open Screen Mirroring on the TV first, keep the laptop near it, and prefer 5 GHz Wi-Fi.
+With the Cast plugin: the arrow on the Cast tile in Quick settings, or Super+Shift+C, then pick the TV. Open Screen Mirroring on the TV first, keep the laptop near it, and prefer 5 GHz Wi-Fi.
 
 ## Fill in a password
 keys: password, passwords, password manager, 1password, bitwarden, pass, login fill, autofill, super p, 1password cli
-With the Passwords plugin, Super+P opens the picker for the window in front: Enter types the username, Tab, then the password; Ctrl+Enter types only the password; Ctrl+C copies the username and Ctrl+Shift+C the password; Ctrl+P pins the login to that app; with ewe Safe, Ctrl+L locks it. It fills from ewe Safe, ewe's own password manager, once a safe is set up; 1Password, Bitwarden or pass work too (Komble → Plugins → Passwords → Options → Password manager, which also has "Press Enter after the password").
+With the Passwords plugin, Super+P opens the picker for the window in front: Enter types the username, Tab, then the password; Ctrl+Enter types only the password; Ctrl+C copies the username and Ctrl+Shift+C the password; Ctrl+P pins the login to that app; with ewe Safe, Ctrl+L locks it. It fills from ewe Safe, ewe's own password manager, once a safe is set up; 1Password, Bitwarden or pass work too (Komble → Plugins → Passwords → Password manager, next to "Press Enter after the password").
 
 If the chosen manager cannot answer (1Password's CLI missing, say) and a safe is set up, the picker offers Use ewe Safe: press Enter. In ewe Browser, ewe Safe fills logins on its own, without the plugin.
 <!-- ewe.passwords 1.3.0 (Panel.qml, README): provider auto / ewe / 1password / bitwarden / pass; auto picks Safe once a safe exists; "Use Safe" runs ewe-pass use-safe. -->
@@ -209,7 +212,7 @@ If the chosen manager cannot answer (1Password's CLI missing, say) and a safe is
 ## Set up a VPN
 keys: vpn, wireguard, openvpn, l2tp, ipsec, tunnel
 open: settings network
-ewe Settings → Networking → Add a VPN. The VPN plugin adds a quick switch in Quick settings and a shield in the bar. Its passwords stay in NetworkManager's own profile, which only the system can read, never in ewe.conf.
+ewe Settings → Network → VPN → Add VPN…. The VPN plugin adds a VPN tile in Quick settings (its arrow lists your VPNs) and a shield in the bar. Its passwords stay in NetworkManager's own profile, which only the system can read, never in ewe.conf.
 
 ## Keep the computer awake
 keys: keep awake, stay awake, caffeine, insomnia, prevent sleep, don't sleep, no sleep, screen keeps turning off
@@ -221,11 +224,18 @@ With the Clipboard & emoji plugin, click the scissors in the bar to see what you
 
 ## Mail
 keys: mail, email, e-mail, inbox, imap, unread
-Set up a mailbox in ewe Sync → Mail (any IMAP account; the password goes to the keyring), or use Gmail through the optional Google sign-in. The Mail plugin then shows the unread count on the envelope in the bar and an Inbox page in Quick settings; its option "Notifications for new mail" adds a banner per message.
+Set up a mailbox in ewe Sync → Mail (any IMAP account; the password goes to the keyring), or use Gmail through the optional Google sign-in. The Mail plugin then shows the unread count on the envelope in the bar and a Mail shortcut in Quick settings that opens your Inbox; its option "Notifications for new mail" adds a banner per message.
+
+## The System monitor: CPU, memory and internet speed
+keys: system monitor, sysmon, cpu usage, memory usage, ram usage, cpu meter, memory meter, internet speed, network speed, download speed, upload speed
+open: komble options=ewe.sysmon
+The System monitor plugin (Komble → Plugins → From ewe) puts a readout in the top bar, on by default once installed: CPU %, memory % and the download speed. Click it for its card: CPU with a one-minute graph, Memory (used of total, and swap), and Internet (↓ and ↑ with graphs, and the network in use: Wi-Fi and its name, Ethernet, VPN or Offline). The card's "Show on desktop" switch puts the same card on the desktop. It is not in Quick settings any more (since ewe 0.39).
+
+Its options, in its sheet (click System monitor in Komble → Plugins): "In the bar" shows All three, CPU + memory, or Speed (↓ and ↑), and "Speed in" is MB/s (like downloads) or Mbit/s (like speed tests). Show in the bar and Show on the desktop are there too.
 
 ## Desktop widgets
 keys: widget, widgets, desktop widget, arrange widgets, pin plugin to desktop
-Plugins that can sit on the desktop are pinned in Komble → Plugins → the plugin → Options → On the desktop. Super+Shift+W arranges them: drag, pin, lock or hide, then Esc.
+Plugins that can sit on the desktop (the System monitor's card, Slack …) go there with Show on the desktop in their sheet: click the plugin in Komble → Plugins. The same sheet pins one above your windows, locks its position or resets it. Super+Shift+W arranges them: drag, pin, lock or hide, then Esc.
 
 ## Airplane mode
 keys: airplane mode, flight mode, aeroplane mode, plane mode, all radios off, wireless off
@@ -233,7 +243,7 @@ ewe has no airplane switch of its own, but I do it: "airplane mode on" turns Wi-
 
 ## Timers and reminders
 keys: timer, timers, set a timer, reminder, reminders, remind me, alarm, countdown
-Ask me: "set a timer for 5 minutes", "remind me in 10 minutes to call mum", "remind me at 5pm to call the bank", "remind me to stretch at 17:30". When it is due, a notification from Shaun shows (it stays in Quick settings → Notifications; Do not disturb hides the banner). "Show my timers" lists them with Cancel, "cancel the timer" cancels one, and Undo right after setting it cancels it too. They wait in my own store, so they survive a restart of the shell or of me; one that fell due while I was off shows when I start again, with the time it was due. A time like "at 5" could be morning or evening: say "5pm" or "17:00".
+Ask me: "set a timer for 5 minutes", "remind me in 10 minutes to call mum", "remind me at 5pm to call the bank", "remind me to stretch at 17:30". When it is due, a notification from Shaun shows (it stays in Quick settings' notifications; Do not disturb hides the banner). "Show my timers" lists them with Cancel, "cancel the timer" cancels one, and Undo right after setting it cancels it too. They wait in my own store, so they survive a restart of the shell or of me; one that fell due while I was off shows when I start again, with the time it was due. A time like "at 5" could be morning or evening: say "5pm" or "17:00".
 
 ## Do a sum
 keys: calculator, calculate, sum, percent, percentage, maths, math, arithmetic, how much is

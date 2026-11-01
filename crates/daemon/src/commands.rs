@@ -133,8 +133,9 @@ pub(crate) async fn brightness() -> Option<i64> {
         .ok()
 }
 
-/// What an `open` says it did. Settings 0.18 opens on Appearance whatever
-/// page is asked for, so the line names the page to pick.
+/// What an `open` says it did. ewe Settings (0.18 to 0.22) opens on
+/// Appearance whatever page is asked for, so the line names the page to
+/// pick.
 fn open_line(what: &str, page: &str) -> String {
     let label = catalog::page_label(what, page);
     match (what, label) {

@@ -628,6 +628,11 @@ fn rules() -> &'static [Rule] {
               |_| Some(Call::new("open", json!({"what": "overview"})))),
             r(r"(?:open|show|go to)(?: the| my)? (appearance|accessibility|animations?|layout|window rules?|displays?|monitors?|screens?|network(?:ing)?|wallpaper|keyboard|mouse|touchpad|screensaver|lock screen|power|battery|default apps?|startup(?: apps)?|(?:keyboard )?shortcuts|time|language|user|account) settings",
               |c| {
+                  // the account (sign-in, backups, mail) is ewe Sync's since
+                  // ewe Settings 0.22: there is no Account page
+                  if &c[1] == "account" {
+                      return Some(Call::new("open", json!({"what": "sync"})));
+                  }
                   let page = match &c[1] {
                       "animation" | "animations" => "animations",
                       "window rule" | "window rules" => "windowrules",
@@ -640,7 +645,6 @@ fn rules() -> &'static [Rule] {
                       "startup" | "startup apps" => "startup",
                       "shortcuts" | "keyboard shortcuts" => "shortcuts",
                       "time" | "language" => "time",
-                      "user" | "account" => "user",
                       other => other,
                   };
                   Some(Call::new("open", json!({"what": "settings", "page": page})))
@@ -994,6 +998,13 @@ mod tests {
             "open wallpaper settings",
             "open",
             json!({"what": "settings", "page": "wallpaper"}),
+        );
+        // ewe Settings 0.22 has no Account page: the account is ewe Sync's
+        is("open account settings", "open", json!({"what": "sync"}));
+        is(
+            "open networking settings",
+            "open",
+            json!({"what": "settings", "page": "network"}),
         );
         // every page a rule makes is one `open` accepts
         for t in [

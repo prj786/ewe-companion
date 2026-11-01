@@ -1,18 +1,17 @@
 # Keyboard shortcuts
 
 <!-- The defaults from ewe/dotfiles/hypr/hyprland.lua, checked against
-     0.29.0-beta (origin/main d0f84de; only Super+B's fallback changed since
-     0.25.2) and the plugins' manifests. The four-finger swipe is wave 2
-     (ewe 0.30.0-beta, the wave plan's Contract 3), written before it
-     landed. Mod is Super. The companion adds the user's own binds and the
-     enabled plugins' binds at question time, so only the defaults live
-     here. -->
+     0.39.0-beta (origin/main db58e95; Super+Z minimizes since 0.34, which
+     retired the Pen and Super+S) and the plugins' manifests. The
+     four-finger swipe is wave 2 (ewe 0.30.0-beta). Mod is Super. The
+     companion adds the user's own binds and the enabled plugins' binds at
+     question time, so only the defaults live here. -->
 
 ## Shortcuts for opening things
 keys: shortcut, shortcuts, keybind, keybinds, hotkey, key, keys, keyboard shortcut, open launcher, open terminal, open settings, open files
 Super is the Windows key. Tap Super alone for the Overview. Super+D opens the launcher (press it again to close), Super+Return a terminal (kitty), Super+E the file manager (Nemo), Super+B the browser, Super+, ewe Settings, Super+N Quick settings, Super+C the calendar, and Super+A Shaun (the companion).
 
-Super+Shift+B shows or hides the top bar, Super+Space switches the keyboard layout, Super+Alt+L locks the screen, Super+Ctrl+R reloads the desktop's config, Super+Shift+R turns every screen back on (after a monitor was plugged in and the screen stayed black) and Super+Ctrl+Q logs out. Super+Shift+W arranges desktop widgets (Esc ends it). ewe Settings → Shortcuts lists them all.
+Super+Shift+B shows or hides the top bar, Super+Space switches the keyboard layout, Super+Alt+L locks the screen, Super+Ctrl+R reloads the desktop's config, Super+Shift+R turns every screen back on (after a monitor was plugged in and the screen stayed black) and Super+Ctrl+Q logs out. Super+Shift+W arranges desktop widgets (Esc ends it). ewe Settings → Keyboard shortcuts lists them all.
 
 ## Shortcuts for windows
 keys: window, windows, close window, fullscreen, maximise, maximize, float, floating, tile, tiling, move window, resize window, focus, group, tabs, split
@@ -24,11 +23,11 @@ Move focus with Super+H/J/K/L or Super+arrows; add Shift to move the window, Ctr
 keys: scrolling layout, scrolling, columns, column width, strip
 These work only when ewe Settings → Layout → Tiling style is Scrolling. Super+Alt+[ and Super+Alt+] move the strip one column, Super+Alt+, and Super+Alt+. swap with the column on the left or right, Super+Alt+R cycles column widths, Super+Alt+F fits the visible columns on screen, Super+Alt+P gives the window its own column and Super+Alt+C merges it into the next column or splits it out.
 
-## Workspaces and the Pen
-keys: workspace, workspaces, desktop, desktops, virtual desktop, switch workspace, move to workspace, pen, stash, hide window
+## Workspaces and minimizing windows
+keys: workspace, workspaces, desktop, desktops, virtual desktop, switch workspace, move to workspace, minimize, minimise, minimize a window, minimized, hide window, pen, stash
 Super+1…8 switches to workspace 1 to 8, and Super+Shift+1…8 moves the window there and follows it. Super with the mouse wheel cycles workspaces (with the Scrolling layout it scrolls the strip instead).
 
-The Pen is a hidden workspace for windows you want out of the way: Super+S (or Super+Z, or Super+`) goes in and out of it. Super+Shift+S (or Super+Shift+Z) stashes a window: one on a desktop goes into the Pen, and one in the Pen comes back to the desktop you are on.
+Super+Z minimizes the window in front, and Super+Shift+Z brings back the one you minimized last, onto the workspace you are on. With the Dock plugin, each minimized window is a picture in the dock: click it to bring it back. Minimizing replaced the Pen in ewe 0.34: there is no Pen to stash windows in any more, Super+S does nothing, and windows that were still in the Pen count as minimized.
 
 ## Touchpad gestures
 keys: touchpad, gesture, gestures, swipe, three fingers, four fingers, trackpad
@@ -46,6 +45,6 @@ These exist only while the plugin is installed and on. Screenshot: Print takes t
 
 ## Make your own shortcut
 keys: own shortcut, custom shortcut, add shortcut, new shortcut, change shortcut, rebind, bind a key, custom keybind
-Your own launch shortcuts are recorded in ewe.conf as `desktop.keybinds`, so they sync with it. Today you add them from a terminal, for example `ewe-conf set desktop.keybinds '[{"combo": "SUPER + U", "exec": "kitty"}]'` (the list replaces the old one). ewe Settings → Shortcuts shows shortcuts but cannot change them yet. Pick a combo ewe does not use (ewe Settings → Shortcuts lists them): nothing stops a clash, and both would run.
+Your own launch shortcuts are recorded in ewe.conf as `desktop.keybinds`, so they sync with it. Today you add them from a terminal, for example `ewe-conf set desktop.keybinds '[{"combo": "SUPER + U", "exec": "kitty"}]'` (the list replaces the old one). ewe Settings → Keyboard shortcuts shows shortcuts but cannot change them yet. Pick a combo ewe does not use (ewe Settings → Keyboard shortcuts lists them): nothing stops a clash, and both would run.
 
 Apps that register global shortcuts (1Password's Quick Access, Discord push-to-talk) get them bound automatically when the combo is free; `ewe-globalshortcuts list` shows what was bound and what was skipped.
