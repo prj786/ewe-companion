@@ -18,9 +18,9 @@
 
 ## The ewe command-line tools
 keys: command line, terminal commands, cli, command-line tools, command line tools, scripting, script ewe, json output, ewe commands, list of commands
-Most ewe tools print one JSON object and exit 0, so anything you click can be scripted. ewe-conf reads and changes settings, ewe-theme the colours and schemes, ewe-plugin the plugins, ewe-bt Bluetooth, ewe-cloud, ewe-files and ewe-drive your account and its folders, ewe-mail and ewe-caldav mail and the calendar, ewe-auth the optional Google sign-in, ewe-globalshortcuts apps' global shortcuts, ewe-safe Safe, ewe-browser ewe browser, komble opens the store, ewe-companion talks to me, and ewe-setup refreshes ewe in your home. The bar and panels answer `qs ipc call <target> <function>`. Ask me about any of them by name.
+Most ewe tools print one JSON object and exit 0, so anything you click can be scripted. ewe-conf reads and changes settings, ewe-theme the colours and schemes, ewe-plugin the plugins, ewe-bt Bluetooth, ewe-cloud, ewe-files and ewe-drive your account and its folders, ewe-mail and ewe-caldav mail and the calendar, ewe-auth the optional Google sign-in, ewe-globalshortcuts apps' global shortcuts, ewe-safe ewe Safe, ewe-browser ewe Browser, komble opens the store, ewe-companion talks to me, and ewe-setup refreshes ewe in your home. The bar and panels answer `qs ipc call <target> <function>`. Ask me about any of them by name.
 
-A few talk to a person instead: `ewe-conf get` prints the bare value and `ewe-conf set` prints nothing, `ewe-plugin` prints text unless you add `--json`, and Safe's script commands (`read`, `run`, `inject`) print what they fetch, so I never run those. ewe-share-picker is the window a screen-sharing app opens to pick a screen, a window or a region; nobody runs it by hand.
+A few talk to a person instead: `ewe-conf get` prints the bare value and `ewe-conf set` prints nothing, `ewe-plugin` prints text unless you add `--json`, and ewe Safe's script commands (`read`, `run`, `inject`) print what they fetch, so I never run those. ewe-share-picker is the window a screen-sharing app opens to pick a screen, a window or a region; nobody runs it by hand.
 
 ## ewe-conf, the settings file's tool
 keys: ewe-conf, ewe conf, conf get, conf set, set a setting from the terminal, change a setting from the terminal, ewe.conf command, dotted key
@@ -30,7 +30,7 @@ With sync on, every `set` uploads the file within about 30 seconds. `ewe-conf sy
 
 ## ewe-theme, schemes from the terminal
 keys: ewe-theme, ewe theme, scheme apply, scheme list, scheme import, import a scheme, base24, base16, theme from the terminal, from-wallpaper
-`ewe-theme scheme list` shows the schemes and which one is on; `ewe-theme scheme apply ewe-light` (or `ewe-dark`, or one of your own) switches the whole desktop; `ewe-theme scheme import <file or url>` adds a Base16 or Base24 scheme (`--apply` uses it at once); `ewe-theme scheme from-wallpaper --apply` makes one from your wallpaper (`--light` for a light one); `ewe-theme show` prints every look value. Light or dark is the scheme's own kind: there is no separate mode switch. It changes ewe.conf through ewe-conf, like Settings → Appearance.
+`ewe-theme scheme list` shows the schemes and which one is on; `ewe-theme scheme apply ewe-light` (or `ewe-dark`, or one of your own) switches the whole desktop; `ewe-theme scheme import <file or url>` adds a Base16 or Base24 scheme (`--apply` uses it at once); `ewe-theme scheme from-wallpaper --apply` makes one from your wallpaper (`--light` for a light one); `ewe-theme show` prints every look value. Light or dark is the scheme's own kind: there is no separate mode switch. It changes ewe.conf through ewe-conf, like ewe Settings → Appearance.
 
 ## ewe-plugin, plugins from the terminal
 keys: ewe-plugin, ewe plugin, plugin command, plugins from the terminal, ewe-plugin install, ewe-plugin list
@@ -42,7 +42,7 @@ keys: ewe-bt, ewe bt, bluetooth from the terminal, bluetooth command, bluetoothc
 
 ## ewe-cloud, ewe-files and ewe-drive: your account and its folders
 keys: ewe-cloud, ewe cloud, ewe-files, ewe files, ewe-drive, ewe drive, nextcloud folder, google drive folder, mount nextcloud, rclone
-`ewe-cloud status` says whether you are signed in to your Nextcloud (server, user, storage, the keyring), `ewe-cloud login <server>` signs in through your browser and `ewe-cloud logout` signs out. `ewe-cloud token` prints the app password: a secret, keep it out of chats and logs. `ewe-files status|setup|mount|unmount|forget` puts your Nextcloud at ~/Nextcloud, and `ewe-drive status|setup|mount|unmount` does the same for Google Drive at ~/Google Drive (with the optional Google sign-in). ewe-sync does all of this with buttons.
+`ewe-cloud status` says whether you are signed in to your Nextcloud (server, user, storage, the keyring), `ewe-cloud login <server>` signs in through your browser and `ewe-cloud logout` signs out. `ewe-cloud token` prints the app password: a secret, keep it out of chats and logs. `ewe-files status|setup|mount|unmount|forget` puts your Nextcloud at ~/Nextcloud, and `ewe-drive status|setup|mount|unmount` does the same for Google Drive at ~/Google Drive (with the optional Google sign-in). ewe Sync does all of this with buttons.
 
 ## ewe-mail and ewe-caldav: mail and the calendar
 keys: ewe-mail, ewe mail, ewe-caldav, ewe caldav, mail from the terminal, calendar from the terminal, unread mail command, calendar events command
@@ -50,7 +50,7 @@ keys: ewe-mail, ewe mail, ewe-caldav, ewe caldav, mail from the terminal, calend
 
 ## ewe-auth, the optional Google sign-in
 keys: ewe-auth, ewe auth, google sign in, google oauth, oauth client, oauth client file, sign in with google
-Google is optional in ewe, and no Google app ships: it needs your own OAuth client file at ~/.config/ewe/oauth-client.json. `ewe-auth status` says whether it is set up and signed in, `ewe-auth login` signs in (`--with-mail` and `--with-drive` add Gmail and Drive) and `ewe-auth logout` signs out; the token stays in the keyring. `ewe-auth keyring-reset` moves a broken keyring aside: log out and back in, then sign in again from ewe-sync.
+Google is optional in ewe, and no Google app ships: it needs your own OAuth client file at ~/.config/ewe/oauth-client.json. `ewe-auth status` says whether it is set up and signed in, `ewe-auth login` signs in (`--with-mail` and `--with-drive` add Gmail and Drive) and `ewe-auth logout` signs out; the token stays in the keyring. `ewe-auth keyring-reset` moves a broken keyring aside: log out and back in, then sign in again from ewe Sync.
 
 ## ewe-globalshortcuts, apps' global shortcuts
 keys: ewe-globalshortcuts, global shortcuts, global shortcut, push to talk shortcut, portal shortcut, app shortcut not working
@@ -58,27 +58,27 @@ Apps that ask the desktop for a global shortcut (Discord's push to talk, 1Passwo
 
 ## ewe-sync from the terminal
 keys: ewe-sync command, ewe-sync --check, ewe-sync check, sync from the terminal, sync command
-ewe-sync is an app, not a command-line tool: `ewe-sync` opens it, `ewe-sync --hidden` starts it without a window, and `ewe-sync --check` prints the account and sync state as JSON (it exits 1 when something is wrong). The settings sync itself is `ewe-conf sync-status`, `ewe-conf push` and `ewe-conf pull`.
+ewe Sync is an app, not a command-line tool: `ewe-sync` opens it, `ewe-sync --hidden` starts it without a window, and `ewe-sync --check` prints the account and sync state as JSON (it exits 1 when something is wrong). The settings sync itself is `ewe-conf sync-status`, `ewe-conf push` and `ewe-conf pull`.
 
 ## ewe-setup, install.sh and the installer
 keys: ewe-setup, ewe setup, install.sh, ewe-install, installer, reinstall ewe, set up ewe again, install script
 `ewe-setup` puts ewe's files in your home again; run it as yourself, never with sudo, when the desktop still looks old after an update and a fresh login. `bash /usr/share/ewe/install.sh --no-packages`, also as yourself (it asks for sudo where it needs it), sets up the system side again: the login screen, the services, the screen-sharing portal; `--check-only` only checks. On the install USB, the Install ewe app (or `ewe-install` in a terminal) installs Arch and ewe; an installed system does not have it.
 
-## ewe-safe, Safe's command line
+## ewe-safe, ewe Safe's command line
 keys: ewe-safe command, ewe-safe commands, safe command line, safe cli, ewe-safe status, ewe-safe lock
-`ewe-safe status` says whether Safe is set up and locked, how many items and how it syncs; `ewe-safe unlock --ask` opens Safe's own prompt; `ewe-safe lock`; `ewe-safe search <words>` and `ewe-safe list` find items; `ewe-safe copy <id> --field password` puts a value on the clipboard and clears it later; `ewe-safe generate --length 24` makes a password; `ewe-safe import 1pux <file>` brings in a 1Password export; `ewe-safe ssh …` runs the SSH agent; `ewe-safe passkey list` lists passkeys. Passwords are typed into Safe's prompt or piped in, never put on the command line. It answers JSON, except the script commands (`read`, `run`, `inject`, `git-credential`), which work like 1Password's `op`. I only ask Safe to copy, lock, unlock and count: nothing that prints a password or a login's name goes through me.
+`ewe-safe status` says whether ewe Safe is set up and locked, how many items and how it syncs; `ewe-safe unlock --ask` opens ewe Safe's own prompt; `ewe-safe lock`; `ewe-safe search <words>` and `ewe-safe list` find items; `ewe-safe copy <id> --field password` puts a value on the clipboard and clears it later; `ewe-safe generate --length 24` makes a password; `ewe-safe import 1pux <file>` brings in a 1Password export; `ewe-safe ssh …` runs the SSH agent; `ewe-safe passkey list` lists passkeys. Passwords are typed into ewe Safe's prompt or piped in, never put on the command line. It answers JSON, except the script commands (`read`, `run`, `inject`, `git-credential`), which work like 1Password's `op`. I only ask ewe Safe to copy, lock, unlock and count: nothing that prints a password or a login's name goes through me.
 
 ## ewe-browser, the browser's command line
 keys: ewe-browser command, ewe-browser cli, browser command line, browser from the terminal, browser cli
-`ewe-browser tabs`, `history <words>`, `bookmarks`, `downloads`, `music <words>`, `find <words>` and `page --text` read what the browser knows (most of them with the browser closed too); `ewe-browser open <url or folder>`, `search <words>`, `play <song>`, `home`, `focus` and `tab activate|reload|mute|pin <id>`, `tab reopen` and `bookmark add <url>` act. From ewe browser 0.4: `search <words> --site zara` (a site's own search), `workspaces`, `workspace activate|next|prev|create`, `back`, `forward`, `download open|show <id>` and `open … --workspace <name>`. Every one prints JSON and exits 0; acting ones say how to undo. `ewe-browser open app://history/` (or settings, music, files) opens the browser's own pages. This is how I drive the browser.
+`ewe-browser tabs`, `history <words>`, `bookmarks`, `downloads`, `music <words>`, `find <words>` and `page --text` read what the browser knows (most of them with the browser closed too); `ewe-browser open <url or folder>`, `search <words>`, `play <song>`, `home`, `focus` and `tab activate|reload|mute|pin <id>`, `tab reopen` and `bookmark add <url>` act. From ewe Browser 0.4: `search <words> --site zara` (a site's own search), `workspaces`, `workspace activate|next|prev|create`, `back`, `forward`, `download open|show <id>` and `open … --workspace <name>`. Every one prints JSON and exits 0; acting ones say how to undo. `ewe-browser open app://history/` (or settings, music, files) opens the browser's own pages. This is how I drive the browser.
 
 ## komble from the terminal
 keys: komble command, komble --search, komble flags, komble cli, open komble from the terminal, komble updates command
 `komble` opens Komble; `komble --updates`, `komble --plugins`, `komble --settings`, `komble --search <words>` and `komble --options=<plugin id>` open those pages (a Komble already open switches page). `komble ~/Downloads/app.AppImage`, or a `.pkg.tar.zst`, opens its install page. It has no JSON commands: installing and updating happen in its window, after you confirm. Updating from a terminal is `sudo pacman -Syu`.
 
-## Settings from the terminal
+## ewe Settings from the terminal
 keys: ewe-settings command, ewe-settings, settings from the terminal, open a settings page from the terminal, hypr-settings
-`ewe-settings` opens Settings, like Super+,; it takes no options and always opens on Appearance, so pick the page in the sidebar. To change a setting from a terminal, use `ewe-conf set <key> <value>`.
+`ewe-settings` opens ewe Settings, like Super+,; it takes no options and always opens on Appearance, so pick the page in the sidebar. To change a setting from a terminal, use `ewe-conf set <key> <value>`.
 
 ## ewe-companion, me from the terminal
 keys: ewe-companion, ewe companion, companion command, shaun from the terminal, ewe-companion ask, ewe-companion say, ewe-companiond
@@ -92,4 +92,4 @@ Plugins add their own while they are on: `ewe.insomnia on|off|status`, `ewe.scre
 
 ## ewe-pass, the Passwords plugin's tool
 keys: ewe-pass, ewe pass, passwords plugin command, password fill command
-ewe-pass is what Super+P runs; it comes with the Passwords plugin and lives in ~/.config/ewe/plugins/ewe.passwords/, not on your PATH. `./ewe-pass status` says which password manager it uses and why, `./ewe-pass providers` which ones are installed (Safe, 1Password, Bitwarden, pass), and `./ewe-pass use-safe` switches it to Safe. It types a login into a window or copies it, and it never prints a password.
+ewe-pass is what Super+P runs; it comes with the Passwords plugin and lives in ~/.config/ewe/plugins/ewe.passwords/, not on your PATH. `./ewe-pass status` says which password manager it uses and why, `./ewe-pass providers` which ones are installed (ewe Safe, 1Password, Bitwarden, pass), and `./ewe-pass use-safe` switches it to ewe Safe. It types a login into a window or copies it, and it never prints a password.

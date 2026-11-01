@@ -487,7 +487,7 @@ pub async fn proposal(call: &Call) -> Outcome {
             };
             propose(
                 format!(
-                    "Switch the whole desktop to {mode} mode? This does it (Settings → Appearance → Scheme):"
+                    "Switch the whole desktop to {mode} mode? This does it (ewe Settings → Appearance → Scheme):"
                 ),
                 &format!("ewe-theme scheme apply {slug}"),
                 &format!("Switch to {mode} mode"),

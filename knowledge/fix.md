@@ -21,24 +21,24 @@ Log out and back in first. If it still looks old, run `ewe-setup` and log in aga
 
 ## A setting does not stick
 keys: setting not saved, setting resets, setting does not stick, settings lost, config reset, change reverted
-Change it in Settings (or with `ewe-conf set …`), never in ~/.config/hypr/generated/, which is rebuilt from ewe.conf. `ewe-conf get <key>` shows what is recorded and `ewe-conf apply` applies it again.
+Change it in ewe Settings (or with `ewe-conf set …`), never in ~/.config/hypr/generated/, which is rebuilt from ewe.conf. `ewe-conf get <key>` shows what is recorded and `ewe-conf apply` applies it again.
 
-## Settings says the shell is not running
+## ewe Settings says the shell is not running
 keys: shell not running, shell isn't running, restart shell, bar gone, bar disappeared, desktop frozen
-Press "Restart shell" at the bottom of Settings' sidebar; your windows stay open. If the bar is just hidden, Super+Shift+B brings it back.
+Press "Restart shell" at the bottom of ewe Settings' sidebar; your windows stay open. If the bar is just hidden, Super+Shift+B brings it back.
 
 ## Sync will not upload or says another machine is newer
 keys: sync conflict, sync not working, push anyway, remote newer, another machine, sync refuses, sync error
 open: sync
-ewe-sync → This machine → Push anyway (or Restore) once, and give each machine its own hostname. `ewe-conf sync-status` says why: remote-newer means pull or restore first, remote-exists means restore first.
+ewe Sync → This machine → Push anyway (or Restore) once, and give each machine its own hostname. `ewe-conf sync-status` says why: remote-newer means pull or restore first, remote-exists means restore first.
 
 ## The keyring keeps asking for a password
 keys: keyring, keyring password, choose password for new keyring, keyring prompt, keyring timeout, secret service
-When an app asks, it wants your login password. If a "Choose password for new keyring" window keeps coming, run `ewe-auth keyring-reset`, log out and back in, then sign in again from ewe-sync.
+When an app asks, it wants your login password. If a "Choose password for new keyring" window keeps coming, run `ewe-auth keyring-reset`, log out and back in, then sign in again from ewe Sync.
 
 ## The sign-in page did not open
 keys: sign in browser did not open, login page not opening, cannot sign in, sign-in link
-Use "Open the sign-in page" or "Copy the link" in Welcome or ewe-sync, and finish in any browser.
+Use "Open the sign-in page" or "Copy the link" in Welcome or ewe Sync, and finish in any browser.
 
 ## A Bluetooth device will not pair
 keys: bluetooth not pairing, bluetooth drops, cannot pair, will not pair, won't pair, disconnect, disconnects, keeps disconnecting, keeps dropping, bluetooth problem
@@ -46,7 +46,7 @@ Forget the device on both sides and pair again, holding its pairing button until
 
 ## A black screen after plugging a monitor
 keys: black screen, screen is black, screen went black, black after, after plugging, no display, monitor not working, screen off, external monitor black, display problem
-Press Super+Shift+R: it turns every screen back on and reapplies your saved arrangement. Settings → Displays has the same wake button.
+Press Super+Shift+R: it turns every screen back on and reapplies your saved arrangement. ewe Settings → Displays has the same wake button.
 
 ## Apps are too big or too small on a second screen
 keys: steam too big, blurry app, app scale wrong, java app scale, xwayland scale, tiny app

@@ -572,19 +572,19 @@ fn rules() -> &'static [Rule] {
                   let q = safe_query(c.get(1).or(c.get(2))?.as_str())?;
                   Some(Call::new("safe_login", json!({"query": q})))
               }),
-            r(r"(?:lock|close) (?:my |the )?safe",
+            r(r"(?:lock|close) (?:my |the )?(?:ewe )?safe",
               |_| Some(Call::new("safe_lock", json!({})))),
-            r(r"unlock (?:my |the )?safe",
+            r(r"unlock (?:my |the )?(?:ewe )?safe",
               |_| Some(Call::new("safe_unlock", json!({})))),
             r(r"is (?:my |the )?safe (?:synced|in sync|up to date|locked|unlocked|open)|(?:my |the )?safe(?:'s)? status|how many (?:passwords|logins|items|accounts) (?:do i have|(?:are )?(?:there )?in (?:my |the )?safe|does (?:my |the )?safe (?:have|hold))(?: in (?:my |the )?safe)?",
               |_| Some(Call::new("safe_status", json!({})))),
             r(r"lock(?: (?:the )?(?:screen|computer|pc|laptop|session))?",
               |_| Some(Call::new("lock", json!({})))),
             // ── open an ewe app ──
-            r(r"(?:open|launch|show)(?: the)? (settings|komble|store|app store|software|sync|ewe-sync|ewe sync|terminal|kitty|files|file manager)",
+            r(r"(?:open|launch|show)(?: the)? (settings|ewe settings|komble|store|app store|software|sync|ewe-sync|ewe sync|terminal|kitty|files|file manager)",
               |c| {
                   let what = match &c[1] {
-                      "settings" => "settings",
+                      "settings" | "ewe settings" => "settings",
                       "komble" | "store" | "app store" | "software" => "komble",
                       "sync" | "ewe-sync" | "ewe sync" => "sync",
                       "terminal" | "kitty" => "terminal",
@@ -896,6 +896,9 @@ mod tests {
         is("lock the screen", "lock", json!({}));
         is("open komble", "open", json!({"what": "komble"}));
         is("open settings", "open", json!({"what": "settings"}));
+        // the apps' display names (ewe Settings, ewe Sync) say the same
+        is("open ewe Settings", "open", json!({"what": "settings"}));
+        is("open ewe Sync", "open", json!({"what": "sync"}));
     }
 
     #[test]
@@ -1181,6 +1184,8 @@ mod tests {
         is("sign in to my bank", "safe_login", json!({"query": "bank"}));
         is("lock my safe", "safe_lock", json!({}));
         is("unlock my safe", "safe_unlock", json!({}));
+        is("lock ewe Safe", "safe_lock", json!({}));
+        is("unlock ewe safe", "safe_unlock", json!({}));
         is("is my safe synced?", "safe_status", json!({}));
         is("how many passwords do I have", "safe_status", json!({}));
         is("how many logins are in my safe", "safe_status", json!({}));

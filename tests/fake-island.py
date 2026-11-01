@@ -84,7 +84,7 @@ def perform(m):
             lines = [l for l in p.stdout.splitlines() if l.strip()]
             res["data"] = {"reply": json.loads(lines[-1])}
         except Exception as e:  # noqa: BLE001
-            res.update(ok=False, error=f"ewe browser did not answer ({e})")
+            res.update(ok=False, error=f"ewe Browser did not answer ({e})")
     elif act == "safe_unlock":
         threading.Thread(target=subprocess.run, args=([args["bin"], "unlock", "--ask"],),
                          kwargs={"capture_output": True}, daemon=True).start()

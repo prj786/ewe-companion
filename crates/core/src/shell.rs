@@ -105,7 +105,7 @@ fn refuse_rules() -> &'static [Rule] {
 /// or `$(`, past `sudo`, `env`, flags and `VAR=value`, and its folder.
 const AT_START: &str = r#"(?:^|[;&|(`'"]|\$\()\s*(?:(?:sudo|doas|env|exec|command|nohup|time)\s+|-\S+\s+|\w+=\S*\s+)*(?:\S*/)?"#;
 
-const SAFE_VALUES: &str = "Safe's values never go through the companion: use Super+P or the Safe window, or say \"copy my GitHub password\" and Safe copies it.";
+const SAFE_VALUES: &str = "ewe Safe's values never go through the companion: use Super+P or the ewe Safe window, or say \"copy my GitHub password\" and ewe Safe copies it.";
 const MANAGER_VALUES: &str =
     "Passwords never go through the companion: use Super+P or your password manager's own window.";
 
@@ -483,7 +483,7 @@ mod tests {
         }
         assert!(matches!(
             assess("ewe-safe read safe://a/b/password").verdict,
-            Verdict::Refused(w) if w.starts_with("Safe's values never go through the companion")
+            Verdict::Refused(w) if w.starts_with("ewe Safe's values never go through the companion")
         ));
         // what prints no value and no name is fine
         for c in [

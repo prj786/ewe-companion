@@ -121,7 +121,7 @@ import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
 rows = [r for t, in db.execute(\"SELECT name FROM sqlite_master WHERE type=\x27table\x27\") for r in db.execute(\"SELECT * FROM \" + t)]
 sys.exit(1 if any(\"7q2x\" in str(r).lower() for r in rows) else 0)" "$db"' "no row of any table holds it" ""
-check 'grep -q "\"(a request to Safe)\"" "$W/mock.jsonl"' "the model saw that a Safe request happened, and no more" ""
+check 'grep -q "\"(a request to ewe Safe)\"" "$W/mock.jsonl"' "the model saw that a Safe request happened, and no more" ""
 
 echo
 echo "$pass passed, $fail failed"
