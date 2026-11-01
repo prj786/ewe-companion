@@ -107,7 +107,9 @@ release 2026-10-17: the `ewe-companion` package in the [ewe] repository,
 and the island (plugin `ewe.companion` 0.4.0) in ewe 0.29.0-beta's
 plugins. Wave 2 (2026-10-18, P2.10: a site's search, more of the browser,
 the desktop's switches, timers, sums, the CLI knowledge) shipped as
-0.2.0-beta the same day.**
+0.2.0-beta the same day. 0.2.2-beta (2026-11-01) names the other apps
+the way the desktop now does: ewe Settings, ewe Sync, ewe Browser, ewe
+Safe and ewe Cast.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:
