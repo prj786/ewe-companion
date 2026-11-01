@@ -109,7 +109,10 @@ plugins. Wave 2 (2026-10-18, P2.10: a site's search, more of the browser,
 the desktop's switches, timers, sums, the CLI knowledge) shipped as
 0.2.0-beta the same day. 0.2.2-beta (2026-11-01) names the other apps
 the way the desktop now does: ewe Settings, ewe Sync, ewe Browser, ewe
-Safe and ewe Cast.**
+Safe and ewe Cast. 0.2.3-beta (2026-11-01) knows ewe 0.39's UI revamp:
+Quick settings without the rail, the System monitor in the bar, Komble's
+plugin sheet, ewe Settings' four groups, ewe Sync's words, ewe Browser's
+save prompt and ewe Safe as the SSH gate.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:

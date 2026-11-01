@@ -38,7 +38,7 @@ knowledge pack, and proposes shell commands that run only on a click.
 
 This repo is the Rust half: the daemon `ewe-companiond`, the CLI and hook
 relay `ewe-companion`, the knowledge pack, the Claude Code plugin, packaging
-and tests. Version **0.2.2-beta** (2026-11-01, the apps' new names); first released as
+and tests. Version **0.2.3-beta** (2026-11-01, the knowledge follows ewe 0.39); first released as
 0.1.0-beta on 2026-10-17 (the package in [ewe]; the plugin in ewe
 0.29.0-beta, 0.5.0 in ewe 0.30.0-beta). P1 is done, P2 works end
 to end with a few tasks left, P2.5 to P2.8 are done (2026-10-14), and P2.9
@@ -138,7 +138,7 @@ a tab) becomes a proposal too.
 
 ```sh
 cargo build                                   # debug: target/debug/ewe-companion{,d}
-cargo test                                    # core 81, daemon 31 unit tests
+cargo test                                    # core 83, daemon 31 unit tests
 cargo clippy --all-targets -- -D warnings     # CI runs it with --locked
 cargo fmt --all --check
 tests/chat.sh                                 # 112 checks: the chat path vs a mock LLM, Safe,
@@ -162,7 +162,7 @@ harness and read the screenshot before you report.
 
 ```
 Cargo.toml              workspace: crates/core, crates/daemon, crates/cli; pinned deps
-VERSION                 0.2.2-beta (every binary reports it)
+VERSION                 0.2.3-beta (every binary reports it)
 crates/core/            companion-core: pure code, no I/O, every rule unit-tested
   src/lib.rs            the module list
   src/proto.rs          the socket protocol: Inbound messages, Card, Action, Peek, Env; decode(), line()
