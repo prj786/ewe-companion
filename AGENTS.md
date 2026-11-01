@@ -365,9 +365,11 @@ edits need the release build (the pack is compiled in).
   the shell's in `env.hypr`; use `hub.env().hypr`.
 - **tracing's macros import `debug`:** a local `let debug` breaks
   `info!(…, debug, …)`.
-- **Settings 0.18 ignores `--page`.** "Open Settings" opens Appearance, so
-  replies name the page to pick (`commands::page_label`). Komble and Quick
-  settings pages do open.
+- **ewe Settings (0.18 to 0.22) ignores `--page`.** "Open Settings" opens
+  Appearance, so replies name the page to pick (`commands::page_label`,
+  whose labels follow ewe-settings' `src/lib/pages.js`). Komble and Quick
+  settings pages do open (Quick settings has no rail since ewe 0.39: a
+  page opens in place of home).
 - **Never `pkill -f` a pattern that appears in your own command** (it kills
   your shell). Find the PID and check `readlink /proc/PID/exe`;
   `tests/island.sh down` does.
@@ -402,7 +404,11 @@ edits need the release build (the pack is compiled in).
   locks the store twice on one thread: the timer scheduler deadlocked the
   daemon the first time a timer fired. Take the list into a `let` first.
 - **A key with a hyphen counts twice** in the pack's search ("ewe-browser"
-  is the words of "ewe browser"): keep one spelling per key.
+  is the words of "ewe browser"): keep one spelling per key. So do two
+  keys with the same stem ("ssh key" and "ssh keys", "window" and
+  "windows"): such a topic outranks a better one (0.2.3's "connect my
+  github with an ssh key" went to the SSH topic). And a one-word key that
+  stems to a stop word ("computers" → "computer") fails the parse test.
 - **QML traps** (a Qt Column skips zero-width children, layer windows blink
   when they grow, focus grabs die when an exclusive layer takes the
   keyboard …) are in the plugin's AGENTS.md.

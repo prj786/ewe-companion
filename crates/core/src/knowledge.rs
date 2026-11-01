@@ -474,7 +474,14 @@ mod tests {
         assert_eq!(top("the disk is full"), "The disk is full");
         assert_eq!(top("how do I add a dock"), "The dock");
         assert_eq!(top("what does Super + G do?"), "Shortcuts for windows");
-        assert_eq!(top("what is super+shift+s"), "Workspaces and the Pen");
+        assert_eq!(
+            top("what does super+z do"),
+            "Workspaces and minimizing windows"
+        );
+        assert_eq!(
+            top("how do I minimize a window"),
+            "Workspaces and minimizing windows"
+        );
         assert_eq!(top("wifi password"), "Connect to Wi-Fi");
         assert_eq!(top("turn off animations"), "Animations and motion");
         assert_eq!(
@@ -629,6 +636,74 @@ mod tests {
     }
 
     #[test]
+    fn the_ui_revamp_questions_find_their_topic() {
+        // ewe 0.39, ewe Settings 0.22, Komble 0.21, ewe Sync 0.16,
+        // ewe Browser 0.8, ewe Safe 0.4 (2026-11-01)
+        for (q, t) in [
+            (
+                "how do I connect my github with an ssh key",
+                "Connect to GitHub, GitLab or Azure with ewe Safe",
+            ),
+            (
+                "can safe sign my git commits",
+                "Connect to GitHub, GitLab or Azure with ewe Safe",
+            ),
+            ("how do I move ssh from 1password", "SSH keys in ewe Safe"),
+            (
+                "where is the power button in quick settings",
+                "Quick settings",
+            ),
+            (
+                "where did the system monitor go",
+                "The System monitor: CPU, memory and internet speed",
+            ),
+            (
+                "how do I see my internet speed",
+                "The System monitor: CPU, memory and internet speed",
+            ),
+            (
+                "sync says two computers changed my settings",
+                "Sync will not upload or says another computer is newer",
+            ),
+            (
+                "where are my plugin settings",
+                "Add, remove or set up a plugin",
+            ),
+            ("back up this computer", "Back up and restore this computer"),
+        ] {
+            assert_eq!(top(q), t, "{q:?}");
+        }
+    }
+
+    #[test]
+    fn no_answer_quotes_a_retired_label() {
+        // labels the 0.39 wave removed (the rail, the Options dialog,
+        // Settings' old pages, ewe Sync's old words, the browser's old
+        // save prompt, the Pen's keys); comments may still name them
+        for (name, text) in BUILT_IN {
+            let said = strip_comments(text);
+            for gone in [
+                "→ Options",
+                "Options →",
+                "Networking",
+                "→ Startup →",
+                "→ Shortcuts lists",
+                "Settings → System",
+                "Restart shell\"",
+                "This machine",
+                "Machines:",
+                "→ Push anyway",
+                "Save to ewe Safe?",
+                "Settings → ewe ",
+                "Super+S (or",
+                "Notifications tab",
+            ] {
+                assert!(!said.contains(gone), "{name}.md still says {gone:?}");
+            }
+        }
+    }
+
+    #[test]
     fn small_talk_finds_nothing_confident() {
         let p = pack();
         for q in [
@@ -662,10 +737,11 @@ mod tests {
             "{}",
             h.topic.answer(q)
         );
+        // the Pen went in ewe 0.34: asking for it gets minimizing
         let q = "how do I stash a window in the pen";
         let h = &p.search(q, 1)[0];
         assert!(
-            h.topic.answer(q).starts_with("The Pen is"),
+            h.topic.answer(q).starts_with("Super+Z minimizes"),
             "{}",
             h.topic.answer(q)
         );

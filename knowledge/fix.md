@@ -3,13 +3,14 @@
 <!-- What a user can do themselves, from project-map/11-How-We-Work/
      Troubleshooting Knowledge.md, ewe/docs/TROUBLESHOOTING.md and the
      website's troubleshooting page. Developer-only fixes stay out.
-     Re-checked 2026-10-18 against ewe 0.29.0-beta: every command and
-     path still holds. -->
+     Re-checked 2026-11-01 against ewe 0.39.0-beta, ewe Settings 0.22 and
+     ewe Sync 0.16 (no "Push anyway": the settings decision is "Use
+     <name>'s settings…" or "Keep this computer's settings"). -->
 
 ## Something from a plugin is missing
 keys: missing dock, no dock, missing clipboard, no screenshot, missing tile, plugin missing, plugin not working, shortcut not working, icon missing
 open: komble plugins
-A fresh ewe has no plugins, so the dock, clipboard, screenshots and Cast tile are not there until you add them: Komble → Plugins → From ewe. If one you had stopped working, `ewe-plugin list` shows whether it is installed and on, and its Options decide whether it shows in the bar.
+A fresh ewe has no plugins, so the dock, clipboard, screenshots and Cast tile are not there until you add them: Komble → Plugins → From ewe. If one you had stopped working, `ewe-plugin list` shows whether it is installed and on, and Show in the bar in its sheet (click it in Komble → Plugins) decides whether it shows in the bar. The System monitor left Quick settings in ewe 0.39: its CPU, memory and speed readout is in the top bar, and a click on it opens the card.
 
 ## Plugins disabled for this session
 keys: plugins disabled, safe mode, shell crashed, shell keeps crashing
@@ -25,12 +26,12 @@ Change it in ewe Settings (or with `ewe-conf set …`), never in ~/.config/hypr/
 
 ## ewe Settings says the shell is not running
 keys: shell not running, shell isn't running, restart shell, bar gone, bar disappeared, desktop frozen
-Press "Restart shell" at the bottom of ewe Settings' sidebar; your windows stay open. If the bar is just hidden, Super+Shift+B brings it back.
+ewe Settings → About this computer → Restart the shell → Restart…, then Restart; your windows stay open. If the bar is just hidden, Super+Shift+B brings it back.
 
-## Sync will not upload or says another machine is newer
-keys: sync conflict, sync not working, push anyway, remote newer, another machine, sync refuses, sync error
+## Sync will not upload or says another computer is newer
+keys: sync conflict, sync not working, push anyway, remote newer, another machine, another computer, sync refuses, sync error, two computers changed, needs you, needs a decision
 open: sync
-ewe Sync → This machine → Push anyway (or Restore) once, and give each machine its own hostname. `ewe-conf sync-status` says why: remote-newer means pull or restore first, remote-exists means restore first.
+Open ewe Sync: its Overview shows the problem under "Needs you". When two computers changed your settings, choose in Settings & apps: "Use <name>'s settings…" takes the other computer's, "Keep this computer's settings" keeps yours and puts them in your account (that is what Push anyway used to do; the button is gone). A file changed in two places waits under its folder in Folders: "Keep this computer's" or "Keep the account's". Give each computer its own name (ewe Settings → Network → Name on the network). `ewe-conf sync-status` says why: remote-newer means the account's copy is newer, remote-exists means the account already has settings.
 
 ## The keyring keeps asking for a password
 keys: keyring, keyring password, choose password for new keyring, keyring prompt, keyring timeout, secret service
@@ -46,7 +47,7 @@ Forget the device on both sides and pair again, holding its pairing button until
 
 ## A black screen after plugging a monitor
 keys: black screen, screen is black, screen went black, black after, after plugging, no display, monitor not working, screen off, external monitor black, display problem
-Press Super+Shift+R: it turns every screen back on and reapplies your saved arrangement. ewe Settings → Displays has the same wake button.
+Press Super+Shift+R: it turns every screen back on and reapplies your saved arrangement. ewe Settings → Displays → Reset displays does the same.
 
 ## Apps are too big or too small on a second screen
 keys: steam too big, blurry app, app scale wrong, java app scale, xwayland scale, tiny app
