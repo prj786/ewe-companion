@@ -287,7 +287,11 @@ fn remember(hub: &Arc<Hub>, text: &str, r: &Reply) {
         .command
         .as_deref()
         .is_some_and(companion_core::commands::is_safe);
-    let user = if safe { "(a request to Safe)" } else { text };
+    let user = if safe {
+        "(a request to ewe Safe)"
+    } else {
+        text
+    };
     hub.chat_push(user, r.private.as_deref().unwrap_or(&r.text));
 }
 
@@ -462,7 +466,7 @@ async fn about_page(hub: &Arc<Hub>, text: &str) -> Reply {
     });
     let about = format!("{} · {}", page.title, page.url);
     let ask = format!(
-        "{text}\n\nThe page open in ewe browser:\n{}",
+        "{text}\n\nThe page open in ewe Browser:\n{}",
         persona::untrusted("web page", &about, &page.text)
     );
     info!(chars = page.text.len(), "page question");

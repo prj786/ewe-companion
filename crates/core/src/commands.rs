@@ -101,9 +101,9 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "open",
         args: r#"{"what": "settings"|"komble"|"quicksettings"|"overview"|"sync"|"terminal"|"files", "page": "…" (optional)}"#,
-        summary: "open an ewe app or panel. Settings pages: appearance accessibility animations layout windowrules \
+        summary: "open an ewe app or panel. ewe Settings pages: appearance accessibility animations layout windowrules \
                   displays network bluetooth wallpaper input saver power defaults startup shortcuts time user system \
-                  (Settings opens on Appearance whatever the page, so say which page to pick). Komble pages: updates \
+                  (ewe Settings opens on Appearance whatever the page, so say which page to pick). Komble pages: updates \
                   plugins settings search=<words> options=<plugin id>. Quick settings pages: home wifi bt audio cal notifs",
     },
     CommandInfo {
@@ -131,32 +131,32 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "web_search",
         args: r#"{"query": "men's shoes", "site": "zara" (optional: a site's name or domain)}"#,
-        summary: "search the web in ewe browser (its own search engine); with site, that site's own search",
+        summary: "search the web in ewe Browser (its own search engine); with site, that site's own search",
     },
     CommandInfo {
         name: "play_music",
         args: r#"{"query": "…"}"#,
-        summary: "play a song or artist: from the music library in ewe browser, else YouTube Music",
+        summary: "play a song or artist: from the music library in ewe Browser, else YouTube Music",
     },
     CommandInfo {
         name: "open_url",
-        args: r#"{"url": "https://…", "workspace": "Work" (optional: ewe browser's workspace)}"#,
-        summary: "open a web page in ewe browser, in one of its workspaces if named",
+        args: r#"{"url": "https://…", "workspace": "Work" (optional: ewe Browser's workspace)}"#,
+        summary: "open a web page in ewe Browser, in one of its workspaces if named",
     },
     CommandInfo {
         name: "browser_history",
         args: r#"{"query": "tax"}"#,
-        summary: "find pages in ewe browser's history. The pages show on the island; you get only how many",
+        summary: "find pages in ewe Browser's history. The pages show on the island; you get only how many",
     },
     CommandInfo {
         name: "browser_tabs",
         args: "{}",
-        summary: "list ewe browser's open tabs on the island; you get only how many",
+        summary: "list ewe Browser's open tabs on the island; you get only how many",
     },
     CommandInfo {
         name: "browser_tab",
         args: r#"{"words": "youtube"}"#,
-        summary: "switch to the open tab in ewe browser whose title or address has these words",
+        summary: "switch to the open tab in ewe Browser whose title or address has these words",
     },
     CommandInfo {
         name: "find_files",
@@ -172,60 +172,60 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "safe_copy",
         args: r#"{"query": "github", "field": "password"|"username"|"otp"}"#,
-        summary: "Safe (the password manager) copies a login's password, username or one-time code to the \
+        summary: "ewe Safe (the password manager) copies a login's password, username or one-time code to the \
                   clipboard and clears it later. You never see the value or the login's name: you get back \
                   done or a count. Never ask the user for a password",
     },
     CommandInfo {
         name: "safe_login",
         args: r#"{"query": "github"}"#,
-        summary: "open the website of a login in Safe in ewe browser; the user fills it there with a click",
+        summary: "open the website of a login in ewe Safe in ewe Browser; the user fills it there with a click",
     },
     CommandInfo {
         name: "safe_lock",
         args: "{}",
-        summary: "lock Safe",
+        summary: "lock ewe Safe",
     },
     CommandInfo {
         name: "safe_unlock",
         args: "{}",
-        summary: "open Safe's unlock prompt (the user types the master password there, never in the chat)",
+        summary: "open ewe Safe's unlock prompt (the user types the master password there, never in the chat)",
     },
     CommandInfo {
         name: "safe_status",
         args: "{}",
-        summary: "Safe's state: locked or not, how many items, whether it is in sync",
+        summary: "ewe Safe's state: locked or not, how many items, whether it is in sync",
     },
     // ── ewe browser beyond search and open ──
     CommandInfo {
         name: "browser_bookmark",
         args: "{}",
-        summary: "bookmark the page open in ewe browser (Undo removes it)",
+        summary: "bookmark the page open in ewe Browser (Undo removes it)",
     },
     CommandInfo {
         name: "browser_bookmarks",
         args: r#"{"query": "recipes" (optional)}"#,
-        summary: "find ewe browser's bookmarks; they show on the island, you get only how many",
+        summary: "find ewe Browser's bookmarks; they show on the island, you get only how many",
     },
     CommandInfo {
         name: "browser_nav",
         args: r#"{"action": "back"|"forward"|"reload"|"reopen"}"#,
-        summary: "in ewe browser: go back or forward a page, reload it, or reopen the tab closed last",
+        summary: "in ewe Browser: go back or forward a page, reload it, or reopen the tab closed last",
     },
     CommandInfo {
         name: "browser_tab_do",
         args: r#"{"action": "mute"|"unmute"|"pin"|"unpin"|"close", "words": "youtube" (optional: else the tab in front)}"#,
-        summary: "mute, unmute, pin or unpin a tab in ewe browser; close asks first",
+        summary: "mute, unmute, pin or unpin a tab in ewe Browser; close asks first",
     },
     CommandInfo {
         name: "browser_workspace",
         args: r#"{"action": "list"|"switch"|"next"|"prev"|"new", "name": "Work" (switch: a name or number; new: optional)}"#,
-        summary: "ewe browser's own workspaces (the bottom bar): list them, switch, the next or previous one, a new one",
+        summary: "ewe Browser's own workspaces (the bottom bar): list them, switch, the next or previous one, a new one",
     },
     CommandInfo {
         name: "browser_downloads",
         args: "{}",
-        summary: "ewe browser's downloads, with Open and Show in folder, on the island; you get only how many",
+        summary: "ewe Browser's downloads, with Open and Show in folder, on the island; you get only how many",
     },
     CommandInfo {
         name: "browser_download",
@@ -235,7 +235,7 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "browser_page",
         args: r#"{"page": "home"|"history"|"settings"|"files"|"music"}"#,
-        summary: "open one of ewe browser's own pages",
+        summary: "open one of ewe Browser's own pages",
     },
     // ── the desktop ──
     CommandInfo {
@@ -435,7 +435,7 @@ fn path_text(p: &str, command: &str) -> Result<(), String> {
 fn safe_words(a: &Value) -> Result<(), String> {
     match a["query"].as_str() {
         Some(q) if q.trim_start().starts_with('-') || q.len() > 200 => {
-            Err("Safe: that is not a name to look for".into())
+            Err("ewe Safe: that is not a name to look for".into())
         }
         _ => Ok(()),
     }
@@ -753,7 +753,9 @@ pub fn validate(call: &Call) -> Result<(), String> {
                     next.command.as_str(),
                     "safe_copy" | "safe_login" | "safe_status"
                 ) {
-                    return Err("safe_unlock: only a Safe command can wait for the unlock".into());
+                    return Err(
+                        "safe_unlock: only an ewe Safe command can wait for the unlock".into(),
+                    );
                 }
                 validate(&next)
             }

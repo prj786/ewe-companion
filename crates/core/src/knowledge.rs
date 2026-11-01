@@ -101,7 +101,7 @@ pub fn open_label(call: &Call) -> String {
     let what = call.args["what"].as_str().unwrap_or("");
     let page = call.args["page"].as_str().unwrap_or("");
     match (what, page) {
-        ("settings", _) => "Open Settings".into(),
+        ("settings", _) => "Open ewe Settings".into(),
         ("komble", "") => "Open Komble".into(),
         ("komble", p) if p.starts_with("options=") => "Open its options".into(),
         ("komble", p) => format!("Open {}", page_label("komble", p).unwrap_or("Komble")),
@@ -111,7 +111,7 @@ pub fn open_label(call: &Call) -> String {
             page_label("quicksettings", p).unwrap_or("Quick settings")
         ),
         ("overview", _) => "Open the Overview".into(),
-        ("sync", _) => "Open ewe-sync".into(),
+        ("sync", _) => "Open ewe Sync".into(),
         ("terminal", _) => "Open a terminal".into(),
         _ => "Open Files".into(),
     }
@@ -485,11 +485,11 @@ mod tests {
             top("how do I import from 1password?"),
             "Import passwords from 1Password"
         );
-        assert_eq!(top("can safe keep my ssh keys"), "SSH keys in Safe");
+        assert_eq!(top("can safe keep my ssh keys"), "SSH keys in ewe Safe");
         assert_eq!(top("does it support passkeys"), "Passkeys");
         assert_eq!(
             top("how do I get my passwords on my phone"),
-            "Safe on your phone"
+            "ewe Safe on your phone"
         );
         assert_eq!(
             top("what is my password for github"),
@@ -497,15 +497,15 @@ mod tests {
         );
         assert_eq!(
             top("how do I clear my browsing history"),
-            "History in ewe browser"
+            "History in ewe Browser"
         );
         assert_eq!(
             top("does the browser sync my tabs from other computers"),
-            "Sync in ewe browser"
+            "Sync in ewe Browser"
         );
         assert_eq!(
             top("how do I fill a password in the browser"),
-            "Safe in ewe browser"
+            "ewe Safe in ewe Browser"
         );
         assert_eq!(top("wifi password"), "Connect to Wi-Fi", "still Wi-Fi's");
     }
@@ -572,44 +572,44 @@ mod tests {
             // browser.md: the bottom bar, this wave's features
             (
                 "how do browser workspaces work",
-                "The bottom bar and workspaces in ewe browser",
+                "The bottom bar and workspaces in ewe Browser",
             ),
             (
                 "can I search zara from the browser",
-                "Search a site from ewe browser",
+                "Search a site from ewe Browser",
             ),
-            ("what are the browser shortcuts", "Shortcuts in ewe browser"),
+            ("what are the browser shortcuts", "Shortcuts in ewe Browser"),
             (
                 "how do I find text on a page",
-                "Find on a page in ewe browser",
+                "Find on a page in ewe Browser",
             ),
             (
                 "can I swipe back in the browser with two fingers",
-                "Gestures and mouse buttons in ewe browser",
+                "Gestures and mouse buttons in ewe Browser",
             ),
             (
                 "how do I turn on secure dns",
-                "Privacy and security in ewe browser",
+                "Privacy and security in ewe Browser",
             ),
             (
                 "a site wants my camera permission",
-                "Privacy and security in ewe browser",
+                "Privacy and security in ewe Browser",
             ),
             (
-                "does the bitwarden extension work in ewe browser",
-                "Safe in ewe browser",
+                "does the bitwarden extension work in ewe Browser",
+                "ewe Safe in ewe Browser",
             ),
             (
                 "how do I open link in new workspace",
-                "Right-click menus in ewe browser",
+                "Right-click menus in ewe Browser",
             ),
             // safe.md
             (
                 "how do I use ewe-safe run with an env file",
-                "Use Safe from scripts",
+                "Use ewe Safe from scripts",
             ),
             ("what does quick access do", "Quick Access"),
-            ("can safe be my ssh agent", "SSH keys in Safe"),
+            ("can safe be my ssh agent", "SSH keys in ewe Safe"),
             // howto.md: what Shaun does now
             ("how do I turn on airplane mode", "Airplane mode"),
             ("can you set a timer", "Timers and reminders"),
@@ -648,8 +648,8 @@ mod tests {
         let p = pack();
         let h = &p.search("change the wallpaper", 1)[0];
         assert!(h.score >= CONFIDENT);
-        assert_eq!(h.topic.open_label().as_deref(), Some("Open Settings"));
-        assert!(h.topic.short().starts_with("Settings → Wallpaper"));
+        assert_eq!(h.topic.open_label().as_deref(), Some("Open ewe Settings"));
+        assert!(h.topic.short().starts_with("ewe Settings → Wallpaper"));
     }
 
     #[test]

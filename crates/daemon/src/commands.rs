@@ -138,8 +138,8 @@ pub(crate) async fn brightness() -> Option<i64> {
 fn open_line(what: &str, page: &str) -> String {
     let label = catalog::page_label(what, page);
     match (what, label) {
-        ("settings", Some("Appearance") | None) => "Opened Settings".into(),
-        ("settings", Some(l)) => format!("Opened Settings: pick {l} in the sidebar"),
+        ("settings", Some("Appearance") | None) => "Opened ewe Settings".into(),
+        ("settings", Some(l)) => format!("Opened ewe Settings: pick {l} in the sidebar"),
         ("komble", Some(l)) if page.starts_with("search=") => {
             format!("Opened Komble's {l}, searching for {}", &page[7..])
         }
@@ -148,7 +148,7 @@ fn open_line(what: &str, page: &str) -> String {
         ("quicksettings", Some("Quick settings") | None) => "Opened Quick settings".into(),
         ("quicksettings", Some(l)) => format!("Opened {l} in Quick settings"),
         ("overview", _) => "Opened the Overview".into(),
-        ("sync", _) => "Opened ewe-sync".into(),
+        ("sync", _) => "Opened ewe Sync".into(),
         ("terminal", _) => "Opened a terminal".into(),
         _ => "Opened Files".into(),
     }
@@ -493,8 +493,12 @@ pub(crate) async fn browse(hub: &Arc<Hub>, call: &Call) -> Outcome {
     };
     match hub.shell_do("browse", json!({"url": url})).await {
         Ok(r) => {
-            // ewe-browser when it is installed, else the default browser
-            let via = r.get("via").and_then(Value::as_str).unwrap_or("");
+            // ewe-browser when it is installed, else the default browser;
+            // the protocol value stays the command, the line says its name
+            let via = match r.get("via").and_then(Value::as_str).unwrap_or("") {
+                "ewe-browser" => "ewe Browser",
+                v => v,
+            };
             done(
                 if via.is_empty() {
                     line
@@ -540,7 +544,7 @@ pub(crate) async fn open_file(hub: &Arc<Hub>, words: &str) -> Outcome {
         return show_folder(hub, &p).await;
     }
     let Some(app) = places::app_for_file(&p).await else {
-        return failed("No app opens this kind of file. Pick one in Settings → Default apps.");
+        return failed("No app opens this kind of file. Pick one in ewe Settings → Default apps.");
     };
     let dir = p.parent().unwrap_or(&p).to_string_lossy().to_string();
     let path = p.to_string_lossy().to_string();

@@ -85,12 +85,12 @@ async fn installed() -> String {
     ));
 
     let apps = [
-        ("ewe-settings", "Settings"),
+        ("ewe-settings", "ewe Settings"),
         ("komble", "Komble"),
-        ("ewe-sync", "ewe-sync"),
-        ("ewe-browser", "ewe browser"),
-        ("ewe-safe", "Safe (passwords)"),
-        ("ewe-castd", "ewe-cast"),
+        ("ewe-sync", "ewe Sync"),
+        ("ewe-browser", "ewe Browser"),
+        ("ewe-safe", "ewe Safe (passwords)"),
+        ("ewe-castd", "ewe Cast"),
     ];
     let (have, missing): (Vec<_>, Vec<_>) = apps.iter().partition(|(bin, _)| tool(bin).is_some());
     let names = |v: &[&(&str, &str)]| v.iter().map(|(_, n)| *n).collect::<Vec<_>>().join(", ");

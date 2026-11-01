@@ -64,7 +64,7 @@ fn fail(code: &str, message: &str) -> Fail {
 /// Wayland display, which a user unit may not have: the island's.
 async fn call(hub: &Hub, args: &[&str]) -> Result<Value, Fail> {
     let Some(bin) = bin() else {
-        return Err(fail("not-installed", "Safe is not installed."));
+        return Err(fail("not-installed", "ewe Safe is not installed."));
     };
     let mut c = Command::new(bin);
     c.args(args)
@@ -77,18 +77,20 @@ async fn call(hub: &Hub, args: &[&str]) -> Result<Value, Fail> {
     }
     let out = match tokio::time::timeout(BUDGET, c.output()).await {
         Ok(Ok(o)) => o,
-        Ok(Err(_)) => return Err(fail("not-installed", "Safe is not installed.")),
-        Err(_) => return Err(fail("timeout", "Safe did not answer.")),
+        Ok(Err(_)) => return Err(fail("not-installed", "ewe Safe is not installed.")),
+        Err(_) => return Err(fail("timeout", "ewe Safe did not answer.")),
     };
     let Some(v) = browser::last_json(&String::from_utf8_lossy(&out.stdout)) else {
-        return Err(fail("internal", "Safe did not answer."));
+        return Err(fail("internal", "ewe Safe did not answer."));
     };
     if v.get("ok") == Some(&Value::Bool(true)) {
         Ok(v)
     } else {
         Err(fail(
             v["error"].as_str().unwrap_or("internal"),
-            v["message"].as_str().unwrap_or("Safe could not do that."),
+            v["message"]
+                .as_str()
+                .unwrap_or("ewe Safe could not do that."),
         ))
     }
 }
@@ -97,11 +99,11 @@ async fn call(hub: &Hub, args: &[&str]) -> Result<Value, Fail> {
 /// with the command that was waiting for it.
 fn failed_with(f: Fail, then: Option<Call>) -> Outcome {
     let line = match f.code.as_str() {
-        "locked" => "Safe is locked.".to_string(),
-        "not-set-up" => "Safe is not set up on this computer yet.".to_string(),
-        "daemon-unavailable" => "Safe's service is not running.".to_string(),
+        "locked" => "ewe Safe is locked.".to_string(),
+        "not-set-up" => "ewe Safe is not set up on this computer yet.".to_string(),
+        "daemon-unavailable" => "ewe Safe's service is not running.".to_string(),
         "not-installed" | "timeout" => f.message.clone(),
-        _ if f.message.is_empty() => "Safe could not do that.".to_string(),
+        _ if f.message.is_empty() => "ewe Safe could not do that.".to_string(),
         _ => f.message.clone(),
     };
     let private = match f.code.as_str() {
@@ -109,11 +111,11 @@ fn failed_with(f: Fail, then: Option<Call>) -> Outcome {
             line.clone()
         }
         // Safe's own sentence may name an item: the model gets less
-        _ => "Safe could not do that.".to_string(),
+        _ => "ewe Safe could not do that.".to_string(),
     };
     let action = (f.code == "locked").then(|| {
         (
-            "Unlock Safe".to_string(),
+            "Unlock ewe Safe".to_string(),
             Call::new("safe_unlock", json!({"then": then})),
         )
     });
@@ -164,11 +166,10 @@ pub async fn copy(hub: &Arc<Hub>, a: &Value) -> Outcome {
     };
     let fit: Vec<&Value> = found.iter().filter(|i| has(i, field)).collect();
     match fit.as_slice() {
-        [] if found.is_empty() => {
-            failed(format!("Safe has no login for {q}.")).private("Safe has no login for that.")
-        }
+        [] if found.is_empty() => failed(format!("ewe Safe has no login for {q}."))
+            .private("ewe Safe has no login for that."),
         [] => failed(format!(
-            "No login for {q} in Safe has a {}.",
+            "No login for {q} in ewe Safe has a {}.",
             field_word(field)
         ))
         .private(format!("No login found has a {}.", field_word(field))),
@@ -201,12 +202,12 @@ pub async fn copy(hub: &Arc<Hub>, a: &Value) -> Outcome {
             Outcome {
                 rows,
                 ..done(
-                    format!("Safe has {} logins for {q}. Which one?", many.len()),
+                    format!("ewe Safe has {} logins for {q}. Which one?", many.len()),
                     None,
                 )
             }
             .private(format!(
-                "Safe found {} logins; the user picks one on the island.",
+                "ewe Safe found {} logins; the user picks one on the island.",
                 many.len()
             ))
         }
@@ -237,7 +238,7 @@ async fn copy_one(hub: &Hub, id: &str, field: &str, title: &str, user: &str) -> 
         None,
     )
     .private(format!(
-        "Done: Safe copied the {} to the clipboard.",
+        "Done: ewe Safe copied the {} to the clipboard.",
         field_word(field)
     ))
 }
@@ -283,7 +284,7 @@ pub async fn login(hub: &Arc<Hub>, q: &str) -> Outcome {
     match sites.as_slice() {
         // nothing in Safe: the words may mean something else ("sign in to
         // nextcloud" is ewe-sync's), so the chat asks the pack or a model
-        [] => missed(format!("Safe has no website for {q}.")),
+        [] => missed(format!("ewe Safe has no website for {q}.")),
         [(_, url)] => open_site(hub, url).await,
         many => Outcome {
             rows: many
@@ -303,14 +304,14 @@ pub async fn login(hub: &Arc<Hub>, q: &str) -> Outcome {
                 .collect(),
             ..done(
                 format!(
-                    "Safe has logins for {q} on {} sites. Which one?",
+                    "ewe Safe has logins for {q} on {} sites. Which one?",
                     many.len()
                 ),
                 None,
             )
         }
         .private(format!(
-            "Safe has logins on {} sites; the user picks one on the island.",
+            "ewe Safe has logins on {} sites; the user picks one on the island.",
             many.len()
         )),
     }
@@ -333,7 +334,7 @@ async fn open_site(hub: &Arc<Hub>, url: &str) -> Outcome {
 
 pub async fn lock(hub: &Arc<Hub>) -> Outcome {
     match call(hub, &["lock"]).await {
-        Ok(_) => done("Safe is locked.", None).private("Safe is locked."),
+        Ok(_) => done("ewe Safe is locked.", None).private("ewe Safe is locked."),
         Err(f) => failed_with(f, None),
     }
 }
@@ -349,7 +350,9 @@ pub async fn unlock(hub: &Arc<Hub>, then: Option<&Value>) -> Outcome {
         Ok(v) if v["locked"].as_bool() == Some(false) => {
             return match then {
                 Some(next) => run_then(hub, &next).await,
-                None => done("Safe is already unlocked.", None).private("Safe is unlocked."),
+                None => {
+                    done("ewe Safe is already unlocked.", None).private("ewe Safe is unlocked.")
+                }
             };
         }
         Ok(_) => {}
@@ -357,14 +360,14 @@ pub async fn unlock(hub: &Arc<Hub>, then: Option<&Value>) -> Outcome {
         Err(f) => return failed_with(f, None),
     }
     let Some(bin) = bin() else {
-        return failed("Safe is not installed.");
+        return failed("ewe Safe is not installed.");
     };
     if let Err(e) = hub.shell_do("safe_unlock", json!({"bin": bin})).await {
         return failed(e);
     }
     tokio::spawn(wait_for_unlock(hub.clone(), then));
-    done("Type your master password in Safe's window.", None)
-        .private("Safe's unlock window is open.")
+    done("Type your master password in ewe Safe's window.", None)
+        .private("ewe Safe's unlock window is open.")
 }
 
 /// Watch for the unlock, then run what was waiting and say how it went.
@@ -378,7 +381,7 @@ async fn wait_for_unlock(hub: Arc<Hub>, then: Option<Call>) {
             if then.is_none() {
                 return; // nothing waited: the prompt was just left
             }
-            let line = "Safe is still locked, so I dropped what was waiting. Ask again once it is unlocked.";
+            let line = "ewe Safe is still locked, so I dropped what was waiting. Ask again once it is unlocked.";
             break (
                 Call::new("safe_unlock", json!({})),
                 failed(line).private(line),
@@ -394,7 +397,7 @@ async fn wait_for_unlock(hub: Arc<Hub>, then: Option<Call>) {
                 None => {
                     break (
                         Call::new("safe_unlock", json!({})),
-                        done("Safe is unlocked.", None).private("Safe is unlocked."),
+                        done("ewe Safe is unlocked.", None).private("ewe Safe is unlocked."),
                     );
                 }
             },
@@ -403,9 +406,9 @@ async fn wait_for_unlock(hub: Arc<Hub>, then: Option<Call>) {
             // Safe went away before it opened
             Err(_) => {
                 let line = if then.is_some() {
-                    "The unlock did not finish: Safe stopped answering, so I dropped what was waiting. Ask again."
+                    "The unlock did not finish: ewe Safe stopped answering, so I dropped what was waiting. Ask again."
                 } else {
-                    "The unlock did not finish: Safe stopped answering."
+                    "The unlock did not finish: ewe Safe stopped answering."
                 };
                 break (
                     Call::new("safe_unlock", json!({})),
@@ -439,10 +442,10 @@ pub async fn status(hub: &Arc<Hub>) -> Outcome {
         Err(f) => return failed_with(f, Some(Call::new("safe_status", json!({})))),
     };
     if v["locked"].as_bool() != Some(false) {
-        let line = "Safe is locked, so I can't count what is in it.";
+        let line = "ewe Safe is locked, so I can't count what is in it.";
         return Outcome {
             action: Some((
-                "Unlock Safe".into(),
+                "Unlock ewe Safe".into(),
                 Call::new(
                     "safe_unlock",
                     json!({"then": {"command": "safe_status", "args": {}}}),
@@ -450,7 +453,7 @@ pub async fn status(hub: &Arc<Hub>) -> Outcome {
             )),
             ..done(line, None)
         }
-        .private("Safe is locked.");
+        .private("ewe Safe is locked.");
     }
     let items = match v["items"].as_u64() {
         Some(1) => "1 item".to_string(),
@@ -465,7 +468,7 @@ pub async fn status(hub: &Arc<Hub>) -> Outcome {
         "local" => "kept on this computer only",
         _ => "",
     };
-    let line = ["Safe is unlocked", &items, sync]
+    let line = ["ewe Safe is unlocked", &items, sync]
         .into_iter()
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
@@ -480,20 +483,20 @@ mod tests {
     #[test]
     fn a_locked_safe_offers_its_unlock_and_keeps_the_command() {
         let next = Call::new("safe_copy", json!({"query": "github"}));
-        let out = failed_with(fail("locked", "Safe is locked."), Some(next));
+        let out = failed_with(fail("locked", "ewe Safe is locked."), Some(next));
         let (label, call) = out.action.expect("an Unlock button");
-        assert_eq!(label, "Unlock Safe");
+        assert_eq!(label, "Unlock ewe Safe");
         assert_eq!(call.command, "safe_unlock");
         assert_eq!(call.args["then"]["command"], "safe_copy");
         assert_eq!(companion_core::commands::validate(&call), Ok(()));
-        assert_eq!(out.private.as_deref(), Some("Safe is locked."));
+        assert_eq!(out.private.as_deref(), Some("ewe Safe is locked."));
     }
 
     #[test]
     fn safe_s_own_sentences_never_reach_a_model() {
         let out = failed_with(fail("not-found", "GitHub has no one-time code."), None);
         assert_eq!(out.line, "GitHub has no one-time code.");
-        assert_eq!(out.private.as_deref(), Some("Safe could not do that."));
+        assert_eq!(out.private.as_deref(), Some("ewe Safe could not do that."));
     }
 
     #[test]

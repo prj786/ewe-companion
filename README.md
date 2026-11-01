@@ -12,32 +12,32 @@ app ("open nemo", "open the browser") and opens apps in a folder ("open
 kitty in documents", "open documents in nemo", "open zed in ewe-companion").
 Plain commands work with no AI.
 
-It works with Safe and ewe browser, and finds your files:
+It works with ewe Safe and ewe Browser, and finds your files:
 
-- **Safe** (ewe's password manager): "copy my GitHub password", "copy my
+- **ewe Safe** (ewe's password manager): "copy my GitHub password", "copy my
   GitHub username", "copy my GitHub code", "log me in to GitHub", "lock my
   safe", "unlock my safe", "is my safe synced?", "how many passwords do I
-  have?". Safe copies the password itself and clears the clipboard later;
+  have?". ewe Safe copies the password itself and clears the clipboard later;
   the companion never sees it. When several logins fit, the island lists
   them (title, username) and a click copies the one you pick. A locked safe
-  offers **Unlock Safe**: you type the master password in Safe's own
+  offers **Unlock ewe Safe**: you type the master password in ewe Safe's own
   window, never in the chat, and the copy happens right after. Logins'
   names are shown on the island only: they never go to an AI and are never
   stored.
-- **ewe browser**: "search for …", "look up …", "open github.com", "play
+- **ewe Browser**: "search for …", "look up …", "open github.com", "play
   …", "find tax in my history", "that site about sheep", "show my tabs",
-  "go to the YouTube tab", "what is this page about?". With an ewe browser
-  that has its command line (newer than 0.1.0-beta), searches use its own
+  "go to the YouTube tab", "what is this page about?". With a version of ewe
+  Browser that has its command line (newer than 0.1.0-beta), searches use its own
   engine and come with Undo; with an older one, the page opens as before.
   A page's text goes to your AI marked as untrusted: if the answer asks to
   do something, it is a button for you to press, never done by itself.
 - **A site's own search**: "search men's shoes on zara", "find a kettle on
   amazon", "search youtube for sheepdogs", "shop for linen shirts on h&m",
-  "go to zara and search for shoes". ewe browser (0.4) opens that site's
+  "go to zara and search for shoes". ewe Browser (0.4) opens that site's
   own results; a site it does not know, or an older browser, gets a plain
   web search of the whole phrase, and the reply says so. "On the web",
   "online" and "on my desktop" keep their old meaning.
-- **More of ewe browser** (0.4 for workspaces, back, forward and
+- **More of ewe Browser** (0.4 for workspaces, back, forward and
   downloads' buttons): "bookmark this page" (Undo removes it), "find
   recipes in my bookmarks", "go back a page", "go forward", "reload the
   page", "reopen the closed tab", "mute this tab", "pin the github tab",
@@ -46,7 +46,7 @@ It works with Safe and ewe browser, and finds your files:
   work workspace" (switching needs the word "browser": "the firefox
   workspace" is the desktop's), "what did I download" (rows with Open and Show in
   folder), "open the browser's settings" (or history, music, files, home).
-  "Close this tab" is only offered, with Run: ewe browser asks first for
+  "Close this tab" is only offered, with Run: ewe Browser asks first for
   that one. Titles, bookmarks, downloads and workspaces show on the island
   only.
 - **Files and folders**: "find my resume", "where is the ewe-safe folder",
@@ -88,7 +88,7 @@ or the generated files by hand.
 
 It knows ewe. A knowledge pack built into the daemon covers the apps and
 their pages, the shortcuts, how to do everyday things, what to do when
-something is wrong, Safe, ewe browser, and every ewe command-line tool
+something is wrong, ewe Safe, ewe Browser, and every ewe command-line tool
 (`ewe-conf`, `ewe-theme`, `ewe-plugin`, `ewe-bt`, `ewe-safe`,
 `ewe-browser`, `komble`, `qs ipc` …). "How do I change my wallpaper?" is answered with no AI
 at all, with a button that opens the place. Other questions go to whoever
@@ -102,7 +102,7 @@ browser, the desktop's switches, timers, sums, every ewe command-line tool),
 P1 and P2 working, plus P2.5 (the notch, the home
 panel, the chat groundwork), P2.6 (the notch fixes, the ewe knowledge pack),
 P2.7 (apps and folders), P2.8 (it runs what it suggests, on a click),
-2026-10-14, and P2.9 (Safe, ewe browser, the finder), 2026-10-15. First
+2026-10-14, and P2.9 (ewe Safe, ewe Browser, the finder), 2026-10-15. First
 release 2026-10-17: the `ewe-companion` package in the [ewe] repository,
 and the island (plugin `ewe.companion` 0.4.0) in ewe 0.29.0-beta's
 plugins. Wave 2 (2026-10-18, P2.10: a site's search, more of the browser,
@@ -143,10 +143,10 @@ ewe-companion ask "volume 60"            # a command, no AI needed
 ewe-companion ask "open kitty in documents"    # an app in a folder
 ewe-companion ask '$ df -h'                    # a command, offered with a token
 ewe-companion debug confirm <token>            # (debug daemon) the Run click
-ewe-companion ask "copy my GitHub password"    # Safe copies it; the reply never holds it
+ewe-companion ask "copy my GitHub password"    # ewe Safe copies it; the reply never holds it
 ewe-companion ask "find pdfs about tax"        # the finder: rows on the island
 ewe-companion find resume                      # the finder's paths, as JSON
-ewe-companion ask "search men's shoes on zara"  # the site's own search, in ewe browser
+ewe-companion ask "search men's shoes on zara"  # the site's own search, in ewe Browser
 ewe-companion ask "remind me in 10 minutes to call mum"   # a notification when due
 ewe-companion ask "what is 15% of 80"          # worked out offline
 ewe-companion ask "restart"                    # offered with Run, never run by itself
@@ -167,8 +167,8 @@ plugin.
 ## The knowledge pack
 
 `knowledge/*.md` is user-facing text about ewe, researched from the repos
-(ewe 0.29, Settings 0.18, Komble 0.20, ewe-sync 0.14, ewe browser 0.3 and
-the wave-2 contracts for 0.4, Safe 0.2); `cli.md` covers every ewe
+(ewe 0.29, ewe Settings 0.18, Komble 0.20, ewe Sync 0.14, ewe Browser 0.3 and
+the wave-2 contracts for 0.4, ewe Safe 0.2); `cli.md` covers every ewe
 command-line tool. A topic is a
 `## Title`, a `keys:` line (the words people use), an optional `open:` line
 (`settings wallpaper`, `komble updates`, `quicksettings wifi`, `overview`,
@@ -181,7 +181,7 @@ and never reach a model.
 - **It must follow ewe.** When a page, a label or a shortcut changes in ewe,
   change the pack in the same change. `cargo test` checks that every topic
   parses and that every `open:` line is a valid command.
-- **Settings ignores page links today** (0.18 opens on Appearance), so
+- **ewe Settings ignores page links today** (0.18 opens on Appearance), so
   answers name the page to pick. Komble and Quick settings pages do open.
 
 What a provider is told with each question: the primer, the topics that fit,
@@ -211,16 +211,16 @@ provider, nothing leaves the machine.
 - **It runs as you, unsandboxed,** like every ewe plugin. Any process
   running as you can talk to its socket, as it can already drive your
   session.
-- **It never sees a password.** It only asks Safe to copy one (`ewe-safe
+- **It never sees a password.** It only asks ewe Safe to copy one (`ewe-safe
   copy`), and never fills a login itself: the fill stays your click in the
   browser, or `Super+P`.
 - **The finder is by name only.** It does not read what is inside your
   files, and it stops after 1.5 s on a very large home folder (the reply
   says so).
 - **Browser history, tabs, the page and "play" from your library need ewe
-  browser's command line,** which comes after 0.1.0-beta. Until then those
+  Browser's command line,** which comes after 0.1.0-beta. Until then those
   say so, and searches and pages open the old way. A site's own search,
-  workspaces, back and forward and the downloads' buttons need ewe browser
+  workspaces, back and forward and the downloads' buttons need ewe Browser
   0.4: an older one gets a plain web search, or "update it in Komble".
 - **Airplane mode is the companion's, not ewe's.** ewe has no airplane
   switch; the companion turns Wi-Fi and Bluetooth off and remembers what
@@ -246,7 +246,7 @@ every way to check one.
 ```sh
 cargo test && cargo clippy --all-targets -- -D warnings
 tests/chat.sh && tests/relay-failsafe.sh   # the chat path; the relay's fail-safes
-tests/canary.sh                            # names stay local: Safe's names reach no model, log or store
+tests/canary.sh                            # names stay local: ewe Safe's names reach no model, log or store
 tests/island.sh up --scale 1.8             # the island in ewe's nested harness
 tests/island.sh ctl debug card permission  # a card to look at
 tests/island.sh shot card                  # → /tmp/ewe-companion-island/card.png
@@ -257,7 +257,7 @@ tests/island.sh down
 sandboxed nested shell, with a virtual mouse for hovers and clicks and a
 scratch Claude Code project for real hook runs. The debug daemon still runs
 commands on this machine (volume, brightness, a Run click), and hooks are
-never tested against your real `~/.claude`. Safe and ewe browser are the
+never tested against your real `~/.claude`. ewe Safe and ewe Browser are the
 fakes in `tests/fakes/` there and in every test: never your real safe or
 browser.
 
