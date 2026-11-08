@@ -468,6 +468,10 @@ edits need the release build (the pack is compiled in).
   my pin is …", but `chat::remember` pushed the user's words into the
   conversation. A command line that `memory::looks_secret` is now kept as a
   placeholder (`tests/brain.sh` checks the next request).
+- **CI's runner has a multi-call coreutils** (uutils): a copy of `sleep`
+  renamed to fake a program exits at once ("coreutils: unknown program"),
+  even with `exec -a sleep`. A fake process with a name is `python3`
+  through a link of that name (`tests/chat.sh`'s firefox).
 - **A key with a hyphen counts twice** in the pack's search ("ewe-browser"
   is the words of "ewe browser"): keep one spelling per key. So do two
   keys with the same stem ("ssh key" and "ssh keys", "window" and
