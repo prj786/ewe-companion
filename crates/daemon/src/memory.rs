@@ -243,7 +243,7 @@ fn matching(all: Vec<Memory>, q: &str) -> Vec<Memory> {
 }
 
 fn row(m: &Memory) -> Value {
-    json!({"title": m.text, "detail": format!("said {}", said_on(m.created)), "icon": "memory",
+    json!({"title": m.text, "detail": format!("said {}", said_on(m.created)), "icon": "remember",
            "actions": [{"label": "Forget", "command": "forget", "args": {"id": m.id}}]})
 }
 
@@ -267,7 +267,6 @@ fn lines(ms: &[Memory]) -> String {
 /// there are none. The user's words as said, with the day they said them
 /// ("friday" is relative).
 // chat.rs puts it in the model's prompt (the look-up loop's change)
-#[allow(dead_code)]
 pub fn prompt_block(hub: &Hub) -> String {
     let all = hub.store().memories();
     lines(&all)

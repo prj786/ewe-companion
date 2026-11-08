@@ -121,8 +121,8 @@ out=$("$BIN/ewe-companion" ask "open the pod bay doors in hal-zz")
 check '[ "$(echo "$out" | field text)" = "echo: open the pod bay doors in hal-zz" ]' \
       "words that name no app or folder go to the provider as a question" "$out"
 out=$("$BIN/ewe-companion" ask "where do I turn on bluetooth")
-check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; p=b[\"messages\"][0][\"content\"]; sys.exit(0 if \"# What you know about ewe\" in p and \"## Pair a Bluetooth device\" in p and \"# This computer now\" in p and \"<!--\" not in p else 1)" "$MOCK_LOG"' \
-      "a provider is told the primer, the topics that fit, and this computer now" "$(tail -c 300 "$MOCK_LOG")"
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; p=b[\"messages\"][0][\"content\"]; q=b[\"messages\"][-1][\"content\"]; sys.exit(0 if \"# What you know about ewe\" in p and \"## Pair a Bluetooth device\" in q and \"# This computer now\" in q and \"<!--\" not in p + q else 1)" "$MOCK_LOG"' \
+      "a provider is told the primer (system prompt), and with the question the topics that fit and this computer now" "$(tail -c 300 "$MOCK_LOG")"
 check '[ "$(echo "$out" | python3 -c "import json,sys; print((json.load(sys.stdin).get(\"action\") or {}).get(\"label\",\"\"))")" = "Open Bluetooth" ]' \
       "the model's answer still carries the topic's button" "$out"
 out=$("$BIN/ewe-companion" ask "  ")
@@ -417,6 +417,11 @@ check 'echo "$out" | field text | grep -Eq "^Memory: .* in use, .* free"' "memor
 out=$("$BIN/ewe-companion" ask "what's using my memory")
 check 'echo "$out" | field text | grep -q "uses the most memory" && [ "$(echo "$out" | js "len(r[\"rows\"])")" -ge 1 ]' \
       "what's using my memory → the programs, as rows" "$out"
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][0][\"command\"] + str(r[\"rows\"][0][\"actions\"][0][\"args\"][\"force\"])")" = "force_quitFalse" ]' \
+      "…each program's row has Quit (force_quit, not forced)" "$out"
+out=$("$BIN/ewe-companion" debug run force_quit '{"app": "firefox", "force": false}')
+check '[ "$(echo "$out" | js "(r.get(\"confirm\") or {}).get(\"command\", \"\")")" = "pkill -x firefox" ]' \
+      "…and Quit only offers pkill -x with Run: nothing is stopped by the click on the row" "$out"
 out=$("$BIN/ewe-companion" ask "what's using my cpu")
 check 'echo "$out" | field text | grep -q "^The processor is [0-9]* % busy"' "what's using my cpu → two samples of /proc" "$out"
 out=$("$BIN/ewe-companion" ask "how long has my computer been on")
@@ -475,8 +480,8 @@ check '[ "$(echo "$out" | field text)" = "Brought back Firefox" ] && [ "$(hst "s
       "bring back the minimized window → onto the workspace in focus" "$out"
 # closing asks first; only the button's one-time token closes
 out=$("$BIN/ewe-companion" ask "close this window")
-check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \
-      "close this window → a Close Firefox button; nothing closed yet" "$out"
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && [ "$(echo "$out" | field kind)" = "answer" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \
+      "close this window → a Close Firefox button (an offer, not done); nothing closed yet" "$out"
 close=$(echo "$out" | js 'json.dumps(r["action"]["args"])')
 out=$("$BIN/ewe-companion" debug run window '{"action": "close"}')
 check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \

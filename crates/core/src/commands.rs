@@ -554,6 +554,32 @@ pub fn clock(s: &str) -> Option<(u32, u32)> {
 /// The longest timer: a week.
 pub const TIMER_MAX_S: i64 = 7 * 86_400;
 
+/// Programs that are the desktop itself: Quit is never offered for them,
+/// and "kill hyprland" is refused (it would end the session or the shell).
+pub const SESSION: &[&str] = &[
+    "hyprland",
+    "quickshell",
+    "qs",
+    "ewe-companiond",
+    "systemd",
+    "dbus-daemon",
+    "dbus-broker",
+    "pipewire",
+    "pipewire-pulse",
+    "wireplumber",
+    "xwayland",
+    "greetd",
+    "networkmanager",
+    "polkitd",
+    "xdg-desktop-portal",
+    "xdg-desktop-portal-hyprland",
+];
+
+pub fn is_session(app: &str) -> bool {
+    let a = app.trim().to_lowercase();
+    SESSION.contains(&a.as_str())
+}
+
 pub fn known(name: &str) -> bool {
     CATALOG.iter().any(|c| c.name == name)
 }
@@ -850,6 +876,9 @@ pub fn validate(call: &Call) -> Result<(), String> {
         "force_quit" => {
             flag("force", false)?;
             match a.get("app").and_then(Value::as_str) {
+                Some(n) if is_session(n) => Err(format!(
+                    "force_quit: {n} is part of the desktop itself; stopping it would end your session or the shell"
+                )),
                 Some(n)
                     if name_ok(n, 64)
                         && n.chars()
@@ -997,6 +1026,22 @@ pub fn search_url(query: &str) -> String {
 /// Where "play <something>" goes until ewe-browser can play by itself.
 pub fn music_url(query: &str) -> String {
     format!("https://music.youtube.com/search?q={}", url_encode(query))
+}
+
+#[cfg(test)]
+mod session_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn the_desktop_itself_is_never_quit() {
+        for app in ["Hyprland", "quickshell", "qs", "pipewire", "Xwayland"] {
+            let c = Call::new("force_quit", json!({"app": app, "force": false}));
+            assert!(validate(&c).is_err(), "{app}");
+        }
+        let c = Call::new("force_quit", json!({"app": "firefox", "force": true}));
+        assert!(validate(&c).is_ok());
+    }
 }
 
 #[cfg(test)]

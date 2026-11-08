@@ -352,6 +352,28 @@ accounts, servers, mail or contacts, never `ewe.conf` as a whole, never a
 secret (C3). Tests: `tests/chat.sh` checks what the mock provider was sent;
 extend that check if your fact matters.
 
+Since 0.3 the snapshot rides with the question in `<notes>`
+(`persona::with_notes`), never in the system prompt: the system prompt must
+stay the same from one question to the next (a warm `claude` is keyed by it,
+and Anthropic caches it). The live part now starts with the date and time,
+uptime, memory, load and online/offline.
+
+**A fact on demand: a look.** A read too slow or too detailed for every
+question (what uses the CPU, what fills the disk) is a catalog command whose
+`Outcome` sets `facts`: model-safe text (numbers, generic program names,
+category sizes; never a file name, a window title, a network's name or an
+address, which stay in rows with a `private` line). List its name in
+`persona::LOOKS`. A reply made only of looks runs them, and the model is
+asked once more with their `facts` wrapped as untrusted; an ACTION in that
+second answer is a "Do it" button (C4). `tests/brain.sh` has the pattern
+(`how is my memory doing` → `system_info`).
+
+**An action that asks first without a shell command** (closing a window,
+"forget everything"): the outcome offers a button (`Outcome::action`)
+whose call carries a one-time token kept in the daemon (`windows.rs`,
+`memory.rs`: random, two minutes, once). The same call without a valid
+token only offers the button again, so a model can never do it by itself.
+
 ## 8. A glance row
 
 The home panel shows a fact only when it needs the user (a disk past 85 %,
@@ -460,7 +482,8 @@ machine, never synced.
   `crates/daemon/src/store/migrations/00N_<what>.sql`, appended to
   `MIGRATIONS` in `store.rs` (the example: `002_timers.sql`, the timers
   that must survive a daemon restart; `Store::timer_add` and friends, a
-  test in `store.rs`). `PRAGMA user_version` records the last one
+  test in `store.rs`; `003_memory.sql`, what the user asked Shaun to
+  remember, 100 at most). `PRAGMA user_version` records the last one
   applied. Never edit a migration that has shipped.
 - `001_init.sql` already has the tables later phases fill (notifications,
   chats, messages, memory, nudges, usage): use them before adding one.

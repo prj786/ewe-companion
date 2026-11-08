@@ -64,7 +64,7 @@ use tracing::{info, warn};
 
 use crate::hub::{Hub, Proposal, Undo};
 use crate::providers::Sink;
-use crate::{browser, commands, context, providers, runner};
+use crate::{browser, commands, context, memory, providers, runner};
 
 #[derive(Default)]
 pub struct Reply {
@@ -277,6 +277,9 @@ pub fn reply_of(hub: &Arc<Hub>, call: &Call, out: commands::Outcome) -> Reply {
     Reply {
         kind: match (out.ok, out.rows.is_empty() && confirm.is_none()) {
             (false, _) => "error",
+            // a button that waits for a click ("Close Firefox") is an
+            // offer, not something done
+            (true, true) if undo.is_none() && out.action.is_some() => "answer",
             (true, true) => "done",
             (true, false) => "answer",
         },
@@ -376,6 +379,10 @@ fn remember(hub: &Arc<Hub>, text: &str, r: &Reply) {
         .is_some_and(companion_core::commands::is_safe);
     let user = if safe {
         "(a request to ewe Safe)"
+    } else if r.command.is_some() && memory::looks_secret(text) {
+        // "remember my pin is 9081…": refused by the store, and its words
+        // stay out of what a model reads next (C3)
+        "(a request with something that looked like a secret)"
     } else {
         text
     };
@@ -561,11 +568,12 @@ pub async fn answer_with(hub: &Arc<Hub>, text: &str, sink: Option<&Sink>) -> Rep
     // the topics worth a model's time: a weak match is noise
     let worth: Vec<_> = hits.iter().filter(|h| h.score >= 1.5).collect();
     let topics = knowledge::prompt_block(&worth);
+    let memories = memory::prompt_block(hub);
     let ask = persona::with_notes(
         &persona::Turn {
             topics: &topics,
             machine: &machine,
-            memory: "",
+            memory: &memories,
         },
         text,
     );
@@ -617,7 +625,11 @@ pub async fn answer_with(hub: &Arc<Hub>, text: &str, sink: Option<&Sink>) -> Rep
 /// What a look tells a model: its model-safe line (what the conversation
 /// may keep), never rows.
 fn look_line(call: &Call, out: &commands::Outcome) -> String {
-    let what = out.private.as_deref().unwrap_or(&out.line);
+    let what = out
+        .facts
+        .as_deref()
+        .or(out.private.as_deref())
+        .unwrap_or(&out.line);
     format!("{}: {}", call.command, what.trim())
 }
 

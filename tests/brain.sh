@@ -146,6 +146,26 @@ h = [json.loads(l)[\"body\"][\"messages\"] for l in open(sys.argv[1])][-1]
 sys.exit(0 if any(m[\"content\"] == \"where do I turn on bluetooth\" for m in h[1:-1]) else 1)" "$MOCK_LOG"' \
       "…and the history keeps the user's words, not the notes" ""
 
+# ── what a look found goes back as its model-safe facts ──────────────────
+out=$("$BIN/ewe-companion" ask "how is my memory doing")
+check 'echo "$out" | grep -q "From the look-up: system_info: " && echo "$out" | grep -q "GB"' \
+      "a look-up hands the model the read's facts (memory in GB), not its rows" "$out"
+
+# ── memory: what the user asked to keep rides in the notes; a secret never ──
+"$BIN/ewe-companion" ask "remember that my dentist is on friday" >/dev/null
+out=$("$BIN/ewe-companion" ask "remember my pin is 90817263")
+check '[ "$(echo "$out" | field kind)" = "error" ] && echo "$out" | grep -q "looks like a secret"' \
+      "a secret is refused" "$out"
+"$BIN/ewe-companion" ask "what should I do this week" >/dev/null
+check 'python3 -c "
+import json, sys
+m = [json.loads(l)[\"body\"][\"messages\"] for l in open(sys.argv[1])][-1]
+q = m[-1][\"content\"]
+ok = \"# What the user asked you to remember\" in q and \"dentist is on friday\" in q
+sys.exit(0 if ok and \"90817263\" not in json.dumps(m) else 1)" "$MOCK_LOG"' \
+      "memories ride in the notes; the refused secret is nowhere in what the model reads (C3)" \
+      "$(tail -c 600 "$MOCK_LOG")"
+
 # ── Claude Code: lean, and warm ahead of the question ─────────────────────
 settings claude-code "" ""
 t0=$(now); out=$("$BIN/ewe-companion" ask "first question"); t1=$(now); cold=$(secs "$t0" "$t1")

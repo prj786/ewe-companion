@@ -68,6 +68,34 @@ It works with ewe Safe and ewe Browser, and finds your files:
   timers", "cancel the timer"; a notification when it is due, kept in
   `companion.db` so it survives a restart. "What is 15% of 80", "80 + 15%",
   "12 x 7" are worked out offline.
+- **The clock, dates and units** (0.3): "what time is it", "what's the
+  date", "what time is it in tokyo", "how many days until christmas",
+  "what day is 25 december", "the date in 30 days", "convert 10 km to
+  miles", "20 c in f", "5 gb in mb", "sqrt 144". No currencies: those need
+  the network.
+- **This computer** (0.3): "how much battery do I have", "how much ram is
+  free", "what's using my cpu" (the programs as rows, each with **Quit**,
+  which only offers the command with Run), "how long has my computer been
+  on", "am I online", "what's my ip" (the local addresses; it never asks a
+  website for your public one), "how much disk space is left", "what's
+  eating my disk" (the package cache, caches, the trash, Downloads, the
+  journal), "why is my laptop slow" (all of it at once). Programs are named
+  by their process name; the desktop's own (Hyprland, the shell, PipeWire)
+  never get a Quit.
+- **Windows and workspaces** (0.3): "switch to workspace 3", "next
+  workspace", "move this window to workspace 2", "make this window
+  fullscreen", "maximise", "float this window", "minimise this window",
+  each with Undo. "Close this window" and "quit firefox" show a **Close**
+  button first; "firefox is frozen" offers `pkill` with Run.
+- **What you tell it to remember** (0.3): "remember that my dentist is on
+  friday", "what do you remember", "forget about my dentist" (Undo puts it
+  back), "forget everything" (asks first). Kept on this computer, 100 at
+  most, and given to whoever answers your questions so answers can use
+  them. Anything that looks like a password, a PIN, a code, a key or a card
+  number is refused, and its words stay out of the conversation too.
+- **Two things at once** (0.3): "dnd on and set a timer for 25 minutes",
+  "mute, then lock the screen": up to three, with one Undo for all of
+  them. And small typos are forgiven: "opne firefox", "volme 50".
 - **Asked first** (shown with Run, never run by the matcher): "dark mode" /
   "switch to light mode" (`ewe-theme scheme apply …`), "suspend",
   "restart", "shut down", "log out" (ewe's own `power.sh`, what the Power
@@ -97,6 +125,14 @@ login, an API key (Anthropic, OpenAI, Gemini, OpenRouter), or a local model
 (Ollama, LM Studio). They are told what the pack knows and what this
 computer is like now.
 
+Answers are quick and appear as they are written (0.3). Your Claude Code
+runs lean, without your own plugins, skills, MCP servers or settings
+(those once made "2+2" take 7.5 s), and it is started when you type the
+first letter of a question, so the answer starts in about a second. When
+the answer depends on this computer, the model looks it up first (what
+uses the CPU, what fills the disk) and answers from what it found; one
+reply can do up to three things, with one Undo.
+
 **Status: 0.2.0-beta (wave 2, 2026-10-18: a site's own search, more of the
 browser, the desktop's switches, timers, sums, every ewe command-line tool),
 P1 and P2 working, plus P2.5 (the notch, the home
@@ -114,7 +150,12 @@ Quick settings without the rail, the System monitor in the bar, Komble's
 plugin sheet, ewe Settings' four groups, ewe Sync's words, ewe Browser's
 save prompt and ewe Safe as the SSH gate. 0.2.4-beta (2026-11-08) hands
 "game mode" to ewe's own (`ewe-game`, ewe 0.42): one mode for the
-tile, ewe Settings and Shaun, with Undo.**
+tile, ewe Settings and Shaun, with Undo. 0.3 (2026-11-08, not yet
+released) is faster and wiser: Claude Code lean and started ahead of the
+question, answers that stream in, the time and this computer's state for
+the model, look-ups, up to three things at once; and new things to ask:
+the clock, dates and units, this computer's battery, memory, CPU, disk and
+network, windows and workspaces, and what you tell it to remember.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:
@@ -192,13 +233,16 @@ and never reach a model.
   Appearance), so answers name the page to pick. Komble and Quick settings
   pages do open.
 
-What a provider is told with each question: the primer, the topics that fit,
-and *this computer now*: the ewe and kernel versions, which ewe apps and
-plugins are here, the plugins' and your own shortcuts, the scheme, accent
-and Glass, the disks, waiting updates, battery, volume, brightness, Do not
-disturb, game mode and your agents. Never ewe.conf as a whole (its account
-and mail sections name your servers), never a key or a password. With no
-provider, nothing leaves the machine.
+What a provider is told: the primer (the same every time, so it can be
+cached), and with each question the topics that fit, what you asked it to
+remember, and *this computer now*: the date and time, the ewe and kernel
+versions, which ewe apps and plugins are here, the plugins' and your own
+shortcuts, the scheme, accent and Glass, uptime, memory in use, CPU load,
+online or not, the disks, waiting updates, battery, volume, brightness, Do
+not disturb, game mode and your agents. Never ewe.conf as a whole (its
+account and mail sections name your servers), never a key or a password,
+never a network's name or an address. With no provider, nothing leaves the
+machine.
 
 ## Honest limits
 
@@ -236,6 +280,11 @@ provider, nothing leaves the machine.
   on). Bluetooth comes back on at the next boot anyway.
 - **Keeping the screen awake needs the Insomnia plugin,** and a shell
   restart turns it off (the plugin keeps no state).
+- **A quick answer from Claude Code costs memory for a while.** The
+  `claude` started ahead of your question holds about 190 MB until it
+  answers, or for 3 minutes if you never ask.
+- **Window commands speak Hyprland's Lua** (0.56 and later, as ewe ships).
+  "This window" is the last window you used before opening the notch.
 - **Timers are not alarms.** A due timer is a normal notification: Do not
   disturb hides its banner (it still lands in Quick settings →
   Notifications), and nothing rings.

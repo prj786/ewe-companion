@@ -57,6 +57,8 @@ class H(BaseHTTPRequestHandler):
         if "What you looked up" in last:
             found = last.split("<untrusted", 1)[1].split(">", 1)[1].split("</untrusted>", 1)[0].strip()
             text = "From the look-up: " + found
+        elif "how is my memory doing" in last:
+            text = 'ACTION {"command": "system_info", "args": {"what": "memory"}}'
         elif "how busy is it" in last:
             text = 'ACTION {"command": "calc", "args": {"expr": "6*7"}}'
         elif "shush everything" in last:

@@ -26,6 +26,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use companion_core::commands::{self as catalog, Call};
 use serde_json::{Value, json};
 
 use crate::commands::{Outcome, done, run_argv_within};
@@ -502,11 +503,21 @@ fn cpu_line(s: &CpuSample) -> String {
     line
 }
 
+/// A program's row's Quit: `force_quit`, a proposal (`pkill -x`) that runs
+/// only from its Run click. None for a name the catalog would refuse.
+fn quit_actions(app: &str) -> Value {
+    let call = Call::new("force_quit", json!({"app": app, "force": false}));
+    match catalog::validate(&call) {
+        Ok(()) => json!([{"label": "Quit", "command": call.command, "args": call.args}]),
+        Err(_) => json!([]),
+    }
+}
+
 fn cpu_rows(s: &CpuSample) -> Vec<Value> {
     s.apps
         .iter()
         .map(|(app, pct, n)| {
-            json!({"title": app, "icon": "cpu",
+            json!({"title": app, "icon": "cpu", "actions": quit_actions(app),
                    "detail": format!("{pct:.0} % of one core{}", if *n > 1 { format!(" · {n} processes") } else { String::new() })})
         })
         .collect()
@@ -515,7 +526,7 @@ fn cpu_rows(s: &CpuSample) -> Vec<Value> {
 fn mem_rows(top: &[(String, u64, usize)]) -> Vec<Value> {
     top.iter()
         .map(|(app, b, n)| {
-            json!({"title": app, "icon": "memory",
+            json!({"title": app, "icon": "memory", "actions": quit_actions(app),
                    "detail": format!("{}{}", mem_size(*b), if *n > 1 { format!(" · {n} processes") } else { String::new() })})
         })
         .collect()

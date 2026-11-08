@@ -1711,6 +1711,33 @@ Branches `feat/shaun-wiser` (here and in the plugin).
       in one line ("dnd on and a 25 minute timer") run offline the same way.
 - [x] **Anthropic API:** `effort: low` on 5-series models (Haiku 5.5 thinks
       at `medium` by default), `max_tokens` 2000.
+- [x] **The clock, dates and units** (owner's pick): `clock` (here, or a
+      place from `/usr/share/zoneinfo` + aliases), `date_math` (until,
+      since, weekday, offset, Easter), `convert` (no currencies), calc's
+      roots and powers.
+- [x] **System facts** (owner's pick): `system_info` (battery, memory, CPU
+      from two `/proc` samples, uptime, network, disk, overview: "why is my
+      laptop slow") and `disk_usage`; program rows with Quit (a
+      `force_quit` proposal; never the desktop's own: `commands::SESSION`).
+- [x] **Windows and workspaces** (owner's pick): `workspace` (the display's
+      own numbers), `window` (move, fullscreen, maximise, float, minimise,
+      restore, each with Undo; close only from a one-time token's button),
+      `force_quit` (a proposal).
+- [x] **Memory** (owner's pick): `remember` / `memories` / `forget`
+      (migration 003, 100 at most, secrets refused and kept out of the
+      history), `memory::prompt_block` in the notes.
+- [x] **Typo tolerance:** a second pass over the matcher's own words
+      ("opne firefox", "volme 50"); free text is never corrected.
+- [x] Tests: core 107, daemon 58; `tests/chat.sh` 164 (the new commands
+      against the `hyprctl`, `ip` and `nmcli` fakes and a fake `firefox`
+      process), `tests/brain.sh` 25, `tests/canary.sh` 9 (network and
+      window chats added). The island harness: the clock, units, memory
+      and CPU rows (Quit), memories (star, Forget).
+- [ ] On the owner's desktop: the window commands on the live Hyprland
+      (close and fullscreen's Lua arguments come from 0.57.1's error
+      strings, never run live by rule), a real Claude Code answer streaming
+      in the notch, and the warm `claude`'s memory over a day.
+- **Gate:** the owner's try on this machine, then a release (owner's call).
 - [x] Tests: `tests/brain.sh` (22, a fake `claude` on PATH, never the real
       login), unit tests for the SSE parser (every split point), the lean
       flags, the notes, several actions, the streaming filter, the compound
@@ -2016,3 +2043,13 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   each assignment; replacing the answer twelve times a second would have
   rebuilt the list as often. The growing text is one `TextBody` of its own
   (`CompanionState.streamText`); the whole answer joins `messages` once.
+- **The typo pass corrected free text** (2026-11-08): "remind me to take a
+  break" became "make a break". Everything after remind, remember, open,
+  search, close, kill … is free text and never corrected; "lock" is left
+  out of the vocabulary so that "look" can never become it.
+- **Quit was offered for Hyprland** (2026-11-08): the CPU and memory rows'
+  Quit (a `pkill -x` proposal) listed the compositor and the shell among
+  the busiest programs. Behind a Run click still, but a trap:
+  `commands::SESSION` refuses them, so their rows carry no Quit.
+- **A `libc::tm` across an `.await`** (2026-11-08) made the future
+  non-`Send` (it holds a raw pointer) and `tokio::spawn` refused it.
