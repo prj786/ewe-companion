@@ -112,7 +112,9 @@ the way the desktop now does: ewe Settings, ewe Sync, ewe Browser, ewe
 Safe and ewe Cast. 0.2.3-beta (2026-11-01) knows ewe 0.39's UI revamp:
 Quick settings without the rail, the System monitor in the bar, Komble's
 plugin sheet, ewe Settings' four groups, ewe Sync's words, ewe Browser's
-save prompt and ewe Safe as the SSH gate.**
+save prompt and ewe Safe as the SSH gate. 0.2.4-beta (2026-11-08) hands
+"game mode" to ewe's own (`ewe-game`, ewe 0.42): one mode for the
+tile, ewe Settings and Shaun, with Undo.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:

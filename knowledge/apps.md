@@ -63,8 +63,8 @@ What changes the system I only offer: "dark mode", "suspend", "restart", "shut d
 For other questions, choose who answers in Komble → Plugins → Shaun (click it) → Who answers questions: your Claude Code, Codex or OpenCode login, an API key (Anthropic, OpenAI, Gemini, OpenRouter; the key goes to the keyring), a model on this computer (Ollama, LM Studio), or any OpenAI-compatible server (custom, with its address). Without one I still answer from what I know about ewe. I am optional: the Shaun plugin and the ewe-companion package.
 
 ## Game mode
-keys: game mode, gaming, games, gamemode, steam, performance mode, fps
-Say "game mode on" or press the gamepad in my quick actions: Do not disturb turns on, Hyprland's animations and blur turn off, and GameMode's CPU boost holds. "game mode off" puts everything back. Steam and other games install from Komble.
+keys: game mode, gaming, games, gamemode, steam, performance mode, fps, ultra, lag, slow game
+Game mode is in Quick settings (the Game mode tile), in ewe Settings → Power → Gaming, and here: say "game mode on" or press the gamepad in my quick actions. It also turns on by itself while a Steam game, gamescope, or a game that asks GameMode runs (ewe Settings → Power → Gaming → Turn on while a game runs). Balanced keeps banners in the notification list, turns off window animations, blur and shadows, and holds GameMode's CPU boost. Ultra, the default, also sets the Performance power profile (on a laptop that gives an integrated GPU more power), sends a fullscreen game straight to the display, closes ewe Sync and ewe Browser's background process, hides desktop widgets and freezes a video wallpaper. "game mode off" puts everything back. In a terminal: ewe-game on, ewe-game off, ewe-game status. Steam and other games install from Komble.
 
 ## Welcome, the first-login guide
 keys: welcome, first login, setup, first run, onboarding, tour, getting started

@@ -162,7 +162,7 @@ impl Hub {
             "chat": g.chat_status,
             "glance": g.glance,
             "usage": live_usage(&g.usage),
-            "game_mode": g.game.is_some(),
+            "game_mode": ewe_game_on().unwrap_or(g.game.is_some()),
         })
     }
 
@@ -544,8 +544,10 @@ impl Hub {
         }
     }
 
+    /// The desktop's game mode when ewe has one (0.42, `ewe-game`'s state
+    /// file — it may have started from the tile or a game), else Shaun's own.
     pub fn game_mode_on(&self) -> bool {
-        self.lock().game.is_some()
+        ewe_game_on().unwrap_or_else(|| self.lock().game.is_some())
     }
 
     /// Set (Some) or end (None) game mode; ending returns Do not disturb as
@@ -671,6 +673,17 @@ pub fn presence(cards: &[Card], sessions: &[&Session]) -> &'static str {
     } else {
         "idle"
     }
+}
+
+/// `on` in ewe-game's state file ($XDG_RUNTIME_DIR/ewe/game.json), or None
+/// when this ewe has no game mode of its own (before 0.42).
+fn ewe_game_on() -> Option<bool> {
+    let dir = std::env::var_os("XDG_RUNTIME_DIR")?;
+    let text = std::fs::read_to_string(std::path::Path::new(&dir).join("ewe/game.json")).ok()?;
+    serde_json::from_str::<Value>(&text)
+        .ok()?
+        .get("on")?
+        .as_bool()
 }
 
 #[cfg(test)]
