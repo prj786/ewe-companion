@@ -118,7 +118,8 @@ touch the real ones:
   the active window and `dispatch`, logged to `hyprctl.log`; the window's
   pid is `$FAKE_HYPR_PID`), `ip` (`-j addr`) and `nmcli` answers
   connectivity and devices. Each logs its argv to `<name>.log`.
-- A process called `firefox` (a copy of `sleep`, off the PATH) stands in
+- A process called `firefox` (`python3` through a link of that name, off
+  the PATH: a copy of `sleep` fails on a multi-call coreutils) stands in
   for an app to close or quit: `FAKE_HYPR_PID` is its pid, and the checks
   prove it is still alive after every offer (`kill -0`). Window and
   workspace commands must never reach the real compositor.

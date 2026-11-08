@@ -42,12 +42,12 @@ no() { echo "FAIL  $*"; fail=$((fail + 1)); }
 check() { if eval "$1"; then ok "$2"; else no "$2  [$3]"; fi; }
 field() { python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1]) or "")' "$1"; }
 IP=""
-# a process called firefox (a copy of sleep, off the PATH) that the fake
-# Hyprland's windows belong to: "kill firefox" must find it, and never end it.
-# Its name comes from the file; argv[0] stays "sleep", or a multi-call
-# coreutils (uutils, as on newer Ubuntu runners) exits at once
-mkdir -p "$W/procs" && cp "$(command -v sleep)" "$W/procs/firefox"
-(exec -a sleep "$W/procs/firefox" 600) & FP=$!
+# a process called firefox (python3 through a link of that name, off the
+# PATH) that the fake Hyprland's windows belong to: "kill firefox" must find
+# it, and never end it. Not a copy of sleep: a multi-call coreutils (uutils,
+# on newer Ubuntu runners) reads its name from the file and exits
+mkdir -p "$W/procs" && ln -s "$(command -v python3)" "$W/procs/firefox"
+"$W/procs/firefox" -c 'import time; time.sleep(600)' & FP=$!
 export FAKE_HYPR_PID="$FP"
 cleanup() { kill "$MP" "$DP" $IP "$FP" 2>/dev/null; wait 2>/dev/null; rm -rf "$W"; }
 trap cleanup EXIT
