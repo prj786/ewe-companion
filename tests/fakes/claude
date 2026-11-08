@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""A stand-in for Claude Code's `claude`, for the companion's tests: the
+real one spends the owner's own login. It knows only how Shaun runs it:
+
+  claude -p --input-format stream-json --output-format stream-json
+         --verbose --include-partial-messages --model M --system-prompt S …
+
+It takes $FAKE_CLAUDE_START seconds to start (default 1.5, like the real
+one's few seconds), then reads one stream-json user message from stdin and
+answers it the way the real one streams: a `system` init, the text in
+`stream_event` text deltas, then a `result`. The answer is "echo: " and the
+user's words after the turn's </notes>.
+
+A log in $EWE_FAKE_DIR/claude.log: one JSON line per start
+{"argv", "internal" (EWE_COMPANION_INTERNAL), "started"} and one per
+question {"asked", "waited"} (seconds between the start and the question).
+"""
+import json
+import os
+import sys
+import time
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+LOG = os.path.join(D, "claude.log")
+born = time.time()
+
+
+def log(obj):
+    with open(LOG, "a") as f:
+        f.write(json.dumps(obj) + "\n")
+
+
+log({"argv": sys.argv[1:], "internal": os.environ.get("EWE_COMPANION_INTERNAL"), "started": born})
+time.sleep(float(os.environ.get("FAKE_CLAUDE_START", "1.5")))
+
+
+def out(obj):
+    sys.stdout.write(json.dumps(obj) + "\n")
+    sys.stdout.flush()
+
+
+line = sys.stdin.readline()
+if not line:
+    sys.exit(0)
+msg = json.loads(line)
+content = msg["message"]["content"]
+log({"asked": time.time(), "waited": round(time.time() - born, 2)})
+words = content.split("</notes>", 1)[1].strip() if "</notes>" in content else content
+words = words.rsplit("\n", 1)[-1]
+answer = "echo: " + words
+out({"type": "system", "subtype": "init"})
+for i in range(0, len(answer), 5):
+    out({"type": "stream_event", "event": {"type": "content_block_delta", "index": 0,
+                                           "delta": {"type": "text_delta", "text": answer[i:i + 5]}}})
+    time.sleep(0.01)
+out({"type": "result", "subtype": "success", "is_error": False, "result": answer})
+# like the real one: wait for more until stdin closes
+sys.stdin.read()

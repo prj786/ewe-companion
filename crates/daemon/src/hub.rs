@@ -26,6 +26,8 @@ pub struct Wait {
 #[derive(Default)]
 struct Inner {
     islands: HashMap<u64, mpsc::UnboundedSender<String>>,
+    /// the islands that draw a streaming answer (`hello` `caps: ["partial"]`)
+    partial: HashSet<u64>,
     cards: Vec<Card>,
     waits: HashMap<String, Wait>,
     sessions: HashMap<String, Session>,
@@ -62,6 +64,9 @@ const PROPOSAL_TTL: std::time::Duration = std::time::Duration::from_secs(15 * 60
 pub enum Undo {
     Call(Call),
     Browser(Vec<Vec<String>>),
+    /// several things done at once ("dnd on and a 25 minute timer"): put
+    /// back in reverse order
+    Many(Vec<Undo>),
 }
 
 /// A shell command offered in the chat, waiting for the user's click.
@@ -119,11 +124,24 @@ impl Hub {
 
     // ── islands ──────────────────────────────────────────────────────────
 
-    pub fn add_island(&self) -> (u64, mpsc::UnboundedReceiver<String>) {
+    /// `partial`: the island draws a `chat.reply` whose text grows (its
+    /// hello's `caps`).
+    pub fn add_island(&self, partial: bool) -> (u64, mpsc::UnboundedReceiver<String>) {
         let (tx, rx) = mpsc::unbounded_channel();
         let id = self.next.fetch_add(1, Ordering::Relaxed);
-        self.lock().islands.insert(id, tx);
+        let mut g = self.lock();
+        g.islands.insert(id, tx);
+        if partial {
+            g.partial.insert(id);
+        }
         (id, rx)
+    }
+
+    /// Whether answers may stream: every island draws partial text (an
+    /// older one would show each piece as its own message).
+    pub fn streams(&self) -> bool {
+        let g = self.lock();
+        !g.islands.is_empty() && g.islands.keys().all(|id| g.partial.contains(id))
     }
 
     /// The last island gone means nobody can answer: every waiting hook
@@ -132,6 +150,7 @@ impl Hub {
         let empty = {
             let mut g = self.lock();
             g.islands.remove(&id);
+            g.partial.remove(&id);
             g.islands.is_empty()
         };
         if empty {
@@ -743,7 +762,7 @@ mod tests {
     #[tokio::test]
     async fn the_last_island_leaving_releases_waits() {
         let h = hub();
-        let (id, _rx) = h.add_island();
+        let (id, _rx) = h.add_island(false);
         let (atx, arx) = oneshot::channel();
         let card = Card {
             id: "c1".into(),
@@ -766,7 +785,7 @@ mod tests {
     #[tokio::test]
     async fn locking_releases_waits() {
         let h = hub();
-        let (_id, _rx) = h.add_island();
+        let (_id, _rx) = h.add_island(false);
         let (atx, arx) = oneshot::channel();
         h.add_card(
             Card {
@@ -789,7 +808,7 @@ mod tests {
     #[test]
     fn islands_get_cards_and_closes() {
         let h = hub();
-        let (_id, mut rx) = h.add_island();
+        let (_id, mut rx) = h.add_island(false);
         h.add_card(
             Card {
                 id: "c9".into(),

@@ -176,7 +176,9 @@ crates/core/            companion-core: pure code, no I/O, every rule unit-teste
                         site_of (a site's search), duration_secs and clock_of (timers)
   src/calc.rs           the calculator: arithmetic and percentages, offline
   src/find.rs           the finder's rules: what "find pdfs about tax" asks for, rank()
-  src/persona.rs        the system prompt (Brief) and the one-line ACTION protocol
+  src/persona.rs        the stable system prompt (Brief), the turn's <notes> (Turn, with_notes), the
+                        ACTION protocol (parse_actions: up to 3), LOOKS (reads a model may see the
+                        results of), visible() (a streaming answer without its ACTION lines)
   src/knowledge.rs      the knowledge pack: parse, search, CONFIDENT, Topic::answer
   src/shell.rs          assess(cmd): Fine, Risky(why) or Refused(why), plus "needs a terminal"
 crates/daemon/          ewe-companiond (tokio)
@@ -185,7 +187,9 @@ crates/daemon/          ewe-companiond (tokio)
   src/hub.rs            the state (one Mutex) and the store (its own); push_state(), shell_do(), tokens
   src/store.rs          SQLite (WAL) at ~/.local/state/ewe/companion/companion.db; migrations
   src/store/migrations/ numbered .sql files, compiled in (001 the schema, 002 timers)
-  src/chat.rs           one chat line in, one Reply out: matcher → pack → provider; proposals; confirm()
+  src/chat.rs           one chat line in, one Reply out: matcher → compound ("X and Y") → pack →
+                        provider; look_up (looks, then ask again); several ACTIONs → combine (one
+                        Undo); partial_sink (streaming to the island); warm(); proposals; confirm()
   src/commands.rs       runs a catalog Call (argv only, never a shell); Outcome {ok, line, undo, miss,
                         rows, action, private, propose}
   src/browser.rs        ewe browser's command line: detect (commands, the schemas' args), read (tier 0),
@@ -198,9 +202,12 @@ crates/daemon/          ewe-companiond (tokio)
   src/safe.rs           Safe's command line: copy, login, lock, unlock (and what waited for it), status
   src/finder.rs         files and folders under home by name (the ignore crate, 1.5 s), rows
   src/places.rs         folders by the words people use; default apps via xdg-mime
-  src/providers.rs      PROVIDERS: CLI lane (claude-code, codex, opencode) and API lane
+  src/providers.rs      PROVIDERS: CLI lane (claude-code, codex, opencode) and API lane; Sink (streaming);
+                        SSE for the APIs; Claude Code lean (claude_command) and warm (warm, take_warm,
+                        the reaper: 3 idle minutes)
   src/keyring.rs        secret-tool, key on stdin
-  src/context.rs        "this computer now" for a model: installed part (kept 60 s) + live part
+  src/context.rs        "this computer now" for a model: installed part (kept 60 s, prefetch() on
+                        chat.warm) + live part (the time, uptime, memory, load, online, disks, battery …)
   src/glance.rs         disks and waiting updates for the home panel
   src/runner.rs         runs a proposed command after the Run click (bash -c, 120 s, last 12 lines)
   src/term.rs           jump to an agent's terminal: Hyprland window, kitty tab, tmux pane
@@ -213,8 +220,9 @@ crates/cli/             ewe-companion (std-only: it starts in milliseconds)
 knowledge/              the pack (Markdown, compiled in): primer.md + apps, howto, keys, fix, safe, browser, cli
 integrations/claude-code/  a Claude Code plugin (hooks.json) + a local marketplace
 packaging/              PKGBUILD, ewe-companion.service (user unit, no [Install])
-tests/                  chat.sh, relay-failsafe.sh, canary.sh, island.sh, vptr.py, mock-llm.py,
-                        fake-island.py (--do answers `do`), fakes/ (ewe-safe, ewe-browser, and the PATH
+tests/                  chat.sh, brain.sh, relay-failsafe.sh, canary.sh, island.sh, vptr.py, mock-llm.py
+                        (SSE when asked; MOCK_DELAY), fake-island.py (--do answers `do`; --caps, --say,
+                        --warm), fakes/ (ewe-safe, ewe-browser, claude, and the PATH
                         shims nmcli, ewe-bt, qs, notify-send, ewe-theme, gio),
                         payloads/claude/*.json (recorded hook payloads)
 docs/                   PLAN.md, PROTOCOL.md, EXTENDING.md, TESTING.md
@@ -403,6 +411,23 @@ edits need the release build (the pack is compiled in).
   `hub.store().list().into_iter().filter(|t| hub.store().remove(..))`
   locks the store twice on one thread: the timer scheduler deadlocked the
   daemon the first time a timer fired. Take the list into a `let` first.
+- **`claude -p` brings the user's whole Claude Code along** unless told
+  not to: `--system-prompt` and `--tools ""` still load their plugins,
+  skills, MCP servers and settings (~94k tokens, 7.5 s for "2+2" on the
+  owner's machine). Keep `--disable-slash-commands --strict-mcp-config
+  --setting-sources ""` (`claude_runs_lean` tests them). Never `--bare`: it
+  reads no OAuth, so the user's own login stops working.
+- **The system prompt must not change between questions.** The warm
+  `claude` is keyed by model + system prompt, and Anthropic caches it: the
+  turn's topics, "this computer now" and memories go in `<notes>` with the
+  question (`persona::with_notes`), never in `system_prompt`.
+- **A warm `claude` holds ~190 MB.** It starts on the island's first
+  keystroke (`chat.warm`) and after an answer, never when the notch opens,
+  and the reaper drops it after 3 idle minutes.
+- **Tests must never run the real `claude`.** `tests/brain.sh` puts
+  `tests/fakes/claude` first on the daemon's PATH and refuses to run
+  otherwise; a daemon started by hand with provider `claude-code` spends the
+  owner's own login.
 - **A key with a hyphen counts twice** in the pack's search ("ewe-browser"
   is the words of "ewe browser"): keep one spelling per key. So do two
   keys with the same stem ("ssh key" and "ssh keys", "window" and

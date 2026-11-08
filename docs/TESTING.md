@@ -127,6 +127,37 @@ touch the real ones:
 - The last check stops the daemon with a reminder pending and starts it
   again: the reminder must fire from `companion.db`.
 
+## tests/brain.sh
+
+How Shaun thinks (0.3), end to end: the mock LLM (which streams as
+server-sent events when asked), a fake Claude Code (`tests/fakes/claude`:
+stream-json in and out, 1.5 s to start, a log of its argv and of how long
+each question waited), the scripted island with `--caps partial`, `--say
+TEXT` (chat.send, one answer at a time) and `--warm` (chat.warm). It
+checks:
+
+- an island that says `partial` sees the answer grow (each piece the start
+  of the answer, never an ACTION line), and one that does not gets it whole;
+- a reply of looks only runs them and asks again, with what they found
+  wrapped as untrusted;
+- a reply with several ACTION lines runs them all, with one Undo that puts
+  all of them back;
+- two plain commands in one line run offline, with one Undo; a line that is
+  one command whole stays one ("search for salt and pepper");
+- the system prompt is the same each time, and the topics, the time and
+  "this computer now" ride with the question (the history keeps the user's
+  words, not the notes);
+- Claude Code: a cold question waits for it to start, the next one does
+  not (it was started after the answer), `chat.warm` starts it before the
+  question, with the settings' model; it runs lean (no skills, MCP servers,
+  settings or hooks of the user's, `--setting-sources ""`, never `--bare`,
+  which refuses OAuth) with our relay quiet.
+
+The fake `claude` is first on the daemon's PATH or the script refuses to
+run: a test must never spend the owner's own login. `MOCK_DELAY` (seconds
+per streamed piece) slows the mock down for screenshots in the island
+harness.
+
 ## tests/canary.sh
 
 PLAN §16's canary for Safe (TRIO.md: names stay local). The fake Safe's
