@@ -85,12 +85,23 @@ impl Outcome {
 const NOT_FOUND: &str = "not-found";
 
 pub(crate) async fn run_argv(cmd: &str, args: &[&str], hypr: &str) -> Result<String, String> {
+    run_argv_within(cmd, args, hypr, BUDGET).await
+}
+
+/// `run_argv` with its own time limit, for a tool that does several things
+/// in one call (ewe-game stops a service and starts GameMode).
+pub(crate) async fn run_argv_within(
+    cmd: &str,
+    args: &[&str],
+    hypr: &str,
+    budget: Duration,
+) -> Result<String, String> {
     let mut c = Command::new(cmd);
     c.args(args).stdin(Stdio::null()).kill_on_drop(true);
     if !hypr.is_empty() {
         c.env("HYPRLAND_INSTANCE_SIGNATURE", hypr);
     }
-    match tokio::time::timeout(BUDGET, c.output()).await {
+    match tokio::time::timeout(budget, c.output()).await {
         Ok(Ok(o)) if o.status.success() => {
             Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
         }
@@ -567,10 +578,22 @@ pub(crate) async fn open_file(hub: &Arc<Hub>, words: &str) -> Outcome {
     }
 }
 
-/// Game mode: Do not disturb, Hyprland's animations and blur off (at
-/// runtime only; `hyprctl reload` puts your config back), and Feral
-/// GameMode's CPU boost held while it is on.
+/// Game mode. From ewe 0.42 it belongs to the desktop: `ewe-game` owns it
+/// (the Quick settings tile, ewe Settings → Power → Gaming and GameMode's
+/// own hooks use it too), at the level the user chose — Balanced, or Ultra
+/// with the Performance power profile and ewe's background apps closed. One
+/// game mode, one state; Shaun only asks.
+///
+/// On an older ewe (no `ewe-game`), Shaun's own: Do not disturb, Hyprland's
+/// animations and blur off (at runtime only; `hyprctl reload` puts your
+/// config back), and Feral GameMode's CPU boost held while it is on.
 async fn game_mode(hub: &Arc<Hub>, on: bool, hypr: &str) -> Outcome {
+    let verb = if on { "on" } else { "off" };
+    match run_argv_within("ewe-game", &[verb], hypr, Duration::from_secs(30)).await {
+        Ok(out) => return game_mode_ewe(hub, on, &out),
+        Err(e) if e != "ewe-game is not installed" => return failed(e),
+        Err(_) => {}
+    }
     if on == hub.game_mode_on() {
         return done(
             if on {
@@ -611,5 +634,92 @@ async fn game_mode(hub: &Arc<Hub>, on: bool, hypr: &str) -> Outcome {
         let _ = run_argv("hyprctl", &["reload", "config-only"], hypr).await;
         let _ = hub.shell_do("dnd", json!({"on": was_dnd})).await;
         done("Game mode off", None)
+    }
+}
+
+/// What `ewe-game on|off` answered (one JSON object) as Shaun's reply. The
+/// desktop keeps banners quiet itself, so Do not disturb is not touched.
+fn game_mode_ewe(hub: &Arc<Hub>, on: bool, out: &str) -> Outcome {
+    let v: Value = serde_json::from_str(out).unwrap_or(Value::Null);
+    if v.get("ok") == Some(&Value::Bool(false)) {
+        return failed(
+            v.get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("Game mode did not start.")
+                .to_string(),
+        );
+    }
+    let now_on = v.get("on").and_then(Value::as_bool).unwrap_or(on);
+    hub.set_game_mode(if now_on {
+        Some((hub.env().dnd, None))
+    } else {
+        None
+    });
+    if !now_on {
+        return done("Game mode off · everything is back as it was", None);
+    }
+    let level = match v.get("level").and_then(Value::as_str) {
+        Some("balanced") => "Balanced",
+        _ => "Ultra",
+    };
+    // say what could not be done (no GameMode, no power profiles), in its words
+    let skipped: Vec<&str> = v
+        .get("steps")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter(|s| s.get("ok") == Some(&Value::Bool(false)))
+                .filter_map(|s| s.get("note").and_then(Value::as_str))
+                .collect()
+        })
+        .unwrap_or_default();
+    let msg = if skipped.is_empty() {
+        format!("Game mode on · {level}")
+    } else {
+        format!("Game mode on · {level} ({})", skipped.join("; "))
+    };
+    done(msg, Some(Call::new("game_mode", json!({"on": false}))))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::store::Store;
+
+    fn hub() -> Arc<Hub> {
+        Arc::new(Hub::new(Store::memory(), false))
+    }
+
+    #[test]
+    fn ewe_game_on_names_the_level_and_offers_undo() {
+        let out = r#"{"ok": true, "on": true, "level": "ultra", "steps": [{"id": "boost", "ok": true, "note": "GameMode on"}]}"#;
+        let o = game_mode_ewe(&hub(), true, out);
+        assert!(o.ok);
+        assert_eq!(o.line, "Game mode on · Ultra");
+        assert_eq!(o.undo.map(|c| c.command), Some("game_mode".to_string()));
+    }
+
+    #[test]
+    fn ewe_game_says_what_it_could_not_do() {
+        let out = r#"{"ok": true, "on": true, "level": "balanced", "steps": [{"id": "boost", "ok": false, "note": "GameMode is not installed (Komble → gamemode)"}]}"#;
+        let o = game_mode_ewe(&hub(), true, out);
+        assert_eq!(
+            o.line,
+            "Game mode on · Balanced (GameMode is not installed (Komble → gamemode))"
+        );
+    }
+
+    #[test]
+    fn ewe_game_off_and_failures() {
+        let o = game_mode_ewe(&hub(), false, r#"{"ok": true, "on": false}"#);
+        assert!(o.ok && o.undo.is_none());
+        assert!(o.line.starts_with("Game mode off"));
+        let o = game_mode_ewe(
+            &hub(),
+            true,
+            r#"{"ok": false, "error": "no Hyprland", "code": "failed"}"#,
+        );
+        assert!(!o.ok);
+        assert_eq!(o.line, "no Hyprland");
     }
 }

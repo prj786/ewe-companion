@@ -86,7 +86,7 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "game_mode",
         args: r#"{"on": true|false}"#,
-        summary: "game mode: Do not disturb, no animations or blur, CPU boost (gamemode)",
+        summary: "game mode: the desktop's (ewe-game, Ultra or Balanced: quiet banners, no effects, CPU boost; Ultra also the Performance power profile and ewe's background apps closed)",
     },
     CommandInfo {
         name: "screenshot",

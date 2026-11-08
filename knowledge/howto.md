@@ -43,7 +43,7 @@ ewe Settings → Appearance → Glass. The Glass switch turns it on (80 % the fi
 ## Animations and motion
 keys: animation, animations, motion, reduce motion, slow animations, fast animations, transitions, turn off animations, effects
 open: settings animations
-ewe Settings → Animations sets the Speed and Character of how windows, workspaces and panels move, with Fine-tune for each. ewe Settings → Accessibility → Reduce motion turns movement into plain fades. Game mode ("game mode on") turns animations off until you leave it.
+ewe Settings → Animations sets the Speed and Character of how windows, workspaces and panels move, with Fine-tune for each. ewe Settings → Accessibility → Reduce motion turns movement into plain fades. Game mode (the Quick settings tile, or "game mode on") turns animations off until it ends.
 
 ## Change the top bar
 keys: top bar, bar, bar size, bar icons, hide bar, status icons, bar height, status row, panel
