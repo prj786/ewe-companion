@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""A stand-in for Hyprland's hyprctl, for the companion's tests: the real
+one moves, fullscreens and closes the owner's windows. tests/chat.sh puts
+tests/fakes first on the daemon's PATH. It knows what the companion asks:
+  hyprctl -j monitors | workspaces | clients | activewindow
+  hyprctl dispatch "hl.dsp.focus({ workspace = N })"
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:0x…\" })"
+  hyprctl dispatch "hl.dsp.window.move({ workspace = N|\"special:minimized\", window = \"address:0x…\", follow = false })"
+  hyprctl dispatch "hl.dsp.window.fullscreen({ mode = 0|1, action = \"set\"|\"unset\", window = … })"
+  hyprctl dispatch "hl.dsp.window.float({ action = \"toggle\", window = … })"
+  hyprctl dispatch "hl.dsp.window.close({ window = \"address:0x…\" })"
+and answers "ok" like the real one; a dispatcher it does not know gets an
+error line. State in $EWE_FAKE_DIR/hypr.json (two displays: eDP-1 with
+workspaces 1, 2 and 4, HDMI-A-1 with 11; Firefox on 1 and 4, kitty on 2;
+the window in front is Firefox on 1; $FAKE_HYPR_PID is the windows' pid),
+and a log of every call with the HYPRLAND_INSTANCE_SIGNATURE it got:
+hyprctl.log, one JSON object a line. $FAKE_BROWSER_MARK, when set, is
+added to the windows' titles.
+"""
+import json
+import os
+import re
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+MARK = os.environ.get("FAKE_BROWSER_MARK", "")
+PID = int(os.environ.get("FAKE_HYPR_PID", "0") or 0)
+argv = sys.argv[1:]
+with open(os.path.join(D, "hyprctl.log"), "a") as f:
+    f.write(json.dumps({"argv": argv, "sig": os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")}) + "\n")
+state_file = os.path.join(D, "hypr.json")
+
+
+def client(addr, cls, title, ws, focus):
+    return {"address": addr, "mapped": True, "class": cls, "initialClass": cls, "title": title + MARK,
+            "pid": PID, "workspace": {"id": ws, "name": str(ws)}, "floating": False, "fullscreen": 0,
+            "focusHistoryID": focus}
+
+
+try:
+    st = json.load(open(state_file))
+except (OSError, ValueError):
+    st = {
+        "monitors": [
+            {"id": 0, "name": "eDP-1", "focused": True, "activeWorkspace": {"id": 1, "name": "1"}},
+            {"id": 1, "name": "HDMI-A-1", "focused": False, "activeWorkspace": {"id": 11, "name": "11"}},
+        ],
+        "workspaces": [{"id": 1, "monitor": "eDP-1"}, {"id": 2, "monitor": "eDP-1"},
+                       {"id": 4, "monitor": "eDP-1"}, {"id": 11, "monitor": "HDMI-A-1"}],
+        "clients": [client("0xaaa1", "firefox", "Inbox (3) - Mail", 1, 0),
+                    client("0xbbb2", "kitty", "~/Projects", 2, 1),
+                    client("0xccc3", "firefox", "Recipes", 4, 2)],
+        "active": "0xaaa1",
+    }
+
+
+def save():
+    json.dump(st, open(state_file, "w"))
+
+
+def focused():
+    return next(m for m in st["monitors"] if m["focused"])
+
+
+def by_addr(a):
+    return next((c for c in st["clients"] if c["address"] == a), None)
+
+
+if argv[:1] == ["-j"] and len(argv) == 2:
+    what = argv[1]
+    if what in ("monitors", "workspaces", "clients"):
+        print(json.dumps(st[what]))
+    elif what == "activewindow":
+        print(json.dumps(by_addr(st["active"]) or {}))
+    else:
+        print("unknown request")
+    sys.exit(0)
+
+if argv[:1] == ["dispatch"] and len(argv) == 2:
+    lua = argv[1]
+    addr = re.search(r'window = "address:(0x[0-9a-fA-F]+)"', lua)
+    win = by_addr(addr.group(1)) if addr else by_addr(st["active"])
+    m = re.fullmatch(r"hl\.dsp\.focus\(\{ workspace = (\d+) \}\)", lua)
+    if m:
+        ws = int(m.group(1))
+        focused()["activeWorkspace"] = {"id": ws, "name": str(ws)}
+        if not any(w["id"] == ws for w in st["workspaces"]):
+            st["workspaces"].append({"id": ws, "monitor": focused()["name"]})
+        save(); print("ok"); sys.exit(0)
+    if re.fullmatch(r'hl\.dsp\.focus\(\{ window = "address:0x[0-9a-fA-F]+" \}\)', lua) and win:
+        st["active"] = win["address"]
+        save(); print("ok"); sys.exit(0)
+    m = re.fullmatch(r'hl\.dsp\.window\.move\(\{ workspace = (\d+|"special:minimized"), window = "address:0x[0-9a-fA-F]+", follow = false \}\)', lua)
+    if m and win:
+        ws = m.group(1)
+        win["workspace"] = {"id": -98, "name": "special:minimized"} if ws.startswith('"') else {"id": int(ws), "name": ws}
+        save(); print("ok"); sys.exit(0)
+    m = re.fullmatch(r'hl\.dsp\.window\.fullscreen\(\{ mode = ([01]), action = "(set|unset)", window = "address:0x[0-9a-fA-F]+" \}\)', lua)
+    if m and win:
+        win["fullscreen"] = (2 if m.group(1) == "0" else 1) if m.group(2) == "set" else 0
+        save(); print("ok"); sys.exit(0)
+    if re.fullmatch(r'hl\.dsp\.window\.float\(\{ action = "toggle", window = "address:0x[0-9a-fA-F]+" \}\)', lua) and win:
+        win["floating"] = not win["floating"]
+        save(); print("ok"); sys.exit(0)
+    if re.fullmatch(r'hl\.dsp\.window\.close\(\{ window = "address:0x[0-9a-fA-F]+" \}\)', lua) and win:
+        st["clients"].remove(win)
+        if st["active"] == win["address"]:
+            st["active"] = ""
+        save(); print("ok"); sys.exit(0)
+    print("error: the fake hyprctl does not know " + lua)
+    sys.exit(0)
+
+# eval, reload … (game mode on an older ewe): logged, not done
+print("ok")

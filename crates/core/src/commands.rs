@@ -285,6 +285,67 @@ pub const CATALOG: &[CommandInfo] = &[
         summary: "cancel a timer or reminder",
     },
     CommandInfo {
+        name: "clock",
+        args: r#"{"place": "tokyo" (optional: a city, a country or a zone like Asia/Tokyo)}"#,
+        summary: "the time and date now, here or in a place (offline)",
+    },
+    CommandInfo {
+        name: "date_math",
+        args: r#"{"op": "until"|"since"|"weekday", "date": "christmas"|"25 december"|"2026-12-25"|"next friday"}  or  {"op": "offset", "days": 30 (negative: ago)}"#,
+        summary: "days until or since a date, the weekday a date falls on, or the date some days from today (offline)",
+    },
+    CommandInfo {
+        name: "convert",
+        args: r#"{"value": 10, "from": "km", "to": "mi"}"#,
+        summary: "convert units (offline): length, weight, temperature (degC, degF, K), volume (US cups, pints, gallons), \
+                  speed, data (GB = 1000 MB as disks count; GiB = 1024 MiB), time, area. Not currencies",
+    },
+    CommandInfo {
+        name: "system_info",
+        args: r#"{"what": "battery"|"memory"|"cpu"|"uptime"|"network"|"disk"|"overview", "apps": true (optional, memory or cpu: which apps use the most)}"#,
+        summary: "this computer now: the battery, memory, the CPU and the apps using it, how long it has been on, the \
+                  network (online or not, local addresses; never the public IP, that would ask a website), free disk \
+                  space, or all of it at once (overview: for \"why is my laptop slow\")",
+    },
+    CommandInfo {
+        name: "disk_usage",
+        args: "{}",
+        summary: "what takes the disk's space: the package cache, ~/.cache, the trash, Downloads, the system journal, crash dumps",
+    },
+    CommandInfo {
+        name: "workspace",
+        args: r#"{"number": 1-10}  or  {"step": "next"|"prev"}"#,
+        summary: "switch to a workspace of the display you are on (Undo goes back)",
+    },
+    CommandInfo {
+        name: "window",
+        args: r#"{"action": "move", "to": 1-10} | {"action": "fullscreen"|"maximize"|"float", "on": true|false} | {"action": "minimize"|"restore"|"close"}; "app": "firefox" (optional: else the window in front)"#,
+        summary: "the window in front, or an app's: move it to a workspace, fullscreen, maximise, float or tile it, \
+                  minimise it, or bring back the last one minimised. close only offers a Close button for the user \
+                  to click (the app may ask to save)",
+    },
+    CommandInfo {
+        name: "force_quit",
+        args: r#"{"app": "firefox", "force": true}"#,
+        summary: "end an app that is frozen or not responding (asks first: shows the command with Run)",
+    },
+    CommandInfo {
+        name: "remember",
+        args: r#"{"text": "my dentist is on friday"}"#,
+        summary: "keep something the user asks you to remember, in their words (Undo forgets it). Never a password, \
+                  PIN, code, key or card number: those belong in ewe Safe, and are refused",
+    },
+    CommandInfo {
+        name: "memories",
+        args: r#"{"query": "dentist" (optional)}"#,
+        summary: "what the user asked you to remember, with Forget on each",
+    },
+    CommandInfo {
+        name: "forget",
+        args: r#"{"words": "dentist"}  or  {"id": "<memory id>"}  or  {"all": true} (all only offers a button)"#,
+        summary: "forget something you were asked to remember (Undo puts it back)",
+    },
+    CommandInfo {
         name: "theme_mode",
         args: r#"{"mode": "dark"|"light"}"#,
         summary: "switch the whole desktop to dark or light mode (asks first: shows the command with Run)",
@@ -303,7 +364,13 @@ pub const CATALOG: &[CommandInfo] = &[
 
 /// The commands that never run from a call: their run arm shows the exact
 /// command with Run (T2/T3, decision 6), and only that click runs it.
-pub const PROPOSALS: &[&str] = &["run_shell", "theme_mode", "power", "empty_trash"];
+pub const PROPOSALS: &[&str] = &[
+    "run_shell",
+    "theme_mode",
+    "power",
+    "empty_trash",
+    "force_quit",
+];
 
 /// ewe browser's own pages (`browser_page`) and the address each has.
 pub const BROWSER_PAGES: &[(&str, &str)] = &[
@@ -469,6 +536,12 @@ pub fn is_mac(s: &str) -> bool {
         && parts
             .iter()
             .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+/// A Hyprland window's address: `0x55d0c1a2b3c0`.
+pub fn is_address(s: &str) -> bool {
+    s.strip_prefix("0x")
+        .is_some_and(|h| (1..=16).contains(&h.len()) && h.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 /// A time of day, `17:30` or `9:05`, as (hour, minute).
@@ -688,6 +761,138 @@ pub fn validate(call: &Call) -> Result<(), String> {
             Some(id) if id.as_str().is_some_and(token_ok) => Ok(()),
             Some(_) => Err("timer_cancel: \"id\" is not a timer id".into()),
         },
+        "clock" => opt_name("place", 64),
+        "date_math" => {
+            one_of("op", &["until", "since", "weekday", "offset"])?;
+            if a["op"] == "offset" {
+                int("days", -36_500, 36_500)
+            } else {
+                match a.get("date").and_then(Value::as_str) {
+                    Some(d) if d.len() <= 60 && crate::dates::parse(d).is_some() => Ok(()),
+                    _ => Err("date_math: \"date\" must name a day (christmas, 25 december, 2026-12-25, next friday)".into()),
+                }
+            }
+        }
+        "convert" => {
+            let v = a.get("value").and_then(Value::as_f64);
+            let (from, to) = (
+                a["from"].as_str().unwrap_or(""),
+                a["to"].as_str().unwrap_or(""),
+            );
+            match v {
+                Some(v) if v.is_finite() && v.abs() < 1e15 => {}
+                _ => return Err("convert: \"value\" must be a number".into()),
+            }
+            if from.len() > 40 || to.len() > 40 || crate::units::convert(1.0, from, to).is_none() {
+                return Err(format!(
+                    "convert: {from} to {to} is not a conversion I know (units of one kind; no currencies)"
+                ));
+            }
+            Ok(())
+        }
+        "system_info" => {
+            one_of(
+                "what",
+                &[
+                    "battery", "memory", "cpu", "uptime", "network", "disk", "overview",
+                ],
+            )?;
+            flag("apps", false)
+        }
+        "disk_usage" => Ok(()),
+        "workspace" => {
+            let has = |k: &str| a.get(k).is_some_and(|v| !v.is_null());
+            match (has("number"), has("step"), has("id")) {
+                (true, false, false) => int("number", 1, 10),
+                (false, true, false) => one_of("step", &["next", "prev"]),
+                // the Undo: back to the workspace it left, by Hyprland's own id
+                (false, false, true) => int("id", 1, 1000),
+                _ => Err("workspace: give \"number\" (1-10) or \"step\" (next or prev)".into()),
+            }
+        }
+        "window" => {
+            one_of(
+                "action",
+                &[
+                    "move",
+                    "fullscreen",
+                    "maximize",
+                    "float",
+                    "minimize",
+                    "restore",
+                    "close",
+                ],
+            )?;
+            flag("on", false)?;
+            opt_name("app", 64)?;
+            if a["action"] == "move" {
+                match (
+                    a.get("to").filter(|v| !v.is_null()),
+                    a.get("to_id").filter(|v| !v.is_null()),
+                ) {
+                    (Some(_), None) => int("to", 1, 10)?,
+                    (None, Some(_)) => int("to_id", 1, 1000)?,
+                    _ => return Err("window: move needs \"to\", a workspace from 1 to 10".into()),
+                }
+            }
+            if let Some(addr) = a.get("address").filter(|v| !v.is_null()) {
+                match addr.as_str() {
+                    Some(s) if is_address(s) => {}
+                    _ => return Err("window: \"address\" is not a window's address".into()),
+                }
+            }
+            match a.get("token").filter(|v| !v.is_null()) {
+                None => Ok(()),
+                Some(t) if t.as_str().is_some_and(token_ok) => Ok(()),
+                Some(_) => Err("window: that is not a token".into()),
+            }
+        }
+        "force_quit" => {
+            flag("force", false)?;
+            match a.get("app").and_then(Value::as_str) {
+                Some(n)
+                    if name_ok(n, 64)
+                        && n.chars()
+                            .all(|c| c.is_alphanumeric() || " ._+-".contains(c)) =>
+                {
+                    Ok(())
+                }
+                _ => Err("force_quit: \"app\" must be an app's name".into()),
+            }
+        }
+        "remember" => {
+            text("text")?;
+            if a["text"].as_str().unwrap_or("").len() > 300 {
+                return Err("remember: that is too long to keep; say it in a sentence".into());
+            }
+            if a["text"]
+                .as_str()
+                .unwrap_or("")
+                .chars()
+                .any(char::is_control)
+            {
+                return Err("remember: \"text\" must be one line".into());
+            }
+            Ok(())
+        }
+        "memories" => opt_text("query", 100),
+        "forget" => {
+            let has = |k: &str| a.get(k).is_some_and(|v| !v.is_null());
+            if has("all") {
+                flag("all", true)?;
+                return match a.get("token").filter(|v| !v.is_null()) {
+                    None => Ok(()),
+                    Some(t) if t.as_str().is_some_and(token_ok) => Ok(()),
+                    Some(_) => Err("forget: that is not a token".into()),
+                };
+            }
+            match (a.get("id").filter(|v| !v.is_null()), has("words")) {
+                (Some(id), _) if id.as_str().is_some_and(token_ok) => Ok(()),
+                (Some(_), _) => Err("forget: \"id\" is not a memory's id".into()),
+                (None, true) => opt_name("words", 100),
+                (None, false) => Err("forget: say what to forget (\"words\")".into()),
+            }
+        }
         "theme_mode" => one_of("mode", &["dark", "light"]),
         "power" => one_of("action", &["suspend", "restart", "shutdown", "logout"]),
         "browser_history" => match a.get("query") {
@@ -858,6 +1063,17 @@ mod tests {
             ("timer", json!({"seconds": 300, "text": "tea"})),
             ("timers", json!({})),
             ("timer_cancel", json!({})),
+            ("clock", json!({"place": "tokyo"})),
+            ("date_math", json!({"op": "until", "date": "christmas"})),
+            ("convert", json!({"value": 10, "from": "km", "to": "mi"})),
+            ("system_info", json!({"what": "memory", "apps": true})),
+            ("disk_usage", json!({})),
+            ("workspace", json!({"number": 3})),
+            ("window", json!({"action": "move", "to": 2})),
+            ("force_quit", json!({"app": "firefox", "force": true})),
+            ("remember", json!({"text": "my dentist is on friday"})),
+            ("memories", json!({})),
+            ("forget", json!({"words": "dentist"})),
             ("theme_mode", json!({"mode": "light"})),
             ("power", json!({"action": "suspend"})),
             ("empty_trash", json!({})),
@@ -1034,6 +1250,77 @@ mod tests {
         assert_eq!(clock("9:05"), Some((9, 5)));
         assert_eq!(clock("24:00"), None);
         assert!(is_mac("aa:bb:cc:dd:ee:ff") && !is_mac("aa:bb"));
+    }
+
+    #[test]
+    fn the_wiser_commands_check_their_arguments() {
+        let ok = |c: &str, a: Value| validate(&Call::new(c, a));
+        assert_eq!(ok("clock", json!({})), Ok(()));
+        assert!(ok("clock", json!({"place": "-x"})).is_err());
+        assert_eq!(
+            ok("date_math", json!({"op": "offset", "days": -30})),
+            Ok(())
+        );
+        assert_eq!(
+            ok("date_math", json!({"op": "weekday", "date": "2026-12-25"})),
+            Ok(())
+        );
+        assert!(ok("date_math", json!({"op": "until", "date": "my birthday"})).is_err());
+        assert!(ok("date_math", json!({"op": "offset"})).is_err());
+        assert!(ok("date_math", json!({"op": "until"})).is_err());
+        // units by their words too; no currencies, no mixed kinds
+        assert_eq!(
+            ok(
+                "convert",
+                json!({"value": 20.5, "from": "celsius", "to": "fahrenheit"})
+            ),
+            Ok(())
+        );
+        assert!(ok("convert", json!({"value": 100, "from": "usd", "to": "eur"})).is_err());
+        assert!(ok("convert", json!({"value": 1, "from": "km", "to": "kg"})).is_err());
+        assert!(ok("convert", json!({"value": "ten", "from": "km", "to": "mi"})).is_err());
+        assert!(ok("system_info", json!({"what": "secrets"})).is_err());
+        // a workspace: a number, a step, or (the Undo) Hyprland's own id
+        assert_eq!(ok("workspace", json!({"step": "next"})), Ok(()));
+        assert_eq!(ok("workspace", json!({"id": 13})), Ok(()));
+        assert!(ok("workspace", json!({"number": 11})).is_err());
+        assert!(ok("workspace", json!({"number": 2, "step": "next"})).is_err());
+        assert!(ok("workspace", json!({})).is_err());
+        assert_eq!(
+            ok(
+                "window",
+                json!({"action": "close", "address": "0x55d0c1a2b3c0", "token": "a1b2c3d4e5f6"})
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            ok(
+                "window",
+                json!({"action": "move", "to_id": 12, "address": "0xabc"})
+            ),
+            Ok(())
+        );
+        assert!(ok("window", json!({"action": "move"})).is_err());
+        assert!(ok("window", json!({"action": "move", "to": 0})).is_err());
+        assert!(ok("window", json!({"action": "kill"})).is_err());
+        assert!(
+            ok(
+                "window",
+                json!({"action": "close", "address": "address:0x1; rm"})
+            )
+            .is_err()
+        );
+        assert!(ok("window", json!({"action": "close", "token": "x y"})).is_err());
+        assert!(ok("force_quit", json!({"app": "fire;fox"})).is_err());
+        assert!(ok("force_quit", json!({"app": "-9 1"})).is_err());
+        assert!(ok("remember", json!({"text": ""})).is_err());
+        assert!(ok("remember", json!({"text": "a\nb"})).is_err());
+        assert_eq!(ok("forget", json!({"all": true})), Ok(()));
+        assert_eq!(ok("forget", json!({"id": "m19a3f0b2e1003"})), Ok(()));
+        assert!(ok("forget", json!({})).is_err());
+        assert!(ok("forget", json!({"id": "../x"})).is_err());
+        assert!(PROPOSALS.contains(&"force_quit"));
+        assert!(is_address("0xABCdef0") && !is_address("0x") && !is_address("12"));
     }
 
     #[test]

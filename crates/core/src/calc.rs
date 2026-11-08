@@ -1,9 +1,10 @@
 //! The calculator: plain arithmetic and percentages, offline (C5).
 //!
 //! "what is 12*7", "15% of 80", "80 + 15%", "20% off 50", "(3 + 4) ^ 2",
-//! "12 times 7", "100 divided by 8". Numbers and operators only: anything
-//! else (a word it does not know, a unit, a function) is not a sum, and
-//! the words go on to the rest of the chat.
+//! "12 times 7", "100 divided by 8", "sqrt 144", "the square root of 2",
+//! "12 squared", "3 cubed". Numbers, operators and those words only:
+//! anything else (a word it does not know, a unit, another function) is
+//! not a sum, and the words go on to the rest of the chat.
 //!
 //! Percentages read the way a pocket calculator reads them: `a + b%` is
 //! `a` plus b percent of `a`, `a × b%` is `a × b/100`, `b% of a` is
@@ -19,10 +20,25 @@ enum Tok {
     Pct,
     Of,
     Off,
+    /// a square root (prefix): "sqrt", "√", "square root of"
+    Sqrt,
+    /// a cube root (prefix): "cube root of", "∛"
+    Cbrt,
+    /// a power after a number (postfix): "squared" (2), "cubed" (3)
+    Pow(u8),
 }
 
 /// The words people say for an operator.
 const WORDS: &[(&str, Tok)] = &[
+    ("the square root of", Tok::Sqrt),
+    ("square root of", Tok::Sqrt),
+    ("square root", Tok::Sqrt),
+    ("the cube root of", Tok::Cbrt),
+    ("cube root of", Tok::Cbrt),
+    ("cube root", Tok::Cbrt),
+    ("sqrt", Tok::Sqrt),
+    ("squared", Tok::Pow(2)),
+    ("cubed", Tok::Pow(3)),
     ("multiplied by", Tok::Op('*')),
     ("divided by", Tok::Op('/')),
     ("to the power of", Tok::Op('^')),
@@ -84,6 +100,10 @@ fn lex(s: &str) -> Option<Vec<Tok>> {
             ("×", Tok::Op('*')),
             ("÷", Tok::Op('/')),
             ("−", Tok::Op('-')),
+            ("√", Tok::Sqrt),
+            ("∛", Tok::Cbrt),
+            ("²", Tok::Pow(2)),
+            ("³", Tok::Pow(3)),
         ] {
             if let Some(r) = rest.strip_prefix(sym) {
                 out.push(t);
@@ -188,15 +208,37 @@ impl Parser {
                 self.next();
                 self.unary()
             }
+            // a root takes what follows it, powers included: sqrt 3^2 = 3
+            Some(Tok::Sqrt) => {
+                self.next();
+                self.unary().filter(|v| v.v >= 0.0).map(|v| Val {
+                    v: v.v.sqrt(),
+                    pct: false,
+                })
+            }
+            Some(Tok::Cbrt) => {
+                self.next();
+                self.unary().map(|v| Val {
+                    v: v.v.cbrt(),
+                    pct: false,
+                })
+            }
             _ => self.power(),
         };
         self.depth -= 1;
         v
     }
 
-    // power := percent ('^' unary)?   (right-associative: 2^3^2 = 2^9)
+    // power := percent ('squared'|'cubed')* ('^' unary)?   (right-associative: 2^3^2 = 2^9)
     fn power(&mut self) -> Option<Val> {
-        let base = self.percent()?;
+        let mut base = self.percent()?;
+        while let Some(Tok::Pow(n)) = self.peek() {
+            self.next();
+            base = Val {
+                v: base.v.powi(n as i32),
+                pct: false,
+            };
+        }
         if let Some(Tok::Op('^')) = self.peek() {
             self.next();
             let e = self.unary()?;
@@ -262,7 +304,10 @@ pub fn eval(expr: &str) -> Option<f64> {
     // a sum has an operator past its first piece, or a percent: "42",
     // "-5" or "(7)" alone are not questions for the calculator
     if !toks.iter().enumerate().any(|(i, t)| {
-        matches!(t, Tok::Pct | Tok::Of | Tok::Off) || (i > 0 && matches!(t, Tok::Op(_)))
+        matches!(
+            t,
+            Tok::Pct | Tok::Of | Tok::Off | Tok::Sqrt | Tok::Cbrt | Tok::Pow(_)
+        ) || (i > 0 && matches!(t, Tok::Op(_)))
     }) {
         return None;
     }
@@ -328,6 +373,26 @@ mod tests {
     }
 
     #[test]
+    fn roots_and_powers() {
+        is("sqrt 144", "12");
+        is("sqrt(144)", "12");
+        is("√2", "1.4142135624");
+        is("square root of 81", "9");
+        is("the square root of 2", "1.4142135624");
+        is("12 squared", "144");
+        is("3 cubed", "27");
+        is("2 squared + 1", "5");
+        is("cube root of 27", "3");
+        is("sqrt 16 + 9", "13");
+        is("sqrt (16 + 9)", "5");
+        is("5²", "25");
+        is("-3 squared", "-9");
+        assert_eq!(eval("sqrt -4"), None, "no real root");
+        assert_eq!(eval("squared"), None);
+        assert_eq!(eval("sqrt"), None);
+    }
+
+    #[test]
     fn no_sum_costs_much() {
         // nesting deeper than the parser follows, and long lines: None,
         // never a stack overflow (the daemon runs with panic = abort)
@@ -372,7 +437,7 @@ mod tests {
             "1/0",
             "5 +",
             "(2",
-            "sqrt 4",
+            "log 4",
             "the volume",
             "10 minutes",
             "1,00 + 2",

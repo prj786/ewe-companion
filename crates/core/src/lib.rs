@@ -11,7 +11,12 @@
 //!   for one.
 //! - [`find`]: what "find pdfs about tax" asks for, and how well a name
 //!   answers it (the daemon's finder walks the disk with it).
-//! - [`calc`]: plain arithmetic and percentages ("15% of 80"), offline.
+//! - [`calc`]: plain arithmetic and percentages ("15% of 80"), roots and
+//!   powers, offline.
+//! - [`units`]: unit conversions ("10 km in miles", "20 c in f").
+//! - [`dates`]: date arithmetic ("days until christmas") and which time
+//!   zone a place means.
+//! - [`typo`]: the matcher's second try with its own words' typos fixed.
 //!
 //! Pure code only: no I/O beyond reading the environment, so every rule here
 //! is unit-tested.
@@ -19,6 +24,7 @@
 pub mod calc;
 pub mod claude;
 pub mod commands;
+pub mod dates;
 pub mod find;
 pub mod id;
 pub mod intent;
@@ -28,6 +34,8 @@ pub mod persona;
 pub mod proto;
 pub mod shell;
 pub mod trim;
+pub mod typo;
+pub mod units;
 
 /// The version every binary reports (`VERSION` at the repo root).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

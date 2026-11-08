@@ -4,8 +4,12 @@ real one switches the owner's Wi-Fi. tests/chat.sh puts tests/fakes first
 on the daemon's PATH. It knows only what the companion asks:
   nmcli -t -f WIFI radio        → enabled | disabled
   nmcli radio wifi on|off
-State and a log of every call in $EWE_FAKE_DIR: nmcli.json {"wifi": bool},
-nmcli.log (one JSON argv per line).
+  nmcli -t -f CONNECTIVITY general           → full (none while Wi-Fi is off)
+  nmcli -t -f TYPE,STATE,CONNECTION device   → the Wi-Fi card on HomeNet
+State and a log of every call in $EWE_FAKE_DIR: nmcli.json {"wifi": bool,
+"connectivity": "full"|"limited"|"portal"|"none"}, nmcli.log (one JSON
+argv per line). $FAKE_BROWSER_MARK, when set, is added to the network's
+name (tests/canary.sh).
 """
 import json
 import os
@@ -22,6 +26,16 @@ try:
 except (OSError, ValueError):
     state = {"wifi": True}
 
+MARK = os.environ.get("FAKE_BROWSER_MARK", "")
+if argv == ["-t", "-f", "CONNECTIVITY", "general"]:
+    print(state.get("connectivity", "full") if state["wifi"] else "none")
+    sys.exit(0)
+if argv == ["-t", "-f", "TYPE,STATE,CONNECTION", "device"]:
+    name = ("HomeNet" + MARK).replace(":", "\\:")
+    print(f"wifi:connected:{name}" if state["wifi"] else "wifi:disconnected:")
+    print("ethernet:unavailable:")
+    print("loopback:connected (externally):lo")
+    sys.exit(0)
 if argv == ["-t", "-f", "WIFI", "radio"]:
     print("enabled" if state["wifi"] else "disabled")
     sys.exit(0)
