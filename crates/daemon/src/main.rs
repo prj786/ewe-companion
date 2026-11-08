@@ -11,6 +11,7 @@
 
 mod browser;
 mod chat;
+mod clock;
 mod commands;
 mod context;
 mod desktop;
@@ -18,14 +19,17 @@ mod finder;
 mod glance;
 mod hub;
 mod keyring;
+mod memory;
 mod places;
 mod providers;
 mod runner;
 mod safe;
 mod server;
 mod store;
+mod system;
 mod term;
 mod timers;
+mod windows;
 
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;

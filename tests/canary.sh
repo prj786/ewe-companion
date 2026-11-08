@@ -2,8 +2,9 @@
 # tests/canary.sh: names stay local (TRIO.md, RFC-007 C3, PLAN §16 "the
 # canary test"). A fake Safe whose logins' titles, usernames, folders and
 # websites carry the canary EWE-CANARY-7Q2X, and (wave 2) a fake ewe browser
-# whose tabs, bookmarks, downloads and workspaces, and a fake ewe-bt whose
-# devices, carry it too; a scripted island; a mock provider. Scripted chats
+# whose tabs, bookmarks, downloads and workspaces, a fake ewe-bt whose
+# devices, a fake nmcli whose network and a fake hyprctl whose windows'
+# titles carry it too; a scripted island; a mock provider. Scripted chats
 # ask Safe, the browser and Bluetooth for things in every way (the offline
 # matcher, a row's click, a model's ACTION, a locked safe and its unlock),
 # then keep asking the model questions. The canary must reach the island,
@@ -35,7 +36,7 @@ export EWE_COMPANION_SOCK="$W/c.sock" XDG_STATE_HOME="$W/state" MOCK_LOG="$W/moc
        EWE_FAKE_DIR="$W/fakes" FAKE_SAFE_ITEMS="$W/items.json" FAKE_BROWSER_MARK=" EWE-CANARY-7Q2X"
 # the desktop tools are the fakes too (ewe-bt's devices carry the canary)
 DPATH="$W/bin:$PATH"
-for t in nmcli ewe-bt qs notify-send ewe-theme gio; do
+for t in nmcli ewe-bt qs notify-send ewe-theme gio hyprctl ip; do
   if [ "$(PATH="$DPATH" command -v "$t")" != "$W/bin/$t" ]; then
     echo "FAIL  the fake $t is not first on the daemon's PATH: refusing to run"; exit 1
   fi
@@ -100,13 +101,20 @@ for q in "which bookmarks did you find" "what did I download" "which headphones 
          "name my browser workspaces"; do
   ask "$q"
 done
+# 41–48 (Shaun gets wiser): the network's name (nmcli) and the windows'
+# titles (hyprctl) carry it too; lines name the app, never a title
+for q in "am i connected to the internet" "what's my ip" "close this window" "close firefox" \
+         "move this window to workspace 2" "what network am i on, by name" "which windows are open" \
+         "what is the title of the window in front"; do
+  ask "$q"
+done
 
 requests=$(wc -l <"$W/mock.jsonl")
 check '[ "$requests" -ge 15 ]' "the provider was asked ($requests requests)" ""
 check 'grep -q "Bank EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "EWE-CANARY-7Q2X" "$W/island.log"' \
       "the canary reached the island (the test is not empty)" "$(head -c 300 "$W/replies.jsonl")"
-check 'grep -q "Pasta recipes EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "AirPods Pro EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "Work EWE-CANARY-7Q2X" "$W/replies.jsonl"' \
-      "the browser's and Bluetooth's names reached the island too" "$(grep -o "[A-Za-z ]*EWE-CANARY-7Q2X" "$W/replies.jsonl" | sort -u | head -8)"
+check 'grep -q "Pasta recipes EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "AirPods Pro EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "Work EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "HomeNet EWE-CANARY-7Q2X" "$W/replies.jsonl"' \
+      "the browser's, Bluetooth's and the network's names reached the island too" "$(grep -o "[A-Za-z ]*EWE-CANARY-7Q2X" "$W/replies.jsonl" | sort -u | head -8)"
 check '! grep -Eq "\"(read|reveal|show|list|search)\"" "$W/fakes/safe.log"' \
       "a command that would print a value or a name was refused, never run" "$(grep -E "reveal|read|list" "$W/fakes/safe.log" | head -2)"
 check '! grep -qi "$CANARY" "$W/mock.jsonl"' "no provider request carries a title, username, folder or site" \
