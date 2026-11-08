@@ -28,10 +28,17 @@ The first line of a connection says what it is: `hello`, `agent` or `cli`.
 ## The island (`hello`)
 
 ```json
-{"v":1,"type":"hello","client":"island","pid":0}
+{"v":1,"type":"hello","client":"island","pid":0,"caps":["partial"]}
 ```
 
 The daemon replies `welcome`, then a full `state`, and keeps the connection.
+
+`caps` (0.3, optional) says what the island draws beyond v1: `partial`, a
+`chat.reply` whose text grows while the answer streams in. The daemon
+streams only while **every** connected island says `partial` (an older one
+would show each piece as a message of its own). The daemon's own `caps`
+come in `welcome`: `cards`, `peeks`, `sessions`, `jump`, and since 0.3
+`stream` (it sends `partial`) and `warm` (it understands `chat.warm`).
 
 ### Daemon → island
 
@@ -42,7 +49,7 @@ The daemon replies `welcome`, then a full `state`, and keeps the connection.
 | `peek` | `key`, `line`, `level` (`info` · `success` · `warning` · `danger`), `actions: [Action]`, `ttl_ms` (0 = the island's own `peek_seconds`) | one line; the same `key` replaces the line |
 | `card` | a `Card` | followed at once by a `state` that includes it |
 | `card.close` | `id`, `reason` | `answered` · `answered-elsewhere` · `no-ack` · `timeout` · `locked` · `island-gone` · `agent-gone` · `daemon-stopping` |
-| `chat.reply` | `id`, `kind` (`thinking` · `answer` · `done` · `error` · `info`), `text`, `undo?` (a token), `command?`, `action?` (`{label, command, args}`), `confirm?` (`{token, command, about, risk, reason, terminal}`), `output?`, `rows?` | `thinking` first, then the answer under the same `id` (a reply that comes later by itself, such as the copy that waited for Safe's unlock, has its own `id` and no `thinking`). `action` is a button under the answer ("Open Settings", "Unlock Safe", a tainted turn's "Do it"); a click sends it back as `command.run`. `confirm` is a proposed shell command: the island shows it exactly, with Run and In terminal (only In terminal when `terminal`), and `reason` in warning ink when `risk` is `danger`; a click sends `confirm.run`. `output` is the last lines a command printed. `rows` is what a command found (see *Rows*) |
+| `chat.reply` | `id`, `kind` (`thinking` · `partial` · `answer` · `done` · `error` · `info`), `text`, `undo?` (a token), `command?`, `action?` (`{label, command, args}`), `confirm?` (`{token, command, about, risk, reason, terminal}`), `output?`, `rows?` | `thinking` first, then (0.3, only to islands whose `hello` said `partial`) any number of `partial` replies whose `text` is the answer so far, never an ACTION line, at most one every 80 ms, then the answer under the same `id`. A `partial` is not a message: the island draws it in place and shows no peek for it (a reply that comes later by itself, such as the copy that waited for Safe's unlock, has its own `id` and no `thinking`). `action` is a button under the answer ("Open Settings", "Unlock Safe", a tainted turn's "Do it"); a click sends it back as `command.run`. `confirm` is a proposed shell command: the island shows it exactly, with Run and In terminal (only In terminal when `terminal`), and `reason` in warning ink when `risk` is `danger`; a click sends `confirm.run`. `output` is the last lines a command printed. `rows` is what a command found (see *Rows*) |
 | `do` | `id`, `action`, `args` | what only the shell does: `dnd {on}` · `open {what, page}` · `launch {app, path?, dir?}` · `term {command}` (kitty runs it in the user's shell and stays open) · `screenshot {mode}` · `browse {url}` (ewe-browser when installed, else the default browser) · `browser {bin, args}` (ewe browser's command line: the island runs `bin` + `args` as argv, `bin`'s name must be `ewe-browser`, and answers `data: {reply}`, the last line it printed, parsed; the daemon waits 20 s, since it may start the browser) · `safe_unlock {bin}` (runs `bin unlock --ask`, Safe's own prompt, detached; `bin`'s name must be `ewe-safe`). The island answers `do.result` within 3 s (`browser`: 20 s). `launch` finds `app` (a desktop id, a name, a program) in the shell's desktop-entry index and answers `data: {name}`, or `ok:false` with `error:"not-found"` |
 
 `presence` is one of `idle`, `working`, `waiting` or `error`. The `state`
@@ -143,6 +150,7 @@ and the chat treats them as a question.
 | `session.jump` | `id` | bring that session's terminal forward |
 | `settings` | `provider`, `model`, `base_url` | who answers questions (the plugin's options). **Never a key** |
 | `chat.send` | `text` | a question or a command in plain words |
+| `chat.warm` | — | (0.3) the user started typing a question: the daemon gets whoever answers ready (starts Claude Code, which takes seconds, and reads "this computer now"). Nothing else happens and nothing comes back; cheap to repeat (one `claude` waits at most, dropped after 3 idle minutes). An older daemon ignores it |
 | `key.set` | `provider`, `key` | an API key typed into the island; the daemon puts it in the keyring (`secret-tool`, on stdin) |
 | `undo` | `token` | run the Undo a reply offered |
 | `command.run` | `command`, `args` | a quick-action button: one catalog command (`companion_core::commands`), validated like any other |

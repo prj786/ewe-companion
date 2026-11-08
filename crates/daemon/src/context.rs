@@ -191,9 +191,154 @@ fn battery() -> Option<String> {
     None
 }
 
+const DAYS: [&str; 7] = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+];
+const MONTHS: [&str; 12] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
+
+/// "Sunday 8 November 2026, 18:42 (UTC+04:00, Asia/Tbilisi)": a model
+/// knows no date of its own, and without this it guesses.
+pub fn now_line() -> Option<String> {
+    let t = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_secs() as libc::time_t;
+    // SAFETY: tm is plain data; localtime_r writes only into it.
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    if unsafe { libc::localtime_r(&t, &mut tm) }.is_null() {
+        return None;
+    }
+    let off = tm.tm_gmtoff / 60;
+    let zone = std::fs::read_link("/etc/localtime")
+        .ok()
+        .and_then(|p| {
+            let s = p.to_string_lossy().to_string();
+            s.split_once("zoneinfo/").map(|(_, z)| z.to_string())
+        })
+        .map(|z| format!(", {z}"))
+        .unwrap_or_default();
+    Some(format!(
+        "{} {} {} {}, {:02}:{:02} (UTC{}{:02}:{:02}{zone})",
+        DAYS.get(tm.tm_wday as usize)?,
+        tm.tm_mday,
+        MONTHS.get(tm.tm_mon as usize)?,
+        tm.tm_year + 1900,
+        tm.tm_hour,
+        tm.tm_min,
+        if off < 0 { '-' } else { '+' },
+        off.abs() / 60,
+        off.abs() % 60,
+    ))
+}
+
+/// "1 day 4 h", "35 min": how long since the computer started.
+fn uptime() -> Option<String> {
+    let s: f64 = read_trim("/proc/uptime")?
+        .split_whitespace()
+        .next()?
+        .parse()
+        .ok()?;
+    let m = (s / 60.0) as u64;
+    let (d, h, m) = (m / 1440, m % 1440 / 60, m % 60);
+    Some(match (d, h) {
+        (0, 0) => format!("{m} min"),
+        (0, _) => format!("{h} h {m} min"),
+        (1, _) => format!("1 day {h} h"),
+        _ => format!("{d} days {h} h"),
+    })
+}
+
+/// "9.1 of 15.5 GB in use": `MemTotal` less `MemAvailable`.
+fn memory() -> Option<String> {
+    let info = std::fs::read_to_string("/proc/meminfo").ok()?;
+    let kb = |key: &str| -> Option<f64> {
+        info.lines()
+            .find(|l| l.starts_with(key))?
+            .split_whitespace()
+            .nth(1)?
+            .parse()
+            .ok()
+    };
+    let (total, avail) = (kb("MemTotal:")?, kb("MemAvailable:")?);
+    let gb = |k: f64| k / 1024.0 / 1024.0;
+    Some(format!(
+        "{:.1} of {:.1} GB in use",
+        gb(total - avail),
+        gb(total)
+    ))
+}
+
+/// "1.20 over the last minute, 8 cores".
+fn load() -> Option<String> {
+    let one = read_trim("/proc/loadavg")?
+        .split_whitespace()
+        .next()?
+        .to_string();
+    let cores = std::thread::available_parallelism().map_or(1, |n| n.get());
+    Some(format!("{one} over the last minute, {cores} cores"))
+}
+
+/// Online or not, from NetworkManager (`full`, `limited`, `portal`, `none`).
+async fn online() -> Option<String> {
+    let out = first_line("nmcli", &["-t", "-f", "CONNECTIVITY", "general"]).await?;
+    Some(
+        match out.trim() {
+            "full" => "online",
+            "limited" => "connected, but no internet",
+            "portal" => "behind a sign-in page (captive portal)",
+            "none" => "offline",
+            _ => return None,
+        }
+        .to_string(),
+    )
+}
+
+/// A quick command's first line (not JSON).
+async fn first_line(name: &str, args: &[&str]) -> Option<String> {
+    let mut c = Command::new(tool(name)?);
+    c.args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .kill_on_drop(true);
+    let out = tokio::time::timeout(BUDGET, c.output()).await.ok()?.ok()?;
+    let s = String::from_utf8_lossy(&out.stdout);
+    Some(s.lines().next()?.trim().to_string())
+}
+
 /// The live part: what changes from one question to the next.
 async fn live(hub: &Arc<Hub>) -> String {
     let mut lines = Vec::new();
+    if let Some(now) = now_line() {
+        lines.push(format!("- now: {now}"));
+    }
+    if let Some(up) = uptime() {
+        lines.push(format!("- up for {up}"));
+    }
+    if let Some(m) = memory() {
+        lines.push(format!("- memory: {m}"));
+    }
+    if let Some(l) = load() {
+        lines.push(format!("- CPU load: {l}"));
+    }
     let snap = hub.snapshot();
     for d in snap["glance"]["disks"]
         .as_array()
@@ -215,7 +360,10 @@ async fn live(hub: &Arc<Hub>) -> String {
     if let Some(b) = battery() {
         lines.push(format!("- battery {b}"));
     }
-    let (vol, light) = tokio::join!(commands::volume(), commands::brightness());
+    let (vol, light, net) = tokio::join!(commands::volume(), commands::brightness(), online());
+    if let Some(n) = net {
+        lines.push(format!("- network: {n}"));
+    }
     if let Some((v, muted)) = vol {
         lines.push(format!(
             "- volume {v} %{}",
@@ -260,14 +408,14 @@ async fn live(hub: &Arc<Hub>) -> String {
     lines.join("\n")
 }
 
-/// This computer now, as a model reads it.
-pub async fn snapshot(hub: &Arc<Hub>) -> String {
+/// The installed part, from the last minute's reading or read now.
+async fn fixed() -> String {
     let fresh = kept().lock().ok().and_then(|k| {
         k.as_ref()
             .filter(|(at, _)| at.elapsed() < KEEP)
             .map(|(_, s)| s.clone())
     });
-    let fixed = match fresh {
+    match fresh {
         Some(s) => s,
         None => {
             let s = installed().await;
@@ -276,6 +424,16 @@ pub async fn snapshot(hub: &Arc<Hub>) -> String {
             }
             s
         }
-    };
-    format!("{fixed}\n{}", live(hub).await)
+    }
+}
+
+/// Read the installed part ahead of a question (the chat field got
+/// focus): its tools take a moment, and a question should not wait.
+pub async fn prefetch() {
+    fixed().await;
+}
+
+/// This computer now, as a model reads it.
+pub async fn snapshot(hub: &Arc<Hub>) -> String {
+    format!("{}\n{}", fixed().await, live(hub).await)
 }

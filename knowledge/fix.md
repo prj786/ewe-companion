@@ -70,13 +70,17 @@ keys: screen share not working, screen sharing, file picker not opening, portal,
 The session's portal service is missing; run `bash /usr/share/ewe/install.sh --no-packages` as yourself, then log in again.
 
 ## The laptop freezes
-keys: freeze, freezes, hard freeze, hang, lunar lake, crash, frozen laptop
+keys: freeze, freezes, hard freeze, hang, lunar lake, crash, frozen laptop, laptop is frozen, computer is frozen, everything is frozen, whole screen is frozen
 Update everything (`sudo pacman -Syu`) for a newer kernel and firmware. On Intel Lunar Lake laptops the kernel parameter `xe.enable_psr=0` helps. Keep the output of `journalctl -b -1 -p err` for a report.
+
+## An app is frozen
+keys: app is frozen, an app freezes, frozen app, not responding, force quit, kill an app, kill a program, app won't close
+Super+Q asks the window to close. When an app does not answer at all, ask me "firefox is frozen" or "force quit firefox": I show `pkill -KILL -x firefox` with Run, and it ends at once, losing what it did not save. "Kill firefox" shows `pkill -x firefox`, which asks it to end. Nothing runs until you press Run.
 
 ## The disk is full
 keys: disk full, storage full, no space, low disk space, free space, clean up, cleanup, disk space
 run: sudo paccache -rk1
-Clear pacman's package cache with `sudo paccache -rk1` (keeps one old version), empty the trash (in Nemo, or ask me "empty the trash"), and look for big folders with `du -sh ~/* | sort -h`. I show a disk past 85 % in my panel.
+Ask me "what's eating my disk" to see what takes space. Clear pacman's package cache with `sudo paccache -rk1` (keeps one old version), empty the trash (in Nemo, or ask me "empty the trash"), and look for big folders with `du -sh ~/* | sort -h`. I show a disk past 85 % in my panel.
 
 ## What to send with a bug report
 keys: report bug, bug report, logs, diagnostics, status commands, help me debug

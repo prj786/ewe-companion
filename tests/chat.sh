@@ -10,7 +10,10 @@
 # airplane mode, keeping awake, the calculator, timers (across a daemon
 # restart) and the proposals, with every desktop tool a PATH shim from
 # tests/fakes/ (nmcli, ewe-bt, qs, notify-send, ewe-theme, gio): never the
-# owner's real radios, shell, theme or trash.
+# owner's real radios, shell, theme or trash. Then "Shaun gets wiser": the
+# clock and dates, units, this computer's state (read for real, read-only),
+# the network (nmcli and ip fakes), windows and workspaces (a hyprctl fake:
+# never the owner's compositor), what Shaun remembers, and typos.
 #   cargo build && tests/chat.sh
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,9 +24,9 @@ mkdir -p "$W/bin" "$W/fakes" && cp "$ROOT"/tests/fakes/* "$W/bin/"
 export EWE_COMPANION_SOCK="$W/c.sock" XDG_STATE_HOME="$W/state" MOCK_LOG="$W/mock.jsonl" \
        EWE_COMPANION_SAFE="$W/bin/ewe-safe" EWE_COMPANION_BROWSER="$W/bin/ewe-browser" EWE_FAKE_DIR="$W/fakes"
 # the daemon's PATH starts with the fakes: a desktop command must never
-# reach the real nmcli, ewe-bt, qs, notify-send, ewe-theme or gio
+# reach the real nmcli, ewe-bt, qs, notify-send, ewe-theme, gio, hyprctl or ip
 DPATH="$W/bin:$PATH"
-for t in nmcli ewe-bt qs notify-send ewe-theme gio; do
+for t in nmcli ewe-bt qs notify-send ewe-theme gio hyprctl ip; do
   if [ "$(PATH="$DPATH" command -v "$t")" != "$W/bin/$t" ]; then
     echo "FAIL  the fake $t is not first on the daemon's PATH: refusing to run"; exit 1
   fi
@@ -39,7 +42,14 @@ no() { echo "FAIL  $*"; fail=$((fail + 1)); }
 check() { if eval "$1"; then ok "$2"; else no "$2  [$3]"; fi; }
 field() { python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1]) or "")' "$1"; }
 IP=""
-cleanup() { kill "$MP" "$DP" $IP 2>/dev/null; wait 2>/dev/null; rm -rf "$W"; }
+# a process called firefox (python3 through a link of that name, off the
+# PATH) that the fake Hyprland's windows belong to: "kill firefox" must find
+# it, and never end it. Not a copy of sleep: a multi-call coreutils (uutils,
+# on newer Ubuntu runners) reads its name from the file and exits
+mkdir -p "$W/procs" && ln -s "$(command -v python3)" "$W/procs/firefox"
+"$W/procs/firefox" -c 'import time; time.sleep(600)' & FP=$!
+export FAKE_HYPR_PID="$FP"
+cleanup() { kill "$MP" "$DP" $IP "$FP" 2>/dev/null; wait 2>/dev/null; rm -rf "$W"; }
 trap cleanup EXIT
 
 python3 "$ROOT/tests/mock-llm.py" "$PORT" & MP=$!
@@ -113,8 +123,8 @@ out=$("$BIN/ewe-companion" ask "open the pod bay doors in hal-zz")
 check '[ "$(echo "$out" | field text)" = "echo: open the pod bay doors in hal-zz" ]' \
       "words that name no app or folder go to the provider as a question" "$out"
 out=$("$BIN/ewe-companion" ask "where do I turn on bluetooth")
-check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; p=b[\"messages\"][0][\"content\"]; sys.exit(0 if \"# What you know about ewe\" in p and \"## Pair a Bluetooth device\" in p and \"# This computer now\" in p and \"<!--\" not in p else 1)" "$MOCK_LOG"' \
-      "a provider is told the primer, the topics that fit, and this computer now" "$(tail -c 300 "$MOCK_LOG")"
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; p=b[\"messages\"][0][\"content\"]; q=b[\"messages\"][-1][\"content\"]; sys.exit(0 if \"# What you know about ewe\" in p and \"## Pair a Bluetooth device\" in q and \"# This computer now\" in q and \"<!--\" not in p + q else 1)" "$MOCK_LOG"' \
+      "a provider is told the primer (system prompt), and with the question the topics that fit and this computer now" "$(tail -c 300 "$MOCK_LOG")"
 check '[ "$(echo "$out" | python3 -c "import json,sys; print((json.load(sys.stdin).get(\"action\") or {}).get(\"label\",\"\"))")" = "Open Bluetooth" ]' \
       "the model's answer still carries the topic's button" "$out"
 out=$("$BIN/ewe-companion" ask "  ")
@@ -122,7 +132,7 @@ check '[ "$(echo "$out" | field ok)" = "False" ] || [ "$(echo "$out" | field err
 
 # ── Safe, ewe browser and the finder (TRIO.md C1) ──────────────────────────
 # a scripted island answers `do` (ewe browser's acts, Safe's unlock prompt)
-python3 "$ROOT/tests/fake-island.py" --do --env '{"wayland": "wayland-test"}' >"$W/island.log" 2>&1 & IP=$!
+python3 "$ROOT/tests/fake-island.py" --do --env '{"wayland": "wayland-test", "hypr": "fake-hypr-sig"}' >"$W/island.log" 2>&1 & IP=$!
 for _ in $(seq 50); do "$BIN/ewe-companion" status | grep -q '"island":true' && break; sleep 0.05; done
 js() { python3 -c 'import json,sys; r=json.load(sys.stdin); print(eval(sys.argv[1], {"r": r, "json": json}))' "$1"; }
 slog() { tail -n 1 "$W/fakes/safe.log"; }
@@ -375,6 +385,155 @@ mkdir -p "$H/.local/share/Trash/files" && touch "$H/.local/share/Trash/files/old
 out=$("$BIN/ewe-companion" ask "empty the trash")
 check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "gio trash --empty" ] && echo "$out" | grep -q "The 1 item in it goes for good" && [ ! -e "$W/fakes/gio.log" ]' \
       "empty the trash → gio trash --empty, offered with Run, not run" "$out"
+
+# ── Shaun gets wiser: offline answers, the window manager, memory ─────────
+# the clock and dates (the real clock; a zone from /usr/share/zoneinfo)
+out=$("$BIN/ewe-companion" ask "what time is it")
+check '[ "$(echo "$out" | field command)" = "clock" ] && echo "$out" | field text | grep -Eq "^It.s [0-9]{2}:[0-9]{2}, (Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day [0-9]{1,2} [A-Z][a-z]+ [0-9]{4}$"' \
+      "what time is it → the clock, offline" "$out"
+out=$("$BIN/ewe-companion" ask "what time is it in tokyo")
+check 'echo "$out" | field text | grep -Eq "^In Tokyo it.s [0-9]{2}:[0-9]{2}, .*\(Asia/Tokyo, "' \
+      "what time is it in tokyo → date with TZ=Asia/Tokyo in the child" "$out"
+out=$("$BIN/ewe-companion" ask "what time is it in narniazz")
+check '[ "$(echo "$out" | field text)" = "echo: what time is it in narniazz" ]' "a place with no zone goes to the model" "$out"
+out=$("$BIN/ewe-companion" ask "how many days until christmas")
+check '[ "$(echo "$out" | field command)" = "date_math" ] && echo "$out" | field text | grep -q "^Christmas is "' \
+      "how many days until christmas → date_math" "$out"
+out=$("$BIN/ewe-companion" ask "what's the date in 30 days")
+check 'echo "$out" | field text | grep -q "^In 30 days it.s "' "the date in 30 days" "$out"
+# units and sums; a currency is never guessed
+out=$("$BIN/ewe-companion" ask "convert 10 km to miles")
+check '[ "$(echo "$out" | field text)" = "10 km = 6.21 miles" ]' "convert 10 km to miles" "$out"
+out=$("$BIN/ewe-companion" ask "20 c in f")
+check '[ "$(echo "$out" | field text)" = "20 °C = 68 °F" ]' "20 c in f" "$out"
+out=$("$BIN/ewe-companion" ask "100 usd in eur")
+check '[ "$(echo "$out" | field text)" = "echo: 100 usd in eur" ]' "a currency goes to the model, never guessed" "$out"
+out=$("$BIN/ewe-companion" ask "sqrt 144")
+check '[ "$(echo "$out" | field text)" = "sqrt 144 = 12" ]' "sqrt 144" "$out"
+# this computer, read for real (read-only)
+out=$("$BIN/ewe-companion" ask "how much battery do i have")
+check '[ "$(echo "$out" | field command)" = "system_info" ] && echo "$out" | field text | grep -Eq "^(Battery [0-9]+ %|This computer has no battery|There is a battery)"' \
+      "battery → /sys/class/power_supply" "$out"
+out=$("$BIN/ewe-companion" ask "how much ram is free")
+check 'echo "$out" | field text | grep -Eq "^Memory: .* in use, .* free"' "memory → /proc/meminfo" "$out"
+out=$("$BIN/ewe-companion" ask "what's using my memory")
+check 'echo "$out" | field text | grep -q "uses the most memory" && [ "$(echo "$out" | js "len(r[\"rows\"])")" -ge 1 ]' \
+      "what's using my memory → the programs, as rows" "$out"
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][0][\"command\"] + str(r[\"rows\"][0][\"actions\"][0][\"args\"][\"force\"])")" = "force_quitFalse" ]' \
+      "…each program's row has Quit (force_quit, not forced)" "$out"
+out=$("$BIN/ewe-companion" debug run force_quit '{"app": "firefox", "force": false}')
+check '[ "$(echo "$out" | js "(r.get(\"confirm\") or {}).get(\"command\", \"\")")" = "pkill -x firefox" ]' \
+      "…and Quit only offers pkill -x with Run: nothing is stopped by the click on the row" "$out"
+out=$("$BIN/ewe-companion" ask "what's using my cpu")
+check 'echo "$out" | field text | grep -q "^The processor is [0-9]* % busy"' "what's using my cpu → two samples of /proc" "$out"
+out=$("$BIN/ewe-companion" ask "how long has my computer been on")
+check 'echo "$out" | field text | grep -q "^Up .*, since "' "uptime" "$out"
+out=$("$BIN/ewe-companion" ask "how much disk space is left")
+check 'echo "$out" | field text | grep -q "% full"' "disk space left → statvfs" "$out"
+out=$("$BIN/ewe-companion" ask "why is my laptop slow")
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"title\"]")" = "Processor" ] && [ "$(echo "$out" | js "r[\"rows\"][1][\"title\"]")" = "Memory" ]' \
+      "why is my laptop slow → the overview, offline" "$out"
+# the network: nmcli and ip fakes; the network's name and the addresses stay
+# on the island
+out=$("$BIN/ewe-companion" ask "am i connected to the internet")
+check 'echo "$out" | field text | grep -q "^You.re online, over Wi-Fi. Your local addresses are below; your public address would need asking a website" && echo "$out" | grep -q "192.168.1.23" && echo "$out" | grep -q HomeNet && ! echo "$out" | grep -q fe80' \
+      "am I online → nmcli says how, ip -j addr the local addresses (no public IP)" "$out"
+mkdir -p "$H/Downloads" && head -c 1000000 /dev/zero >"$H/Downloads/huge-zz-download.iso"
+out=$("$BIN/ewe-companion" ask "what's eating my disk")
+check 'echo "$out" | field text | grep -q "^What takes space, biggest first: " && echo "$out" | grep -q "huge-zz-download.iso" && echo "$out" | js "[x[\"title\"] for x in r[\"rows\"]]" | grep -q "The trash"' \
+      "what's eating my disk → the categories and Downloads' biggest files" "$out"
+out=$("$BIN/ewe-companion" ask "what did I ask you just now")
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; t=json.dumps(b[\"messages\"][1:]); sys.exit(0 if \"HomeNet\" not in t and \"192.168.1.23\" not in t and \"huge-zz-download\" not in t and \"Disk use, biggest first\" in t else 1)" "$MOCK_LOG"' \
+      "the network's name, the addresses and Downloads' files never reach the model" "$(tail -c 400 "$MOCK_LOG")"
+# workspaces and windows: the hyprctl fake, with the island's signature
+hlast() { tail -n 1 "$W/fakes/hyprctl.log"; }
+hst() { python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {"s": s}))' "$W/fakes/hypr.json" "$1"; }
+out=$("$BIN/ewe-companion" ask "switch to workspace 3")
+check '[ "$(echo "$out" | field text)" = "Workspace 3" ] && hlast | grep -q "\"hl.dsp.focus({ workspace = 3 })\"" && hlast | grep -q "\"sig\": \"fake-hypr-sig\""' \
+      "switch to workspace 3 → hl.dsp.focus, with the island's HYPRLAND_INSTANCE_SIGNATURE" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check '[ "$(echo "$out" | field text)" = "Workspace 1" ]' "…its Undo goes back to workspace 1" "$out"
+out=$("$BIN/ewe-companion" ask "next workspace")
+check '[ "$(echo "$out" | field text)" = "Workspace 2" ]' "next workspace → the next one in use on this display" "$out"
+out=$("$BIN/ewe-companion" ask "swich to worksapce 4")
+check '[ "$(echo "$out" | field text)" = "Workspace 4" ]' "a typo gets a second try (swich to worksapce 4)" "$out"
+"$BIN/ewe-companion" ask "workspace 1" >/dev/null
+out=$("$BIN/ewe-companion" ask "move this window to workspace 2")
+check '[ "$(echo "$out" | field text)" = "Moved Firefox to workspace 2" ] && hlast | grep -q "address:0xaaa1.*follow = false" && [ "$(hst "s[\"clients\"][0][\"workspace\"][\"id\"]")" = "2" ]' \
+      "move this window to workspace 2 → by address, not following; the line names the app" "$out"
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+check '[ "$(hst "s[\"clients\"][0][\"workspace\"][\"id\"]")" = "1" ]' "…its Undo moves it back" "$(hlast)"
+out=$("$BIN/ewe-companion" ask "make this window fullscreen")
+check '[ "$(echo "$out" | field text)" = "Firefox is fullscreen" ] && [ "$(hst "s[\"clients\"][0][\"fullscreen\"]")" = "2" ]' \
+      "make this window fullscreen → mode 0, set" "$out"
+utok=$(tok "$out")
+out=$("$BIN/ewe-companion" ask "fullscreen")
+check '[ "$(echo "$out" | field text)" = "Firefox is fullscreen already" ]' "…already: said, nothing toggled" "$out"
+"$BIN/ewe-companion" debug undo "$utok" >/dev/null
+check '[ "$(hst "s[\"clients\"][0][\"fullscreen\"]")" = "0" ]' "…its Undo unsets it" "$(hlast)"
+out=$("$BIN/ewe-companion" ask "float this window")
+check '[ "$(echo "$out" | field text)" = "Firefox floats" ] && [ "$(hst "s[\"clients\"][0][\"floating\"]")" = "True" ]' "float this window" "$out"
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+out=$("$BIN/ewe-companion" ask "minimise this window")
+check 'echo "$out" | field text | grep -q "^Minimised Firefox" && [ "$(hst "s[\"clients\"][0][\"workspace\"][\"name\"]")" = "special:minimized" ]' \
+      "minimise this window → special:minimized" "$out"
+out=$("$BIN/ewe-companion" ask "bring back the minimized window")
+check '[ "$(echo "$out" | field text)" = "Brought back Firefox" ] && [ "$(hst "s[\"clients\"][0][\"workspace\"][\"id\"]")" = "1" ]' \
+      "bring back the minimized window → onto the workspace in focus" "$out"
+# closing asks first; only the button's one-time token closes
+out=$("$BIN/ewe-companion" ask "close this window")
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && [ "$(echo "$out" | field kind)" = "answer" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \
+      "close this window → a Close Firefox button (an offer, not done); nothing closed yet" "$out"
+close=$(echo "$out" | js 'json.dumps(r["action"]["args"])')
+out=$("$BIN/ewe-companion" debug run window '{"action": "close"}')
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \
+      "a model's window close (no token) only offers the button" "$out"
+out=$("$BIN/ewe-companion" debug run window '{"action": "close", "token": "0123456789abcdef01234567"}')
+check '! grep -q "window.close" "$W/fakes/hyprctl.log"' "…and a made-up token closes nothing" "$out"
+out=$("$BIN/ewe-companion" debug run window "$close")
+check '[ "$(echo "$out" | field text)" = "Closed Firefox" ] && hlast | grep -q "hl.dsp.window.close({ window = .*address:0xaaa1"' \
+      "the button's click closes it (gracefully, by address)" "$out"
+"$BIN/ewe-companion" debug run window "$close" >/dev/null
+check '[ "$(grep -c "window.close" "$W/fakes/hyprctl.log")" = "1" ]' "…once" "$(grep window.close "$W/fakes/hyprctl.log")"
+out=$("$BIN/ewe-companion" ask "close firefox")
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && ! echo "$out" | grep -q Recipes' \
+      "close firefox → a button for its window; the title never shows" "$out"
+# a frozen app: pkill shown with Run, never run
+out=$("$BIN/ewe-companion" ask "firefox is frozen")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "pkill -KILL -x firefox" ] && [ "$(echo "$out" | js "r[\"confirm\"][\"risk\"]")" = "danger" ] && kill -0 "$FP"' \
+      "firefox is frozen → pkill -KILL -x firefox offered with Run (risky), not run" "$out"
+out=$("$BIN/ewe-companion" ask "kill firefox")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "pkill -x firefox" ] && kill -0 "$FP"' "kill firefox → pkill -x firefox, offered" "$out"
+out=$("$BIN/ewe-companion" ask "kill nosuchappzz")
+check '[ "$(echo "$out" | field text)" = "echo: kill nosuchappzz" ]' "an app that is not running goes to the model" "$out"
+out=$("$BIN/ewe-companion" ask "opne firefox")
+check '[ "$(echo "$out" | field command)" = "launch_app" ] && grep -q "do launch {\"app\": \"firefox\"" "$W/island.log"' \
+      "a typo gets a second try (opne firefox)" "$out"
+# memory: kept in companion.db, never a secret
+out=$("$BIN/ewe-companion" ask "remember that my dentist is on friday")
+check '[ "$(echo "$out" | field text)" = "I'"'"'ll remember that: my dentist is on friday" ] && [ -n "$(tok "$out")" ]' \
+      "remember that … → kept, with Undo" "$out"
+out=$("$BIN/ewe-companion" ask "remember my pin is 90817263")
+check '[ "$(echo "$out" | field kind)" = "error" ] && echo "$out" | grep -q "looks like a secret. ewe Safe is the place for it"' \
+      "a PIN is refused: ewe Safe is the place for it" "$out"
+out=$("$BIN/ewe-companion" ask "what do you remember")
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"title\"]")" = "my dentist is on friday" ] && [ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][0][\"label\"]")" = "Forget" ] && [ "$(echo "$out" | js "len(r[\"rows\"])")" = "1" ]' \
+      "what do you remember → rows with Forget (the PIN was never kept)" "$out"
+check '! cat "$W/state/ewe/companion/"companion.db* 2>/dev/null | grep -qa 90817263' "the refused PIN is not in the store" ""
+out=$("$BIN/ewe-companion" ask "forget about my dentist")
+check '[ "$(echo "$out" | field text)" = "Forgot: my dentist is on friday" ]' "forget about my dentist" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check '[ "$(echo "$out" | field text)" = "I'"'"'ll remember that: my dentist is on friday" ]' "…its Undo puts it back" "$out"
+out=$("$BIN/ewe-companion" ask "forget everything")
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Forget it" ] && [ "$("$BIN/ewe-companion" ask "what do you remember" | js "len(r[\"rows\"] or [])")" = "1" ]' \
+      "forget everything → asks first (a button), forgets nothing yet" "$out"
+all=$(echo "$out" | js 'json.dumps(r["action"]["args"])')
+out=$("$BIN/ewe-companion" debug run forget "$all")
+check '[ "$(echo "$out" | field text)" = "Forgot the one thing I remembered." ]' "…its click forgets it all" "$out"
+out=$("$BIN/ewe-companion" ask "remember to call mum at 5pm")
+check '[ "$(echo "$out" | field command)" = "timer" ] && echo "$out" | grep -q "I.ll remind you at 17:00: call mum"' \
+      "remember to … at 5pm is a reminder, not a memory" "$out"
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
 
 # timers: a notification when due (a fake notify-send), cancellable, listed
 out=$("$BIN/ewe-companion" ask "set a timer for 1 second")

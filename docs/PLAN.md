@@ -1668,6 +1668,82 @@ gesture, Contract 3). Branch `feat/more-powers` in both repos.
       notification banner for a timer (by the owner, after the release).
 - **Gate:** the owner's try after `pacman -Syu`.
 
+### P2.11 — wiser, faster, more functions (M), owner ask 2026-11-08
+
+The owner: "i want it more wise. smarter and faster. maybe more functions
+somehow". Measured first, on the owner's machine (Claude Code + Haiku):
+"2+2" took 7.5 s, because `claude -p` loaded ~94k tokens of the user's own
+Claude Code setup (plugins, skills, MCP servers) and spent ~4 s starting;
+about 30 of 50 everyday phrases missed the matcher and went to that call,
+where the model guessed the time, memory, CPU and uptime it was never told.
+Branches `feat/shaun-wiser` (here and in the plugin).
+
+- [x] **Lean Claude Code.** `--disable-slash-commands --strict-mcp-config
+      --setting-sources ""`: ~650 tokens, OAuth still works (`--bare`
+      refuses it). Measured 7.5 s → 5.3 s cold.
+- [x] **Warm Claude Code.** One `claude -p --input-format stream-json` is
+      started ahead of the question (after every answer, and on
+      `chat.warm`, the island's first keystroke) and dropped after 3 idle
+      minutes (~190 MB while it waits). Measured: 1.2 s to the whole
+      answer, 0.9 s to the first word. Keyed by model + system prompt.
+- [x] **Streaming.** Claude Code (stream-json, `--include-partial-messages`),
+      the Anthropic API and the OpenAI-compatible APIs (SSE) stream;
+      `chat.reply` `partial` to islands whose `hello` says `caps:
+      ["partial"]` (plugin 0.6.0 draws it on one growing line, "… is
+      writing"). Never an ACTION line, at most every 80 ms.
+- [x] **The prompt in two parts.** The system prompt is stable (who, how
+      to answer, the commands, the primer), so it caches (Anthropic:
+      `cache_control`) and a warm `claude` starts with it; the turn's
+      topics, "this computer now" and (with memory) what the user asked to
+      remember ride with the question in `<notes>`. Wiser words: say the
+      likely cause and the one next step, ask one short question when a
+      request could mean two things, facts only from the notes or a look-up.
+- [x] **This computer now** gains the date and time (with the time zone),
+      uptime, memory in use, CPU load and online/offline; the installed part
+      is read ahead on `chat.warm`.
+- [x] **Look-ups.** A reply made only of *looks* (`persona::LOOKS`: reads
+      whose results are safe to show a model) runs them and asks once more
+      with what they found, wrapped as untrusted (a program's name is
+      another program's words), so an ACTION in that answer is a "Do it"
+      button (C4).
+- [x] **Several actions.** Up to three ACTION lines in one reply all run,
+      with one Undo (`Undo::Many`, in reverse); two or three plain commands
+      in one line ("dnd on and a 25 minute timer") run offline the same way.
+- [x] **Anthropic API:** `effort: low` on 5-series models (Haiku 5.5 thinks
+      at `medium` by default), `max_tokens` 2000.
+- [x] **The clock, dates and units** (owner's pick): `clock` (here, or a
+      place from `/usr/share/zoneinfo` + aliases), `date_math` (until,
+      since, weekday, offset, Easter), `convert` (no currencies), calc's
+      roots and powers.
+- [x] **System facts** (owner's pick): `system_info` (battery, memory, CPU
+      from two `/proc` samples, uptime, network, disk, overview: "why is my
+      laptop slow") and `disk_usage`; program rows with Quit (a
+      `force_quit` proposal; never the desktop's own: `commands::SESSION`).
+- [x] **Windows and workspaces** (owner's pick): `workspace` (the display's
+      own numbers), `window` (move, fullscreen, maximise, float, minimise,
+      restore, each with Undo; close only from a one-time token's button),
+      `force_quit` (a proposal).
+- [x] **Memory** (owner's pick): `remember` / `memories` / `forget`
+      (migration 003, 100 at most, secrets refused and kept out of the
+      history), `memory::prompt_block` in the notes.
+- [x] **Typo tolerance:** a second pass over the matcher's own words
+      ("opne firefox", "volme 50"); free text is never corrected.
+- [x] Tests: core 107, daemon 58; `tests/chat.sh` 164 (the new commands
+      against the `hyprctl`, `ip` and `nmcli` fakes and a fake `firefox`
+      process), `tests/brain.sh` 25, `tests/canary.sh` 9 (network and
+      window chats added). The island harness: the clock, units, memory
+      and CPU rows (Quit), memories (star, Forget).
+- [ ] On the owner's desktop: the window commands on the live Hyprland
+      (close and fullscreen's Lua arguments come from 0.57.1's error
+      strings, never run live by rule), a real Claude Code answer streaming
+      in the notch, and the warm `claude`'s memory over a day.
+- **Gate:** the owner's try on this machine, then a release (owner's call).
+- [x] Tests: `tests/brain.sh` (22, a fake `claude` on PATH, never the real
+      login), unit tests for the SSE parser (every split point), the lean
+      flags, the notes, several actions, the streaming filter, the compound
+      split. The island harness: a slow mock (`MOCK_DELAY`) shows the answer
+      growing, then whole.
+
 ### P3 — notifications (L), crosses repos and merges as one wave
 
 - [ ] **ewe:** Plugin API 4 `Shell` members + host `apiVersions [2,3,4]`;
@@ -1945,3 +2021,35 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   (2026-10-17): the old process's exe link ends in " (deleted)", so the
   binary check failed, nothing was stopped, and the new daemon stepped aside
   for the old one. The check strips the suffix now.
+- **`claude -p` brought the user's whole Claude Code along** (2026-11-08):
+  `--system-prompt` and `--tools ""` do not stop it loading the user's
+  plugins, skills, MCP servers and settings: ~94k tokens of cache creation
+  for "2+2", 7.5 s, and a model reading about tools that are not Shaun's.
+  `--disable-slash-commands --strict-mcp-config --setting-sources ""` cut it
+  to ~650 tokens. `--bare` would too, but it reads no OAuth, so the user's
+  own login stops working.
+- **Starting `claude` is most of the wait** (2026-11-08): ~4 s of the 5.3 s
+  even lean. A process started with `--input-format stream-json` waits on
+  stdin with its start-up done; written to later, it answered in 1.2 s.
+  Idle it holds ~190 MB, so it is started on the first keystroke and after
+  an answer, never on Super+A, and dropped after 3 minutes.
+- **A notes-free system prompt** (2026-11-08): the turn's topics and "this
+  computer now" moved into the question. The system prompt is then the same
+  for every question, which lets a warm `claude` start before the question
+  exists and lets Anthropic cache it; the history keeps the user's words
+  only, so the notes are never repeated turn after turn.
+- **Streaming rebuilt the whole conversation** (2026-11-08): the island's
+  `messages` is a JS array, and a Repeater makes every delegate again on
+  each assignment; replacing the answer twelve times a second would have
+  rebuilt the list as often. The growing text is one `TextBody` of its own
+  (`CompanionState.streamText`); the whole answer joins `messages` once.
+- **The typo pass corrected free text** (2026-11-08): "remind me to take a
+  break" became "make a break". Everything after remind, remember, open,
+  search, close, kill … is free text and never corrected; "lock" is left
+  out of the vocabulary so that "look" can never become it.
+- **Quit was offered for Hyprland** (2026-11-08): the CPU and memory rows'
+  Quit (a `pkill -x` proposal) listed the compositor and the shell among
+  the busiest programs. Behind a Run click still, but a trap:
+  `commands::SESSION` refuses them, so their rows carry no Quit.
+- **A `libc::tm` across an `.await`** (2026-11-08) made the future
+  non-`Send` (it holds a raw pointer) and `tokio::spawn` refused it.

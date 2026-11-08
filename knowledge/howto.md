@@ -179,6 +179,8 @@ keys: time zone, timezone, time, clock, date, language, locale, display language
 open: settings time
 ewe Settings → Time and place: Set the time zone automatically (or pick a Region and Zone), Network time for the clock, and the Display language apps use.
 
+Ask me "what time is it" or "what's the date" for the time here, and "what time is it in tokyo" for a city, a country or a zone (Asia/Tokyo): I say the time there and how far ahead or behind you it is, with no AI and no internet.
+
 ## Your name and picture
 keys: user, username, my name, profile picture, avatar, user picture, account picture
 open: settings user
@@ -243,12 +245,24 @@ ewe has no airplane switch of its own, but I do it: "airplane mode on" turns Wi-
 
 ## Timers and reminders
 keys: timer, timers, set a timer, reminder, reminders, remind me, alarm, countdown
-Ask me: "set a timer for 5 minutes", "remind me in 10 minutes to call mum", "remind me at 5pm to call the bank", "remind me to stretch at 17:30". When it is due, a notification from Shaun shows (it stays in Quick settings' notifications; Do not disturb hides the banner). "Show my timers" lists them with Cancel, "cancel the timer" cancels one, and Undo right after setting it cancels it too. They wait in my own store, so they survive a restart of the shell or of me; one that fell due while I was off shows when I start again, with the time it was due. A time like "at 5" could be morning or evening: say "5pm" or "17:00".
+Ask me: "set a timer for 5 minutes", "remind me in 10 minutes to call mum", "remind me at 5pm to call the bank", "remind me to stretch at 17:30". When it is due, a notification from Shaun shows (it stays in Quick settings' notifications; Do not disturb hides the banner). "Show my timers" lists them with Cancel, "cancel the timer" cancels one, and Undo right after setting it cancels it too. They wait in my own store, so they survive a restart of the shell or of me; one that fell due while I was off shows when I start again, with the time it was due. A time like "at 5" could be morning or evening: say "5pm" or "17:00". "Remember to call mum at 5pm" is a reminder too; without a time, "remember …" is something I keep in mind (see What I remember).
 
 ## Do a sum
 keys: calculator, calculate, sum, percent, percentage, maths, math, arithmetic, how much is
-Ask me: "what is 12*7", "15% of 80", "80 + 15%", "20% off 50", "(3 + 4) ^ 2", "100 divided by 8". I work it out right here, with no AI and no internet. For more, Galculator is the calculator app (the launcher finds it).
+Ask me: "what is 12*7", "15% of 80", "80 + 15%", "20% off 50", "(3 + 4) ^ 2", "100 divided by 8", "sqrt 144", "the square root of 2", "12 squared", "3 cubed". I work it out right here, with no AI and no internet. For more, Galculator is the calculator app (the launcher finds it).
 
 ## Empty the trash
 keys: empty trash, empty the trash, trash, recycle bin, deleted files, wastebasket
 Files moved to the trash stay in ~/.local/share/Trash until you empty it: in Nemo, right-click Trash in the sidebar → Empty Trash. Or ask me "empty the trash": I say how many items are in it and show `gio trash --empty` with Run; they are gone for good once you press it.
+
+## Units, dates and the time elsewhere
+keys: convert units, unit conversion, km to miles, miles to km, celsius to fahrenheit, fahrenheit to celsius, kg to pounds, pounds to kg, cups to ml, days until, days since, what day is, what time is it in, time in another city, world clock
+Ask me, with no AI and no internet: "convert 10 km to miles", "20 c in f", "70 kg in pounds", "2 cups in ml", "100 km/h in mph", "how many cm in 3 feet", "1 hour in seconds", "5 gb in mb". Data counts the way disks do (1 GB = 1000 MB); say GiB or MiB for 1024s. Cups, pints and gallons are the US ones. Currencies need today's rates, so I leave those to whoever answers questions.
+
+Dates: "how many days until christmas", "how long until new year", "how many days since 1 january", "what day is 25 december", "what day of the week is 2026-12-25", "what's the date in 30 days", "what was the date 10 days ago". And the time anywhere: "what time is it in tokyo", "time in new york", "what's the time in the uk".
+
+## Ask me about this computer
+keys: how much battery, battery left, how much ram, ram is free, using my cpu, using my memory, using my ram, computer is slow, laptop is slow, computer so slow, laptop so slow, uptime, been on, my ip, ip address, am i online, connected to the internet, what takes space, eating my disk, biggest files, disk space is left
+Ask me, with no AI and no internet: "how much battery do i have", "how much ram is free", "what's using my memory", "what's using my cpu", "how long has my computer been on", "am i connected to the internet", "what's my ip", "how much disk space is left", "what's eating my disk". "Why is my laptop slow" or "is my computer ok" looks at everything at once (the processor and the apps keeping it busy, memory, the disk, the battery) and says what stands out.
+
+Apps are counted by program: all of Chrome's processes are one "chrome". Memory counts in 1024s like the RAM on the box, disks in 1000s like the disk on the box. Your network's name and your local addresses show in the notch only; your public address would mean asking a website, so I never look it up. "What's eating my disk" sizes the package cache, ~/.cache, the trash, Downloads (with its biggest files), the system journal and crash dumps, and offers Empty for the trash.

@@ -17,6 +17,11 @@ it receives (`<type> <id-or-key> <extra>`), and for every card:
                    are answered ok without doing anything. Each prints
                    `do <action> <args>`; chat replies print
                    `chat.reply <kind> <text>`
+  --caps LIST      what the island says it draws, comma-separated
+                   (`partial`: a streaming answer)
+  --warm           send chat.warm (the chat field got focus)
+  --say TEXT       type TEXT into the chat (chat.send), and wait for its
+                   answer before the next --say (repeatable)
 
 Socket: $EWE_COMPANION_SOCK, else $XDG_RUNTIME_DIR/ewe-companion.sock.
 """
@@ -36,7 +41,11 @@ ap.add_argument("--answers")
 ap.add_argument("--delay", type=float, default=0.1)
 ap.add_argument("--env")
 ap.add_argument("--do", action="store_true")
+ap.add_argument("--caps", default="")
+ap.add_argument("--warm", action="store_true")
+ap.add_argument("--say", action="append", default=[])
 a = ap.parse_args()
+answered = threading.Event()
 
 path = os.environ.get("EWE_COMPANION_SOCK") or os.path.join(os.environ["XDG_RUNTIME_DIR"], "ewe-companion.sock")
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -59,9 +68,26 @@ def send(obj):
         s.sendall((json.dumps(obj) + "\n").encode())
 
 
-send({"type": "hello", "client": "island", "pid": os.getpid()})
+hello = {"type": "hello", "client": "island", "pid": os.getpid()}
+if a.caps:
+    hello["caps"] = [c for c in a.caps.split(",") if c]
+send(hello)
 if a.env:
     send({"type": "env", **json.loads(a.env)})
+if a.warm:
+    send({"type": "chat.warm"})
+
+
+def say_all():
+    for text in a.say:
+        answered.clear()
+        send({"type": "chat.send", "text": text})
+        answered.wait(30)
+    print("said-all", flush=True)
+
+
+if a.say:
+    threading.Thread(target=say_all, daemon=True).start()
 
 
 def answer(cid):
@@ -119,7 +145,10 @@ while True:
         elif t == "do" and a.do:
             threading.Thread(target=perform, args=(m,), daemon=True).start()
         elif t == "chat.reply":
-            print("chat.reply", m.get("kind"), m.get("text"), flush=True)
+            print("chat.reply", m.get("kind"), json.dumps(m.get("text")) if m.get("kind") == "partial"
+                  else m.get("text"), flush=True)
+            if m.get("kind") not in ("thinking", "partial"):
+                answered.set()
         elif t == "state":
             print("state", m.get("presence"), len(m.get("pending", [])), len(m.get("sessions", [])), flush=True)
         else:

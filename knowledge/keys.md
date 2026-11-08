@@ -19,6 +19,8 @@ Super+Q closes the window, Super+F makes it fullscreen, Super+Shift+F maximises 
 
 Move focus with Super+H/J/K/L or Super+arrows; add Shift to move the window, Ctrl to resize it. Super+G groups windows into tabs (Super+Shift+G takes one out, Super+[ and Super+] switch tabs, Super+Alt+1…9 jumps to a tab). Super+Tab and Super+Shift+Tab go to the next and previous window. Super with the left mouse button drags a window; with the right one it resizes.
 
+Or ask me: "make this window fullscreen", "exit fullscreen", "maximise this window", "float this window", "tile this window", "minimise this window", "bring back the minimized window". "Close this window" or "close firefox" shows a Close button first; the app may still ask to save. "This window" is the one in front.
+
 ## Shortcuts for the scrolling layout
 keys: scrolling layout, scrolling, columns, column width, strip
 These work only when ewe Settings → Layout → Tiling style is Scrolling. Super+Alt+[ and Super+Alt+] move the strip one column, Super+Alt+, and Super+Alt+. swap with the column on the left or right, Super+Alt+R cycles column widths, Super+Alt+F fits the visible columns on screen, Super+Alt+P gives the window its own column and Super+Alt+C merges it into the next column or splits it out.
@@ -28,6 +30,8 @@ keys: workspace, workspaces, desktop, desktops, virtual desktop, switch workspac
 Super+1…8 switches to workspace 1 to 8, and Super+Shift+1…8 moves the window there and follows it. Super with the mouse wheel cycles workspaces (with the Scrolling layout it scrolls the strip instead).
 
 Super+Z minimizes the window in front, and Super+Shift+Z brings back the one you minimized last, onto the workspace you are on. With the Dock plugin, each minimized window is a picture in the dock: click it to bring it back. Minimizing replaced the Pen in ewe 0.34: there is no Pen to stash windows in any more, Super+S does nothing, and windows that were still in the Pen count as minimized.
+
+Or ask me: "switch to workspace 3", "go to the second workspace", "next workspace", "move this window to workspace 2", "move firefox to workspace 4". Undo goes back. With several displays, the numbers are the ones of the display you are on.
 
 ## Touchpad gestures
 keys: touchpad, gesture, gestures, swipe, three fingers, four fingers, trackpad

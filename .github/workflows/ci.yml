@@ -20,5 +20,8 @@ jobs:
       # the chat path against a stdlib mock LLM (no key, no network), with the
       # fake ewe-safe and ewe-browser in tests/fakes/
       - run: tests/chat.sh
+      # how it thinks: streaming, look-ups, several actions, compound lines, and
+      # Claude Code lean and warm (a fake claude; never a real login)
+      - run: tests/brain.sh
       # names stay local: Safe's titles and usernames reach no provider, log or store
       - run: tests/canary.sh
