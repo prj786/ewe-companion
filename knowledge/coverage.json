@@ -1,0 +1,548 @@
+{
+ "about": "Everything ewe ships that Shaun must have a topic for. Written by scripts/coverage.py; checked by the unit test every_shipped_feature_has_a_topic. Do not edit by hand: rerun the script (docs/EXTENDING.md, recipe 4).",
+ "facts_generated": "2026-11-19",
+ "ewe_version": "0.45.0-beta",
+ "items": [
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Appearance",
+   "page": "appearance",
+   "terms": [
+    "Appearance"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Wallpaper",
+   "page": "wallpaper",
+   "terms": [
+    "Wallpaper"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Animations",
+   "page": "animations",
+   "terms": [
+    "Animations"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Accessibility",
+   "page": "accessibility",
+   "terms": [
+    "Accessibility"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Layout",
+   "page": "layout",
+   "terms": [
+    "Layout"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Window rules",
+   "page": "windowrules",
+   "terms": [
+    "Window rules"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Displays",
+   "page": "displays",
+   "terms": [
+    "Displays"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Startup apps",
+   "page": "startup",
+   "terms": [
+    "Startup apps"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Keyboard shortcuts",
+   "page": "shortcuts",
+   "terms": [
+    "Keyboard shortcuts"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Network",
+   "page": "network",
+   "terms": [
+    "Network"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Bluetooth",
+   "page": "bluetooth",
+   "terms": [
+    "Bluetooth"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Keyboard and mouse",
+   "page": "input",
+   "terms": [
+    "Keyboard and mouse"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Power",
+   "page": "power",
+   "terms": [
+    "Power"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Screensaver",
+   "page": "saver",
+   "terms": [
+    "Screensaver"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Default apps",
+   "page": "defaults",
+   "terms": [
+    "Default apps"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → Time and place",
+   "page": "time",
+   "terms": [
+    "time and place",
+    "time zone"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → User",
+   "page": "user",
+   "terms": [
+    "User"
+   ]
+  },
+  {
+   "kind": "settings page",
+   "name": "ewe Settings → About this computer",
+   "page": "system",
+   "terms": [
+    "about this computer",
+    "version"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-auth",
+   "terms": [
+    "ewe-auth"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-browser",
+   "terms": [
+    "ewe-browser"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-bt",
+   "terms": [
+    "ewe-bt"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-caldav",
+   "terms": [
+    "ewe-caldav"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-cloud",
+   "terms": [
+    "ewe-cloud"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-companion",
+   "terms": [
+    "ewe-companion"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-conf",
+   "terms": [
+    "ewe-conf"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-drive",
+   "terms": [
+    "ewe-drive"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-files",
+   "terms": [
+    "ewe-files"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-files-app",
+   "terms": [
+    "ewe-files-app"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-game",
+   "terms": [
+    "ewe-game"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-globalshortcuts",
+   "terms": [
+    "ewe-globalshortcuts"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-mail",
+   "terms": [
+    "ewe-mail"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-pass",
+   "terms": [
+    "ewe-pass"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-player",
+   "terms": [
+    "ewe-player"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-plugin",
+   "terms": [
+    "ewe-plugin"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-remote",
+   "terms": [
+    "ewe-remote"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-safe",
+   "terms": [
+    "ewe-safe"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-settings",
+   "terms": [
+    "ewe-settings"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-setup",
+   "terms": [
+    "ewe-setup"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-share-picker",
+   "terms": [
+    "ewe-share-picker"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-tailscale",
+   "terms": [
+    "ewe-tailscale"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-theme",
+   "terms": [
+    "ewe-theme"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-viewer",
+   "terms": [
+    "ewe-viewer"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "komble",
+   "terms": [
+    "komble"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "Komble",
+   "repo": "komble-arch",
+   "terms": [
+    "Komble"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Settings",
+   "repo": "ewe-settings",
+   "terms": [
+    "ewe Settings"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Sync",
+   "repo": "ewe-sync",
+   "terms": [
+    "ewe Sync"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "Cast to TV",
+   "repo": "ewe-cast",
+   "terms": [
+    "cast"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Browser",
+   "repo": "ewe-browser",
+   "terms": [
+    "ewe Browser"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Files",
+   "repo": "ewe-apps",
+   "terms": [
+    "ewe Files"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Player",
+   "repo": "ewe-apps",
+   "terms": [
+    "ewe Player"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Viewer",
+   "repo": "ewe-apps",
+   "terms": [
+    "ewe Viewer"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "Shaun",
+   "repo": "ewe-companion",
+   "terms": [
+    "Shaun"
+   ]
+  },
+  {
+   "kind": "app",
+   "name": "ewe Safe",
+   "repo": "ewe-safe",
+   "terms": [
+    "ewe safe",
+    "safe"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Cast to TV",
+   "id": "ewe.cast",
+   "terms": [
+    "cast"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Clipboard & emoji",
+   "id": "ewe.clipboard",
+   "terms": [
+    "clipboard"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Shaun",
+   "id": "ewe.companion",
+   "terms": [
+    "Shaun"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Dock",
+   "id": "ewe.dock",
+   "terms": [
+    "Dock"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Insomnia",
+   "id": "ewe.insomnia",
+   "terms": [
+    "Insomnia"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Mail",
+   "id": "ewe.mail",
+   "terms": [
+    "Mail"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Music",
+   "id": "ewe.media",
+   "terms": [
+    "music plugin",
+    "music"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Passwords",
+   "id": "ewe.passwords",
+   "terms": [
+    "Passwords"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Phone",
+   "id": "ewe.phone",
+   "terms": [
+    "Phone"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Places",
+   "id": "ewe.places",
+   "terms": [
+    "Places"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "ewe Safe",
+   "id": "ewe.safe",
+   "terms": [
+    "ewe safe",
+    "safe"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Screenshot",
+   "id": "ewe.screenshot",
+   "terms": [
+    "Screenshot"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Slack",
+   "id": "ewe.slack",
+   "terms": [
+    "Slack"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "SSH",
+   "id": "ewe.ssh",
+   "terms": [
+    "SSH"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "Window switcher",
+   "id": "ewe.switcher",
+   "terms": [
+    "window switcher",
+    "alt tab"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "System monitor",
+   "id": "ewe.sysmon",
+   "terms": [
+    "System monitor"
+   ]
+  },
+  {
+   "kind": "plugin",
+   "name": "VPN",
+   "id": "ewe.vpn",
+   "terms": [
+    "VPN"
+   ]
+  }
+ ]
+}

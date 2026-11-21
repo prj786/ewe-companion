@@ -5,7 +5,10 @@
      website's troubleshooting page. Developer-only fixes stay out.
      Re-checked 2026-11-01 against ewe 0.39.0-beta, ewe Settings 0.22 and
      ewe Sync 0.16 (no "Push anyway": the settings decision is "Use
-     <name>'s settings…" or "Keep this computer's settings"). -->
+     <name>'s settings…" or "Keep this computer's settings").
+     Refreshed 2026-11-21 against ewe 0.45.0-beta and ewe apps 0.1.1 (the
+     trash is emptied in ewe Files since ewe 0.44, which dropped Nemo).
+     Media troubles (a video that will not play, Stremio) are in media.md. -->
 
 ## Something from a plugin is missing
 keys: missing dock, no dock, missing clipboard, no screenshot, missing tile, plugin missing, plugin not working, shortcut not working, icon missing
@@ -41,8 +44,16 @@ When an app asks, it wants your login password. If a "Choose password for new ke
 keys: sign in browser did not open, login page not opening, cannot sign in, sign-in link
 Use "Open the sign-in page" or "Copy the link" in Welcome or ewe Sync, and finish in any browser.
 
+## Connected, but no internet
+keys: no internet, connected but no internet, waiting for an address, no cable detected, network isn't answering, cable connected no internet, ethernet not working, wired not working, hotel wifi sign in
+open: quicksettings wifi
+The Wi-Fi page in Quick settings (the tile's arrow) says what is wrong. "Connected · no internet": the network is there but the internet is not; at a hotel or an airport, Sign in to this network → Open sign-in page. On a cable, "No cable detected" means the cable or the port, "Waiting for an address" means the network has not given this computer an address yet (ewe keeps waiting; after a while it says the network isn't answering: try another port or cable), and "Cable runs at 100 Mb/s" points at a faulty cable. Reconnect tries again. The bar's network icon dims while there is no internet (since ewe 0.38).
+
+"No internet" only with the VPN on, or only with it off, is the VPN's: see The VPN will not start.
+<!-- ewe 0.45.0-beta NetState.qml (wired labels, wiredHint) and QuickSettings.qml (Sign in to this network, Open sign-in page, Reconnect); ewe#77 -->
+
 ## A Bluetooth device will not pair
-keys: bluetooth not pairing, bluetooth drops, cannot pair, will not pair, won't pair, disconnect, disconnects, keeps disconnecting, keeps dropping, bluetooth problem
+keys: bluetooth not pairing, bluetooth drops, cannot pair, will not pair, won't pair, disconnect, keeps disconnecting, keeps dropping, bluetooth problem
 Forget the device on both sides and pair again, holding its pairing button until it blinks. `systemctl restart bluetooth` brings back ewe's pairing helper.
 
 ## A black screen after plugging a monitor
@@ -80,7 +91,7 @@ Super+Q asks the window to close. When an app does not answer at all, ask me "fi
 ## The disk is full
 keys: disk full, storage full, no space, low disk space, free space, clean up, cleanup, disk space
 run: sudo paccache -rk1
-Ask me "what's eating my disk" to see what takes space. Clear pacman's package cache with `sudo paccache -rk1` (keeps one old version), empty the trash (in Nemo, or ask me "empty the trash"), and look for big folders with `du -sh ~/* | sort -h`. I show a disk past 85 % in my panel.
+Ask me "what's eating my disk" to see what takes space. Clear pacman's package cache with `sudo paccache -rk1` (keeps one old version), empty the trash (in ewe Files, or ask me "empty the trash"), and look for big folders with `du -sh ~/* | sort -h`. I show a disk past 85 % in my panel.
 
 ## What to send with a bug report
 keys: report bug, bug report, logs, diagnostics, status commands, help me debug

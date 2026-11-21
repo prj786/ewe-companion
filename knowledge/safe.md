@@ -6,13 +6,19 @@
      Settings.svelte, crates/cli/src/ssh.rs), the ewe.safe plugin 1.1.1
      and ewe.passwords 1.3.1 in ewe 0.39.0-beta, and ewe Browser 0.8
      (settings/passwords.tsx). Earlier: README, PROTOCOL.md, IMPORT.md
-     (0.2.0-beta, 2026-10-18). Comments never reach a model. -->
+     (0.2.0-beta, 2026-10-18).
+     Refreshed 2026-11-21 against ewe Safe 0.5.1 (894a206): Settings.svelte
+     (Security: Lock after defaults to Never, Lock when the screen locks and
+     Lock before sleep are off until turned on, "Unlock with my login
+     password"), lib/ssh.js CONFIRMS (Once per start, the default since 0.5;
+     Once per app; Every time; Never) and Ssh.svelte's captions.
+     Comments never reach a model. -->
 
 ## ewe Safe, ewe's password manager
-keys: ewe safe, ewe-safe, my safe, what is safe, safe app, password manager, passwords app, my passwords, master password, keepass, kdbx
+keys: ewe-safe, my safe, what is safe, safe app, password manager, passwords app, my passwords, master password, keepass, kdbx
 ewe Safe keeps your logins, notes, SSH keys, passkeys, cards and addresses in one encrypted file in the KeePass format (KDBX 4), on this computer or in your ewe account's Nextcloud. Open the ewe Safe app from the launcher: its list has All items, Logins, Notes, SSH, Cards, Addresses, your Tags and Folders, Trash and Settings, and one header on top with Search ewe Safe, New and Lock (Ctrl+L). ewe Browser fills from it, Super+P (the Passwords plugin) fills any app, and the ewe Safe plugin (Komble → Plugins) adds a lock in the bar, Quick Access on Super+Shift+P and a Quick settings tile. I can use it too: "copy my GitHub password", "lock my safe", "unlock my safe", "is my safe synced?". ewe Safe copies a password itself and clears it later; I never see it.
 
-The master password is typed only in ewe Safe's own window, never in the chat. ewe Safe locks after 30 minutes without use, when the screen locks and before the computer sleeps: ewe Safe → Settings → Security has Lock after, Lock when the screen locks and Lock before sleep.
+The master password is typed only in ewe Safe's own window, never in the chat. Since ewe Safe 0.5 it opens once per start of the computer (by itself when you sign in, with Unlock with my login password on) and nothing locks it again unless you ask: Lock (Ctrl+L), or ewe Safe → Settings → Security, where Lock after is Never by default (or 5 minutes up to 4 hours) and Lock when the screen locks and Lock before sleep are off until you turn them on.
 
 ## Copy a password, a username or a code
 keys: copy password, copy my password, copy a password, copy username, copy the code, one-time code, 2fa code, otp, verification code, what is my password, show my password, tell me my password
@@ -29,12 +35,12 @@ In the ewe Safe app: Settings → Import and export → Import…, or in a termi
 1Password's export leaves passkeys out: sign in to those sites once with the password, then add a new passkey there and save it in ewe Safe. SSH keys that came in as notes become real keys with `ewe-safe ssh adopt`.
 
 ## Passkeys
-keys: passkey, passkeys, webauthn, fido, sign in without a password, passwordless
+keys: passkey, webauthn, fido, sign in without a password, passwordless
 ewe Safe keeps passkeys, and ewe Browser makes and uses them: on a site that offers one, ewe Browser asks "Save a passkey for <site> in ewe Safe?", and next time the passkey is at the top of the list under the login field. They are stored the way KeePassXC stores them, so KeePassXC, KeePassDX and Strongbox can use them too. `ewe-safe passkey list` lists them; ewe Browser's Settings → Passwords → Passkeys turns them off.
 
 ## SSH keys in ewe Safe
 keys: ssh key, ssh agent, id_ed25519, 1password ssh agent, git push key, ssh-add, move ssh, ssh gate, ssh takeover
-ewe Safe is ewe's SSH gate: it keeps your SSH keys, and every ssh and git on this computer asks it for them, even for a host whose own line names another agent (1Password's). In the ewe Safe app, open SSH: "Make ewe Safe your SSH agent" → Turn on. It puts two lines of its own at the top of ~/.ssh/config (an Include of ~/.ssh/ewe-safe/config) and changes nothing else there; turned on once, it follows your ewe account to your other computers. "Ask before a key is used" says when it asks: Once per app (the default), Every time or Never, while ewe Safe is unlocked.
+ewe Safe is ewe's SSH gate: it keeps your SSH keys, and every ssh and git on this computer asks it for them, even for a host whose own line names another agent (1Password's). In the ewe Safe app, open SSH: "Make ewe Safe your SSH agent" → Turn on. It puts two lines of its own at the top of ~/.ssh/config (an Include of ~/.ssh/ewe-safe/config) and changes nothing else there; turned on once, it follows your ewe account to your other computers. "Ask before a key is used" says when it asks: Once per start (the default since ewe Safe 0.5: one time after you turn the computer on, not at all when you typed your password, and never on this screen for an SSH session), Once per app (it names the app), Every time or Never.
 
 If 1Password or key files in ~/.ssh still answer ssh, the SSH page says so: Move SSH to ewe Safe shows what it will do, then brings the key files in (it never deletes or changes them), stops your ewe hosts naming another agent, and lists the keys only 1Password has: import those first (Settings → Import and export → Import…, or `ewe-safe import op`), then `ewe-safe ssh adopt`. In a terminal: `ewe-safe ssh enable`, `ewe-safe ssh takeover --dry-run`, `ewe-safe ssh new --title "GitHub key"`, `ewe-safe ssh add ~/.ssh/id_ed25519`, and `ewe-safe ssh disable` (which takes its two lines out again). `ssh-add -L` lists the keys through ewe Safe. (The SSH page in Quick settings is the SSH plugin's list of hosts, a different thing.)
 
