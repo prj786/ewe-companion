@@ -185,8 +185,8 @@ Quick settings without the rail, the System monitor in the bar, Komble's
 plugin sheet, ewe Settings' four groups, ewe Sync's words, ewe Browser's
 save prompt and ewe Safe as the SSH gate. 0.2.4-beta (2026-11-08) hands
 "game mode" to ewe's own (`ewe-game`, ewe 0.42): one mode for the
-tile, ewe Settings and Shaun, with Undo. 0.3 (2026-11-08, not yet
-released) is faster and wiser: Claude Code lean and started ahead of the
+tile, ewe Settings and Shaun, with Undo. 0.3.0-beta (released
+2026-11-21) is faster and wiser: Claude Code lean and started ahead of the
 question, answers that stream in, the time and this computer's state for
 the model, look-ups, up to three things at once; and new things to ask:
 the clock, dates and units, this computer's battery, memory, CPU, disk and
