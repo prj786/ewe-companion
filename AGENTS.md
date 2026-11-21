@@ -153,10 +153,10 @@ a tab) becomes a proposal too.
 
 ```sh
 cargo build                                   # debug: target/debug/ewe-companion{,d}
-cargo test                                    # core 128, daemon 65 unit tests
+cargo test                                    # core 128, daemon 66 unit tests
 cargo clippy --all-targets -- -D warnings     # CI runs it with --locked
 cargo fmt --all --check
-tests/chat.sh                                 # 211 checks: the chat path vs a mock LLM, Safe,
+tests/chat.sh                                 # 213 checks: the chat path vs a mock LLM, Safe,
                                               #   ewe browser, the finder, the desktop's
                                               #   switches, the clock, system facts, windows,
                                               #   memory, notes, the wiki, manuals, media,

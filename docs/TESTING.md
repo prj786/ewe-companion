@@ -132,7 +132,7 @@ touch the real ones:
   the `WAYLAND_DISPLAY` it got), `ffprobe` (streams by the file's
   extension: .wmv, .mkv, .mp4, .flac, .mp3), `gst-inspect-1.0 --exists`
   (`gst.txt`, a file `gst-libav` adds every `avdec_*`), `yt-dlp -J`
-  (YouTube and Vimeo only, never the network), `wiki-search` (three pages,
+  (YouTube and Twitch; every format DRM on drm.example; never the network), `wiki-search` (three pages,
   printed like the real one), `man` (rsync's page), `locate`
   (`locate.txt`), `ewe-ime` (Japanese installed, Chinese and Korean not),
   `ewe-conf` (`conf.json`), `ewe-plugin` (the Dock, `dock.json`; a file

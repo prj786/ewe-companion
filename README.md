@@ -99,7 +99,8 @@ It works with ewe Safe and ewe Browser, and finds your files:
 - **Music and links in ewe Player** (0.3, ewe-apps): "play jazz from my
   music", "play my massive attack" (your library: ewe Player's own index,
   else ~/Music by name), "play this link" (the video or song link you
-  copied: YouTube and many other sites), "play https://…", "what's
+  copied: YouTube, Twitch, news sites like the BBC and many others; not
+  Vimeo, which locks its videos), "play https://…", "what's
   playing" (with Pause). "Play …" without "my" still asks ewe Browser.
 - **Why won't this play?** (0.3): the file or link you copied, or what
   ewe Player has open, or "why won't ~/Videos/film.mkv play": its format

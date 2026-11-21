@@ -1789,13 +1789,20 @@ plugin (on 0.6.0, origin/main 0.5.2 merged). Ships with P2.11 as Shaun
 - [x] **Files:** plocate joins the finder.
 - [x] **Settings by text:** `dock_display`, `bar_fold` (proposals with Undo
       after Run); dark and light mode gain the Undo.
-- [x] Tests: core 128, daemon 65; chat.sh 211, brain.sh 28, canary.sh 10,
+- [x] Tests: core 128, daemon 66; chat.sh 213, brain.sh 28, canary.sh 10,
       relay 26. The island harness (dark and light, 1.8): an offline answer
       about ewe Player links, a wiki excerpt, "why won't this play", a music
       search, a dock proposal and its Undo after Run.
+- [x] The pack's ewe 0.46 topics checked against the merged branches
+      (2026-11-21: a-player, a-komble, l-ewe, l-settings, l-browser): Vimeo
+      does not play (DRM or a sign-in; ewe Player says "This video is
+      locked"), so `play_link` says so instead of trying and `why_no_play`
+      reads yt-dlp's `has_drm`; `typing_add` proposes `ewe-ime add <id>`
+      only when the catalog says nothing is missing (`installed`, `core`,
+      `packages`), else ewe Settings → Keyboard and mouse → Add a language…;
+      coverage.json lists ewe-ime and the Language page (72 items).
 - [ ] The real ewe-apps (ewe Player playing a link, ewe Files --select) and
-      ewe-ime (L slice) on a real desktop; the pack's labels for ewe 0.46
-      against the shipped apps (each such topic says so in a comment).
+      the real ewe-ime on a real desktop.
 - **Gate:** the owner's word (P2.11's gate covers both).
 
 ### P3 — notifications (L), crosses repos and merges as one wave
