@@ -134,6 +134,14 @@
   },
   {
    "kind": "settings page",
+   "name": "ewe Settings → Language",
+   "page": "language",
+   "terms": [
+    "Language"
+   ]
+  },
+  {
+   "kind": "settings page",
    "name": "ewe Settings → User",
    "page": "user",
    "terms": [
@@ -231,6 +239,13 @@
    "name": "ewe-globalshortcuts",
    "terms": [
     "ewe-globalshortcuts"
+   ]
+  },
+  {
+   "kind": "command-line tool",
+   "name": "ewe-ime",
+   "terms": [
+    "ewe-ime"
    ]
   },
   {

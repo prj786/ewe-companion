@@ -28,7 +28,7 @@ open: settings
 ewe Settings (Super+,) holds every desktop setting, in four groups. Look: Appearance, Wallpaper, Animations, Accessibility. Desktop: Layout, Window rules, Displays, Startup apps, Keyboard shortcuts. Devices: Network, Bluetooth, Keyboard and mouse, Power, Screensaver. System: Default apps, Time and place, Language (from ewe 0.46), User, About this computer. "Find a setting" at the top of the list (Ctrl+F) searches every page and row, and opens the one you pick. Up and Down move between pages and Ctrl+1…9 jumps to the first nine. Restart the shell is in About this computer (your windows stay open). Plugin settings are not here: click the plugin in Komble → Plugins. Your account, sign-in and backups are in ewe Sync.
 
 From a terminal, `ewe-settings --page=wallpaper` opens ewe Settings on that page (since ewe Settings 0.24; an open window goes there too). The page names: appearance, wallpaper, animations, accessibility, layout, windowrules, displays, startup, shortcuts, network, bluetooth, input (Keyboard and mouse), power, saver (Screensaver), defaults (Default apps), time (Time and place), language (Language, from ewe 0.46), user and system (About this computer).
-<!-- "Language (from ewe 0.46)": from the wave plan 2026-11-21 (l2-settings pages.js, id "language"): check the label at release. -->
+<!-- "Language (from ewe 0.46)": checked against ewe-settings .wt/l-settings 6f0fb9e (pages.js, id "language"). -->
 
 ## Komble, the app store
 keys: komble, app store, store, software center, apps, discover, for you, installed apps, aur

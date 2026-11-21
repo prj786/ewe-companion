@@ -61,8 +61,8 @@ Swipe two fingers to the right on the touchpad to go back and to the left to go 
 keys: right click in the browser, right-click menu, context menu, open link in new tab, save image, copy image, inspect element, open link in new workspace
 Right-click on a page: a link opens in a new tab, a new workspace or a new window, or is copied or saved; an image opens, saves or copies; a video or song plays, pauses, mutes, loops or saves; selected text copies or is searched on the web; in a text field you get spelling suggestions, undo, cut, copy, paste and Paste as plain text, and in a login field Fill from ewe Safe (Use a strong password in a new-password field). Anywhere: Back, Forward, Reload, Bookmark this page, Save page, Print…, View page source and Inspect.
 
-From ewe 0.46 (ewe Browser 0.9), a page or a link with a video on it (YouTube and the like) also offers Play in ewe Player, and a misspelt word offers Add to dictionary next to the suggestions (the languages come from ewe Settings → Language → Spell checking).
-<!-- from the wave plan 2026-11-21: check the label at release -->
+From ewe 0.46 (ewe Browser 0.9), a video page, a video or a link to one (YouTube and the like) also offers Play in ewe Player, and a misspelt word offers its suggestions, Add to dictionary and Ignore. The spelling languages come from ewe Settings → Language → Spell checking; ewe Browser's own switch is in its Settings → Browsing → Spelling. Georgian and a few other languages are not checked in ewe Browser: it has no dictionary for them.
+<!-- checked 2026-11-21 against ewe-browser .wt/l-browser (staged): packages/shared/src/input.ts (Play in ewe Player, Add to dictionary, Ignore), main/spelling.ts (Chromium's dictionaries; Georgian unsupported), pages/settings/main.tsx (Browsing → Spelling). -->
 
 ## Privacy and security in ewe Browser
 keys: secure dns, dns over https, https only, site permissions, camera permission, microphone permission, notification permission, third party cookies, global privacy control, gpc, privacy settings
