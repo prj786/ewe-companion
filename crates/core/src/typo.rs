@@ -191,7 +191,7 @@ const FREE_TEXT: &[&str] = &[
 
 /// Edit distance with a swap of neighbours as one edit (optimal string
 /// alignment), stopping early past `max`.
-fn distance(a: &str, b: &str, max: usize) -> usize {
+pub fn distance(a: &str, b: &str, max: usize) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
     if a.len().abs_diff(b.len()) > max {
