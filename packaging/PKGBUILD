@@ -19,11 +19,19 @@ pkgdesc="ewe-companion — answer your AI agents from the ewe desktop's island; 
 arch=('x86_64' 'aarch64')
 url="https://github.com/prj786/ewe-companion"
 license=('MIT')
-depends=('gcc-libs' 'glibc')
+# arch-wiki-lite: the ArchWiki on this computer (21 MB), so "wiki …" and
+# questions a page answers work offline (0.3, the 2026-11-21 wave)
+depends=('gcc-libs' 'glibc' 'arch-wiki-lite')
 optdepends=(
   'ewe: the desktop whose island this daemon talks to (plugin ewe.companion)'
   'claude-code: `ewe-companion agents install claude` installs the hooks'
   'kitty: Answer in terminal brings you to the exact tab'
+  'arch-wiki-docs: "Open the page" opens the ArchWiki page offline (else wiki.archlinux.org)'
+  'ewe-apps: ewe Player plays your music and links, ewe Files shows a found file'
+  'playerctl: "what is playing"'
+  'ffmpeg: "why will this not play" reads a file with ffprobe'
+  'plocate: the finder also finds files its walk cannot reach in time'
+  'man-db: "man rsync" reads manual pages (without it, a program'"'"'s --help)'
 )
 makedepends=('rust' 'cargo')
 # Arch's makepkg LTO breaks linking some crates' assembly (see Komble's
