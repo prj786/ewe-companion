@@ -210,13 +210,25 @@ pub async fn confirm(hub: &Arc<Hub>, token: &str, mode: &str) -> Reply {
         .undo
         .filter(|_| ran.ok)
         .map(|u| hub.keep_undo(Undo::Shell(u)));
+    // an ewe tool's `{"ok": true, …}` is machine talk the "Done" line
+    // already says; failures and plain output still show
+    let shown = !ran.output.is_empty() && !(ran.ok && is_ok_json(&ran.output));
     Reply {
         kind: if ran.ok { "done" } else { "error" },
         text,
         undo,
-        output: (!ran.output.is_empty()).then_some(ran.output),
+        output: shown.then_some(ran.output),
         ..Default::default()
     }
+}
+
+/// The whole output is one JSON object with `"ok": true` (every ewe CLI's
+/// success, rule 5).
+fn is_ok_json(output: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(output.trim())
+        .ok()
+        .and_then(|v| v.get("ok").and_then(serde_json::Value::as_bool))
+        == Some(true)
 }
 
 /// The knowledge pack: the one built in, or `$EWE_COMPANION_KNOWLEDGE`
@@ -940,6 +952,18 @@ pub fn reply_json(id: &str, r: &Reply) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ok_json_output_is_not_shown() {
+        assert!(is_ok_json(
+            r#"{"ok": true, "id": "ewe.dock", "key": "display", "value": "all"}"#
+        ));
+        assert!(is_ok_json("  {\"ok\":true}\n"));
+        assert!(!is_ok_json(r#"{"ok": false, "error": "no such key"}"#));
+        assert!(!is_ok_json("Done.\n{\"ok\": true}"));
+        assert!(!is_ok_json("hello"));
+        assert!(!is_ok_json(""));
+    }
 
     #[test]
     fn compound_lines_split_into_two_or_three() {
