@@ -64,7 +64,7 @@ use tracing::{info, warn};
 
 use crate::hub::{Hub, Proposal, Undo};
 use crate::providers::Sink;
-use crate::{browser, commands, context, memory, providers, runner};
+use crate::{browser, commands, context, lookup, media, memory, notes, providers, runner};
 
 #[derive(Default)]
 pub struct Reply {
@@ -107,6 +107,18 @@ impl Reply {
 /// Offer a shell command: checked, kept under a token, shown with Run. A
 /// refused one is said in words and never offered.
 fn propose(hub: &Arc<Hub>, command: &str, about: &str, terminal: bool) -> Result<Value, String> {
+    propose_with_undo(hub, command, about, terminal, None)
+}
+
+/// [`propose`], with the command that puts it back once it ran (offered
+/// as Undo after the Run click; checked by the guard like the command).
+fn propose_with_undo(
+    hub: &Arc<Hub>,
+    command: &str,
+    about: &str,
+    terminal: bool,
+    undo: Option<String>,
+) -> Result<Value, String> {
     let command = command.trim();
     let a = shell::assess(command);
     let (risk, reason) = match a.verdict {
@@ -121,6 +133,7 @@ fn propose(hub: &Arc<Hub>, command: &str, about: &str, terminal: bool) -> Result
         about: about.clone(),
         terminal,
         made: std::time::Instant::now(),
+        undo: undo.filter(|u| !matches!(shell::assess(u).verdict, Verdict::Refused(_))),
     });
     info!(terminal, risky = risk.is_some(), "proposal");
     Ok(json!({"token": token, "command": command, "about": about,
@@ -192,9 +205,15 @@ pub async fn confirm(hub: &Arc<Hub>, token: &str, mode: &str) -> Reply {
         &format!("(ran `{}`)", p.command),
         &format!("{text}\n{}", ran.output),
     );
+    // a setting changed: its old value is one click away
+    let undo = p
+        .undo
+        .filter(|_| ran.ok)
+        .map(|u| hub.keep_undo(Undo::Shell(u)));
     Reply {
         kind: if ran.ok { "done" } else { "error" },
         text,
+        undo,
         output: (!ran.output.is_empty()).then_some(ran.output),
         ..Default::default()
     }
@@ -266,14 +285,15 @@ async fn act(hub: &Arc<Hub>, call: &companion_core::commands::Call) -> Reply {
 /// A command's outcome as the island shows it: its line, Undo, the rows
 /// it found, a button, or a command to confirm first.
 pub fn reply_of(hub: &Arc<Hub>, call: &Call, out: commands::Outcome) -> Reply {
-    let undo = match (out.undo, out.undo_browser.is_empty()) {
-        (Some(u), _) => Some(hub.keep_undo(Undo::Call(u))),
-        (None, false) => Some(hub.keep_undo(Undo::Browser(out.undo_browser))),
-        (None, true) => None,
+    let undo = match (out.undo, out.undo_with, out.undo_browser.is_empty()) {
+        (Some(u), _, _) => Some(hub.keep_undo(Undo::Call(u))),
+        (None, Some(u), _) => Some(hub.keep_undo(u)),
+        (None, None, false) => Some(hub.keep_undo(Undo::Browser(out.undo_browser))),
+        (None, None, true) => None,
     };
-    let confirm = out
-        .propose
-        .and_then(|(cmd, about)| propose(hub, &cmd, &about, false).ok());
+    let confirm = out.propose.and_then(|(cmd, about)| {
+        propose_with_undo(hub, &cmd, &about, false, out.propose_undo).ok()
+    });
     Reply {
         kind: match (out.ok, out.rows.is_empty() && confirm.is_none()) {
             (false, _) => "error",
@@ -357,6 +377,35 @@ async fn undo_one(hub: &Arc<Hub>, u: Undo) -> Reply {
             Reply {
                 kind: if out.ok { "done" } else { "error" },
                 text: out.line,
+                ..Default::default()
+            }
+        }
+        // what a proposal changed, put back (the daemon wrote this command)
+        Undo::Shell(command) => {
+            let ran = runner::run(hub, &command).await;
+            info!(ok = ran.ok, "undid a proposal");
+            Reply {
+                kind: if ran.ok { "done" } else { "error" },
+                text: if ran.ok {
+                    "Put back as it was".into()
+                } else {
+                    "Could not put it back".into()
+                },
+                output: (!ran.ok && !ran.output.is_empty()).then_some(ran.output),
+                ..Default::default()
+            }
+        }
+        Undo::File(path, wrote) => {
+            let ok = std::fs::read_to_string(&path).is_ok_and(|t| t == wrote)
+                && std::fs::remove_file(&path).is_ok();
+            notes::changed();
+            Reply {
+                kind: if ok { "done" } else { "error" },
+                text: if ok {
+                    "Deleted the note".into()
+                } else {
+                    "The note changed since, so I left it".into()
+                },
                 ..Default::default()
             }
         }
@@ -504,6 +553,9 @@ pub async fn answer_with(hub: &Arc<Hub>, text: &str, sink: Option<&Sink>) -> Rep
     if intent::about_page(text) {
         return about_page(hub, text, sink).await;
     }
+    if let Some(t) = intent::translate(text) {
+        return translate(hub, text, t, sink).await;
+    }
     if let Some(call) = intent::match_text(text) {
         let out = commands::run(hub, &call).await;
         info!(command = %call.command, ok = out.ok, miss = out.miss, "command");
@@ -520,7 +572,8 @@ pub async fn answer_with(hub: &Arc<Hub>, text: &str, sink: Option<&Sink>) -> Rep
         return r;
     }
 
-    let pack = pack();
+    // the built-in pack and the user's own notes, one index
+    let pack = notes::pack();
     let hits = pack.search(text, 3);
     let sure = hits.first().filter(|h| h.score >= knowledge::CONFIDENT);
     let offer = sure.and_then(|h| Some((h.topic.open_label()?, h.topic.open.clone()?)));
@@ -532,13 +585,27 @@ pub async fn answer_with(hub: &Arc<Hub>, text: &str, sink: Option<&Sink>) -> Rep
     let from_pack = |note: Option<&str>| {
         let h = sure.expect("only called with a sure match");
         let mut line = h.topic.answer(text).to_string();
+        // the user's own note: say so, and offer to open it
+        let mut action = offer.clone();
+        if let Some(rel) = h.topic.note() {
+            line = format!("From your notes ({rel}):\n{line}");
+            if let Some(dir) = notes::dir() {
+                action = Some((
+                    "Open the note".into(),
+                    Call::new(
+                        "open_file",
+                        json!({"path": dir.join(rel).to_string_lossy()}),
+                    ),
+                ));
+            }
+        }
         if let Some(n) = note {
             line.push_str(&format!("\n({n})"));
         }
         Reply {
             kind: "answer",
             text: line,
-            action: offer.clone(),
+            action,
             confirm: offer_run(hub),
             ..Default::default()
         }
@@ -554,13 +621,28 @@ pub async fn answer_with(hub: &Arc<Hub>, text: &str, sink: Option<&Sink>) -> Rep
                 ..Reply::info(line)
             };
         }
+        // "how do I use rsync to …" is about rsync, whatever else it says
+        if let Some(r) = program_manual(hub, text).await {
+            hub.chat_push(text, &r.text);
+            return r;
+        }
         if sure.is_some() {
             let r = from_pack(None);
             hub.chat_push(text, &r.text);
             return r;
         }
+        // with no model: the ArchWiki page whose title is the question
+        if let Some(r) = offline_look(hub, text).await {
+            hub.chat_push(text, r.private.as_deref().unwrap_or(&r.text));
+            return r;
+        }
+        if companion_core::lang::foreign(text) {
+            return Reply::info(
+                "Without a model I answer in English only. To ask in your language, set Who answers questions in Komble → Plugins → Shaun.",
+            );
+        }
         return Reply::info(
-            "I can do things like \"volume 60\", \"open nemo\" or \"game mode on\", and I know my way round ewe. For other questions, set Who answers questions in Komble → Plugins → Shaun.",
+            "I can do things like \"volume 60\", \"open ewe files\" or \"game mode on\", and I know my way round ewe. For other questions, set Who answers questions in Komble → Plugins → Shaun.",
         );
     }
 
@@ -689,6 +771,92 @@ async fn look_up(
             ..Default::default()
         },
     }
+}
+
+/// With no model: "how do I use rsync to …" from rsync's manual, when
+/// rsync is a program here.
+async fn program_manual(hub: &Arc<Hub>, text: &str) -> Option<Reply> {
+    let (name, query) = intent::program_question(text)?;
+    context::tool(&name)?;
+    let call = Call::new("man_page", json!({"name": name, "query": query}));
+    let out = commands::run(hub, &call).await;
+    out.ok.then(|| reply_of(hub, &call, out))
+}
+
+/// With no model and no topic that answers: the ArchWiki page whose title
+/// is the question.
+async fn offline_look(hub: &Arc<Hub>, text: &str) -> Option<Reply> {
+    let out = lookup::wiki_confident(text).await?;
+    Some(reply_of(
+        hub,
+        &Call::new("wiki", json!({"query": text})),
+        out,
+    ))
+}
+
+/// How much copied text goes to a model to translate.
+const TRANSLATE_MAX: usize = 6_000;
+
+/// "Translate this": the copied text (or the words given) goes to the
+/// model as untrusted data, answered in a few lines; only with a model. An
+/// ACTION in the reply is a button, never a run (C4).
+async fn translate(hub: &Arc<Hub>, text: &str, t: intent::Translate, sink: Option<&Sink>) -> Reply {
+    let settings = hub.chat_settings();
+    if providers::info(&settings.provider).is_none() {
+        return Reply::info(
+            "Translating needs someone to answer: set Who answers questions in Komble → Plugins → Shaun.",
+        );
+    }
+    let (words, from) = match t.text {
+        Some(w) => (w, "the user's words"),
+        None => match media::clipboard(hub).await {
+            Some(c) => (c, "what the user copied"),
+            None => return Reply::info("Copy the text first, then ask me to translate it."),
+        },
+    };
+    let words = if words.len() > TRANSLATE_MAX {
+        let mut cut = TRANSLATE_MAX;
+        while !words.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        format!("{} …", &words[..cut])
+    } else {
+        words
+    };
+    let to = match t.to {
+        Some(l) => format!("into {l}"),
+        None => {
+            "into English (or, if it is English already, into the language of this computer's locale)"
+                .to_string()
+        }
+    };
+    let ask = format!(
+        "Translate the text below {to}. Reply with the translation only, then, if it helps, one short line about anything that does not translate well.\n\n{}",
+        persona::untrusted("clipboard", from, &words)
+    );
+    info!(chars = words.len(), "translation");
+    let history = hub.chat_history();
+    let r = match providers::ask(&settings, &system(), &history, &ask, sink).await {
+        Ok(reply) => match persona::parse_action(&reply) {
+            Some(call) => Reply {
+                kind: "answer",
+                text: persona::words_of(&reply),
+                action: Some(("Do it".into(), call)),
+                ..Default::default()
+            },
+            None => Reply {
+                kind: "answer",
+                text: reply.trim().to_string(),
+                ..Default::default()
+            },
+        },
+        Err(e) => Reply::error(e),
+    };
+    // the question, never the copied text
+    if r.kind != "error" {
+        hub.chat_push(text, "(translated the text)");
+    }
+    r
 }
 
 /// How much of a page goes to a model.

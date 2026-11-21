@@ -91,6 +91,11 @@ async fn installed() -> String {
         ("ewe-browser", "ewe Browser"),
         ("ewe-safe", "ewe Safe (passwords)"),
         ("ewe-castd", "ewe Cast"),
+        ("ewe-files-app", "ewe Files"),
+        ("ewe-player", "ewe Player"),
+        ("ewe-viewer", "ewe Viewer"),
+        ("wiki-search", "the ArchWiki offline (wiki look-ups work)"),
+        ("yt-dlp", "yt-dlp (ewe Player plays web links)"),
     ];
     let (have, missing): (Vec<_>, Vec<_>) = apps.iter().partition(|(bin, _)| tool(bin).is_some());
     let names = |v: &[&(&str, &str)]| v.iter().map(|(_, n)| *n).collect::<Vec<_>>().join(", ");

@@ -217,6 +217,16 @@ pub fn resolve(words: &str) -> Option<PathBuf> {
     walk(&home, &w).or_else(|| find_named(&home, &w, 3))
 }
 
+/// A user folder by its xdg name (`DOCUMENTS`, `MUSIC`), else `~/<fallback>`.
+pub fn user_dir(name: &str, fallback: &str) -> Option<PathBuf> {
+    let home = home()?;
+    Some(
+        user_dirs(&home)
+            .remove(name)
+            .unwrap_or_else(|| home.join(fallback)),
+    )
+}
+
 /// A path as a person reads it: `~/Documents`.
 pub fn show(p: &Path) -> String {
     match home() {

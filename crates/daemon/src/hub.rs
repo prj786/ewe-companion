@@ -64,6 +64,13 @@ const PROPOSAL_TTL: std::time::Duration = std::time::Duration::from_secs(15 * 60
 pub enum Undo {
     Call(Call),
     Browser(Vec<Vec<String>>),
+    /// the command that puts back what a proposal changed after its Run
+    /// click (`ewe-conf set desktop.bar.collapse false`): made by the
+    /// daemon, never by a model, and run on the Undo click like the Run
+    Shell(String),
+    /// a note Shaun wrote (`learn`): deleted while it still holds what was
+    /// written
+    File(std::path::PathBuf, String),
     /// several things done at once ("dnd on and a 25 minute timer"): put
     /// back in reverse order
     Many(Vec<Undo>),
@@ -77,6 +84,9 @@ pub struct Proposal {
     /// it must run in a terminal (a password, a full screen, no end)
     pub terminal: bool,
     pub made: std::time::Instant,
+    /// what puts it back, offered as Undo once it ran (a setting's old
+    /// value); made by the daemon, never by a model
+    pub undo: Option<String>,
 }
 
 pub struct Hub {

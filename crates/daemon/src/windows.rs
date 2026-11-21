@@ -194,7 +194,7 @@ fn fits(c: &Value, words: &str) -> bool {
             "terminal",
             "ghostty",
         ],
-        "files" | "file manager" => &["nemo", "nautilus", "thunar", "dolphin"],
+        "files" | "file manager" => &["ewe-files-app", "nemo", "nautilus", "thunar", "dolphin"],
         "editor" | "text editor" => &["zed", "code", "gedit", "kate", "texteditor"],
         _ => &[],
     };

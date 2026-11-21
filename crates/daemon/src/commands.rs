@@ -28,7 +28,10 @@ use serde_json::{Value, json};
 use tokio::process::Command;
 
 use crate::hub::Hub;
-use crate::{browser, clock, desktop, finder, memory, places, safe, system, timers, windows};
+use crate::{
+    browser, clock, desktop, finder, lookup, media, memory, notes, places, safe, system, timers,
+    windows,
+};
 
 const BUDGET: Duration = Duration::from_secs(5);
 
@@ -37,6 +40,9 @@ pub struct Outcome {
     pub ok: bool,
     pub line: String,
     pub undo: Option<Call>,
+    /// an Undo that is not a catalog command (a note Shaun wrote is
+    /// deleted): never reachable from a model's ACTION
+    pub undo_with: Option<crate::hub::Undo>,
     /// ewe browser's own Undo: the argv lists its reply carried
     pub undo_browser: Vec<Vec<String>>,
     /// the words named nothing here (no such app, no such folder): when
@@ -55,6 +61,9 @@ pub struct Outcome {
     /// a command that must be confirmed first (ewe browser's tier 2): the
     /// exact command line, offered with Run like any proposal
     pub propose: Option<(String, String)>,
+    /// what puts the proposal back once it ran: offered as Undo after the
+    /// Run click (a setting's old value)
+    pub propose_undo: Option<String>,
     /// what it found, safe to hand to a model: numbers, generic app names
     /// ("chrome"), category sizes, the time, a sum. Never a name of the
     /// user's (a file under Downloads, a window's title, a network's name,
@@ -228,7 +237,7 @@ fn open_line(what: &str, page: &str) -> String {
     let label = catalog::page_label(what, page);
     match (what, label) {
         ("settings", Some("Appearance") | None) => "Opened ewe Settings".into(),
-        ("settings", Some(l)) => format!("Opened ewe Settings: pick {l} in the sidebar"),
+        ("settings", Some(l)) => format!("Opened ewe Settings → {l}"),
         ("komble", Some(l)) if page.starts_with("search=") => {
             format!("Opened Komble's {l}, searching for {}", &page[7..])
         }
@@ -569,6 +578,29 @@ pub async fn run(hub: &Arc<Hub>, call: &Call) -> Outcome {
         "keep_awake" => desktop::keep_awake(a["on"].as_bool().unwrap_or(true)).await,
         // T2/T3: shown with Run, never run from here
         "theme_mode" | "power" | "empty_trash" => desktop::proposal(call).await,
+        // the 2026-11-21 wave: knowledge beyond the pack, media, languages,
+        // settings by text
+        "whats_new" => lookup::whats_new(hub, a),
+        "learn" => notes::learn(a),
+        "notes" => notes::list(a),
+        "wiki" => lookup::wiki(a["query"].as_str().unwrap_or("")).await,
+        "man_page" => {
+            lookup::man_page(
+                a["name"].as_str().unwrap_or(""),
+                a.get("query").and_then(Value::as_str).unwrap_or(""),
+            )
+            .await
+        }
+        "play_local" => media::play_local(hub, a).await,
+        "play_link" => media::play_link(hub, a).await,
+        "now_playing" => media::now_playing().await,
+        "why_no_play" => media::why_no_play(hub, a).await,
+        "show_file" => media::show_file(hub, a["path"].as_str().unwrap_or("")).await,
+        "open_with" => media::open_with(hub, a["path"].as_str().unwrap_or("")).await,
+        "keyboard_layout" => desktop::keyboard_layout(a, &hypr).await,
+        "typing_add" => desktop::typing_add(hub, a).await,
+        "dock_display" => desktop::dock_display(a).await,
+        "bar_fold" => desktop::bar_fold(a).await,
         "force_quit" => windows::force_quit(a, &hypr).await,
         // never from here: a proposal waits for its Run click (chat.rs)
         "run_shell" => failed("A shell command runs from its Run button in the chat."),
@@ -625,16 +657,20 @@ pub(crate) async fn browse(hub: &Arc<Hub>, call: &Call) -> Outcome {
 }
 
 /// A folder in the file manager; a file shows in its folder. The file
-/// manager is the one Settings → Default apps chose, else Nemo (Super+E).
+/// manager is the one Settings → Default apps chose, else ewe Files
+/// (Super+E since ewe 0.44), else Nemo.
 pub(crate) async fn show_folder(hub: &Arc<Hub>, p: &std::path::Path) -> Outcome {
     let dir = if p.is_dir() {
         p.to_path_buf()
     } else {
         p.parent().unwrap_or(p).to_path_buf()
     };
-    let fm = places::default_app("file manager")
-        .await
-        .unwrap_or_else(|| "nemo".into());
+    // ewe Files since ewe 0.44 (Super+E), Nemo before
+    let fm = match places::default_app("file manager").await {
+        Some(fm) => fm,
+        None if crate::context::tool("ewe-files-app").is_some() => "ewe-files-app".into(),
+        None => "nemo".into(),
+    };
     let d = dir.to_string_lossy().to_string();
     match hub
         .shell_do("launch", json!({"app": fm, "path": d, "dir": d}))
