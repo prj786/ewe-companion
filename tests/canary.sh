@@ -36,7 +36,7 @@ export EWE_COMPANION_SOCK="$W/c.sock" XDG_STATE_HOME="$W/state" MOCK_LOG="$W/moc
        EWE_FAKE_DIR="$W/fakes" FAKE_SAFE_ITEMS="$W/items.json" FAKE_BROWSER_MARK=" EWE-CANARY-7Q2X"
 # the desktop tools are the fakes too (ewe-bt's devices carry the canary)
 DPATH="$W/bin:$PATH"
-for t in nmcli ewe-bt qs notify-send ewe-theme gio hyprctl ip; do
+for t in nmcli ewe-bt qs notify-send ewe-theme gio hyprctl ip playerctl wl-paste ffprobe gst-inspect-1.0 yt-dlp wiki-search man ewe-ime ewe-conf ewe-plugin locate ewe-player ewe-files-app; do
   if [ "$(PATH="$DPATH" command -v "$t")" != "$W/bin/$t" ]; then
     echo "FAIL  the fake $t is not first on the daemon's PATH: refusing to run"; exit 1
   fi
@@ -109,10 +109,23 @@ for q in "am i connected to the internet" "what's my ip" "close this window" "cl
   ask "$q"
 done
 
+# 49–56 (the 2026-11-21 wave): a song's tags (playerctl), a track and a
+# note's file name in the library, a found file: lines say a count or the
+# app, never a name
+mkdir -p "$W/home/Music/Canary Album" "$W/home/Videos"
+touch "$W/home/Music/Canary Album/Song EWE-CANARY-7Q2X.flac" "$W/home/Videos/clip EWE-CANARY-7Q2X.mkv"
+for q in "what's playing" "play canary from my music" "why won't ~/Videos/clip EWE-CANARY-7Q2X.mkv play" \
+         "what song was playing" "which songs did you play" "why would that file not play" \
+         "find the mkv clip" "what file did you find"; do
+  ask "$q"
+done
+
 requests=$(wc -l <"$W/mock.jsonl")
 check '[ "$requests" -ge 15 ]' "the provider was asked ($requests requests)" ""
 check 'grep -q "Bank EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "EWE-CANARY-7Q2X" "$W/island.log"' \
       "the canary reached the island (the test is not empty)" "$(head -c 300 "$W/replies.jsonl")"
+check 'grep -q "So What EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "Song EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "clip EWE-CANARY-7Q2X" "$W/replies.jsonl"' \
+      "a playing song's title, a track's and a file's name reached the island" "$(grep -o "[A-Za-z ]*EWE-CANARY-7Q2X" "$W/replies.jsonl" | sort -u | tail -4)"
 check 'grep -q "Pasta recipes EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "AirPods Pro EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "Work EWE-CANARY-7Q2X" "$W/replies.jsonl" && grep -q "HomeNet EWE-CANARY-7Q2X" "$W/replies.jsonl"' \
       "the browser's, Bluetooth's and the network's names reached the island too" "$(grep -o "[A-Za-z ]*EWE-CANARY-7Q2X" "$W/replies.jsonl" | sort -u | head -8)"
 check '! grep -Eq "\"(read|reveal|show|list|search)\"" "$W/fakes/safe.log"' \

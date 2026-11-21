@@ -18,7 +18,7 @@ mkdir -p "$W/bin" "$W/fakes" "$W/home" && cp "$ROOT"/tests/fakes/* "$W/bin/"
 export EWE_COMPANION_SOCK="$W/c.sock" XDG_STATE_HOME="$W/state" MOCK_LOG="$W/mock.jsonl" \
        EWE_COMPANION_SAFE="$W/bin/ewe-safe" EWE_COMPANION_BROWSER="$W/bin/ewe-browser" EWE_FAKE_DIR="$W/fakes"
 DPATH="$W/bin:$PATH"
-for t in claude nmcli ewe-bt qs notify-send ewe-theme gio; do
+for t in claude nmcli ewe-bt qs notify-send ewe-theme gio playerctl wl-paste ewe-conf ewe-plugin wiki-search man ffprobe gst-inspect-1.0 yt-dlp; do
   if [ "$(PATH="$DPATH" command -v "$t")" != "$W/bin/$t" ]; then
     echo "FAIL  the fake $t is not first on the daemon's PATH: refusing to run"; exit 1
   fi
@@ -150,6 +150,17 @@ sys.exit(0 if any(m[\"content\"] == \"where do I turn on bluetooth\" for m in h[
 out=$("$BIN/ewe-companion" ask "how is my memory doing")
 check 'echo "$out" | grep -q "From the look-up: system_info: " && echo "$out" | grep -q "GB"' \
       "a look-up hands the model the read's facts (memory in GB), not its rows" "$out"
+
+# ── the 2026-11-21 wave's looks: the ArchWiki and a file's codecs (fakes) ──
+out=$("$BIN/ewe-companion" ask "pipewire or pulseaudio for me")
+check 'echo "$out" | grep -q "From the look-up: wiki: ArchWiki, page" && echo "$out" | grep -q "multimedia framework"' \
+      "a model's wiki look: the page's part comes back to it (untrusted), then it answers" "$out"
+check 'python3 -c "import json,sys; q=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"][\"messages\"][-1][\"content\"]; sys.exit(0 if \"<untrusted source=\\\"ewe\\\" about=\\\"what Shaun looked up\\\">\" in q and \"ArchWiki\" in q else 1)" "$MOCK_LOG"' \
+      "…wrapped as untrusted" "$(tail -c 300 "$MOCK_LOG")"
+mkdir -p "$W/home/Videos" && touch "$W/home/Videos/film.mkv"
+out=$("$BIN/ewe-companion" ask "why does my film stutter")
+check 'echo "$out" | grep -q "From the look-up: why_no_play: This is an MKV file with HEVC (H.265) video and DTS audio" && ! echo "$out" | grep -q "film.mkv"' \
+      "a model's why-no-play look: the codecs in words, never the file's name" "$out"
 
 # ── memory: what the user asked to keep rides in the notes; a secret never ──
 "$BIN/ewe-companion" ask "remember that my dentist is on friday" >/dev/null

@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""A stand-in for ewe's ewe-plugin, for the companion's tests: the real one
+changes the owner's plugins (and restarts their shell). It knows the Dock
+(display primary by default; a file dock-none in $EWE_FAKE_DIR means not
+installed): `get ewe.dock`, `set ewe.dock display X`, and `list --json`.
+Every call is logged to plugin.log."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "plugin.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+path = os.path.join(D, "dock.json")
+try:
+    dock = json.load(open(path))
+except (OSError, ValueError):
+    dock = {"autohide": False, "icon_size": "normal", "display": "primary"}
+missing = os.path.exists(os.path.join(D, "dock-none"))
+if argv[:2] == ["get", "ewe.dock"]:
+    if missing:
+        print(json.dumps({"ok": False, "error": "ewe.dock is not installed"}))
+        sys.exit(1)
+    print(json.dumps({"ok": True, "id": "ewe.dock", "settings": dock}))
+elif argv[:2] == ["set", "ewe.dock"] and len(argv) == 4:
+    dock[argv[2]] = argv[3]
+    json.dump(dock, open(path, "w"))
+    print(json.dumps({"ok": True, "id": "ewe.dock", "key": argv[2], "value": argv[3]}))
+elif argv[:1] == ["list"]:
+    print(json.dumps({"ok": True, "plugins": [] if missing else
+                      [{"id": "ewe.dock", "name": "Dock", "enabled": True, "installed": True, "valid": True}]}))
+else:
+    print(json.dumps({"ok": False, "error": "the fake ewe-plugin does not know that"}))

@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""A stand-in for plocate's locate, for the companion's tests: the real one
+answers from the owner's whole disk. It prints the paths in
+$EWE_FAKE_DIR/locate.txt whose name (-b) holds every word (-i: any case),
+at most -l N, and logs the argv to locate.log."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "locate.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+limit = int(argv[argv.index("-l") + 1]) if "-l" in argv else 1000
+words = [w.lower() for w in argv[argv.index("--") + 1:]] if "--" in argv else []
+try:
+    paths = open(os.path.join(D, "locate.txt")).read().split("\n")
+except OSError:
+    paths = []
+n = 0
+for p in paths:
+    name = os.path.basename(p).lower()
+    if p and all(w in name for w in words):
+        print(p)
+        n += 1
+        if n >= limit:
+            break

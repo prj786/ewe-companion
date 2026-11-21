@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""A stand-in for ewe's ewe-conf, for the companion's tests: the real one
+writes the owner's ewe.conf (and syncs it). It keeps a few keys in
+$EWE_FAKE_DIR/conf.json (desktop.bar.collapse false by default) and logs
+every call to conf.log. `get` prints the bare value (as the real one does),
+`set` prints nothing."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "conf.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+path = os.path.join(D, "conf.json")
+try:
+    conf = json.load(open(path))
+except (OSError, ValueError):
+    conf = {"desktop.bar.collapse": False, "desktop.keybinds": [], "desktop.theme": {}}
+if argv[:1] == ["get"] and len(argv) == 2:
+    v = conf.get(argv[1])
+    if v is None:
+        sys.exit(1)
+    print(json.dumps(v) if not isinstance(v, str) else v)
+elif argv[:1] == ["set"] and len(argv) == 3:
+    try:
+        conf[argv[1]] = json.loads(argv[2])
+    except ValueError:
+        conf[argv[1]] = argv[2]
+    json.dump(conf, open(path, "w"))

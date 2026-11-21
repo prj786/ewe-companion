@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""A stand-in for yt-dlp, for the companion's tests: never the network.
+`-J … URL` prints a small info object for YouTube and Vimeo links, and
+fails ("Unsupported URL") for anything else. Logs the argv to yt-dlp.log."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "yt-dlp.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+url = argv[-1]
+if "-J" in argv and ("youtube.com" in url or "youtu.be" in url or "vimeo.com" in url):
+    print(json.dumps({"title": "A video", "extractor_key": "Youtube", "duration": 212,
+                      "formats": [{"vcodec": "avc1.64001F", "acodec": "mp4a.40.2", "ext": "mp4"}]}))
+    sys.exit(0)
+print("ERROR: Unsupported URL: " + url, file=sys.stderr)
+sys.exit(1)

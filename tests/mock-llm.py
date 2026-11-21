@@ -59,6 +59,10 @@ class H(BaseHTTPRequestHandler):
             text = "From the look-up: " + found
         elif "how is my memory doing" in last:
             text = 'ACTION {"command": "system_info", "args": {"what": "memory"}}'
+        elif "pipewire or pulseaudio for me" in last:
+            text = 'ACTION {"command": "wiki", "args": {"query": "pipewire"}}'
+        elif "why does my film stutter" in last:
+            text = 'ACTION {"command": "why_no_play", "args": {"path": "~/Videos/film.mkv"}}'
         elif "how busy is it" in last:
             text = 'ACTION {"command": "calc", "args": {"expr": "6*7"}}'
         elif "shush everything" in last:

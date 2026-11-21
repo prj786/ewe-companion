@@ -9,6 +9,8 @@ tests/fakes first on the daemon's PATH. It knows what the companion asks:
   hyprctl dispatch "hl.dsp.window.fullscreen({ mode = 0|1, action = \"set\"|\"unset\", window = … })"
   hyprctl dispatch "hl.dsp.window.float({ action = \"toggle\", window = … })"
   hyprctl dispatch "hl.dsp.window.close({ window = \"address:0x…\" })"
+  hyprctl -j devices · hyprctl switchxkblayout all N (the keyboard: layouts
+  us and ge, English (US) on; $EWE_FAKE_DIR/kb.json keeps which)
 and answers "ok" like the real one; a dispatcher it does not know gets an
 error line. State in $EWE_FAKE_DIR/hypr.json (two displays: eDP-1 with
 workspaces 1, 2 and 4, HDMI-A-1 with 11; Firefox on 1 and 4, kitty on 2;
@@ -66,6 +68,25 @@ def focused():
 def by_addr(a):
     return next((c for c in st["clients"] if c["address"] == a), None)
 
+
+KB_LAYOUTS = ["us", "ge"]
+KB_NAMES = ["English (US)", "Georgian"]
+kb_file = os.path.join(D, "kb.json")
+try:
+    kb = json.load(open(kb_file))
+except (OSError, ValueError):
+    kb = {"active": 0}
+if argv == ["-j", "devices"]:
+    print(json.dumps({"mice": [], "keyboards": [
+        {"address": "0x1", "name": "power-button", "layout": "us", "active_keymap": "English (US)", "main": False},
+        {"address": "0x2", "name": "at-translated-set-2-keyboard", "layout": ",".join(KB_LAYOUTS),
+         "variant": "", "active_keymap": KB_NAMES[kb["active"]], "main": True}]}))
+    sys.exit(0)
+if argv[:1] == ["switchxkblayout"] and len(argv) == 3:
+    kb["active"] = int(argv[2]) % len(KB_LAYOUTS)
+    json.dump(kb, open(kb_file, "w"))
+    print("ok")
+    sys.exit(0)
 
 if argv[:1] == ["-j"] and len(argv) == 2:
     what = argv[1]

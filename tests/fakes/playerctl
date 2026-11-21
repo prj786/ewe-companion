@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""A stand-in for playerctl (MPRIS), for the companion's tests: the real one
+reads and controls the owner's own players. It knows:
+  playerctl --list-all
+  playerctl -p NAME metadata --format FMT | xesam:url
+  playerctl [-p NAME] play-pause | next | previous | status
+Players in $EWE_FAKE_DIR/players.json ({name: {status, title, artist, album,
+url}}); by default WebKit's own (always "Playing", which Shaun must skip),
+ewe Player playing So What, and Spotify paused. A log: playerctl.log.
+$FAKE_BROWSER_MARK, when set, is added to the titles (tests/canary.sh)."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+MARK = os.environ.get("FAKE_BROWSER_MARK", "")
+argv = sys.argv[1:]
+with open(os.path.join(D, "playerctl.log"), "a") as f:
+    f.write(json.dumps(argv) + "\n")
+try:
+    players = json.load(open(os.path.join(D, "players.json")))
+except (OSError, ValueError):
+    players = {
+        "org.webkit.app-1a2b.Sandboxed.instance-1": {"status": "Playing", "title": "webkit"},
+        "ewe-player": {"status": "Playing", "title": "So What" + MARK, "artist": "Miles Davis",
+                       "album": "Kind of Blue", "url": "file:///home/u/Music/so-what.flac"},
+        "spotify": {"status": "Paused", "title": "Teardrop", "artist": "Massive Attack"},
+    }
+if argv == ["--list-all"] or argv == ["-l"]:
+    if not players:
+        print("No players found", file=sys.stderr)
+        sys.exit(1)
+    print("\n".join(players))
+    sys.exit(0)
+name = None
+if argv[:1] == ["-p"]:
+    name, argv = argv[1], argv[2:]
+p = players.get(name) if name else next(iter(players.values()), None)
+if p is None:
+    print("No players found", file=sys.stderr)
+    sys.exit(1)
+if argv[:1] == ["metadata"]:
+    if len(argv) >= 3 and argv[1] == "--format":
+        out = argv[2]
+        for k in ("status", "title", "artist", "album"):
+            out = out.replace("{{%s}}" % k, p.get(k, ""))
+        print(out)
+    elif argv[1:] == ["xesam:url"]:
+        print(p.get("url", ""))
+    sys.exit(0)
+if argv == ["status"]:
+    print(p.get("status", "Stopped"))
+sys.exit(0)

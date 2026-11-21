@@ -118,6 +118,10 @@ def perform(m):
         res["data"] = {"via": "ewe-browser"}
     elif act == "launch":
         res["data"] = {"name": args.get("app", "")}
+    elif act == "app":
+        # what Service.qml checks: only ewe's own apps, as argv
+        if os.path.basename(args.get("bin", "")) not in ("ewe-player", "ewe-files-app", "ewe-viewer"):
+            res.update(ok=False, error="Not one of ewe's apps.")
     send(res)
 
 
