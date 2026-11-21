@@ -39,7 +39,14 @@ remembers what you tell it to, answers questions about ewe (and every ewe
 command-line tool) from a built-in knowledge pack, and proposes shell
 commands that run only on a click. With a model it answers fast (Claude
 Code lean and warm, answers streaming in), looks things up before it
-answers, and does up to three things in one reply (0.3).
+answers, and does up to three things in one reply (0.3). Knowledge 2.0
+(0.3, the 2026-11-21 wave): the pack follows ewe to 0.47 with a coverage
+test and release notes ("what's new"), BM25 search, the ArchWiki and
+manual pages offline, the user's own notes (`~/Documents/Shaun`, "learn
+this: …"), music from the library and links in ewe Player, "why won't
+this play", keyboard layouts and typing in other languages, "translate
+this" (with a model), plocate in the finder, and the dock's displays and
+the bar fold by asking (proposals with Undo).
 
 This repo is the Rust half: the daemon `ewe-companiond`, the CLI and hook
 relay `ewe-companion`, the knowledge pack, the Claude Code plugin, packaging
@@ -134,28 +141,37 @@ disturb, opening things, Wi-Fi, Bluetooth, a timer) run at once with an
 Undo; **T2/T3** (settings, files, the system) always ask first. Every command
 in the catalog is T0 (a read that shows rows: the finder, the browser's
 history and tabs, Safe's state, a sum) or T1, except the ones in
-`commands::PROPOSALS` (`run_shell`, `theme_mode`, `power`, `empty_trash`),
-which never run from the catalog: they only ever become a proposal with
-Run. ewe browser's own tiers are respected: a tool it marks tier 2 (closing
+`commands::PROPOSALS` (`run_shell`, `theme_mode`, `power`, `empty_trash`,
+`force_quit`, `dock_display`, `bar_fold`), which never run from the
+catalog: they only ever become a proposal with Run. A setting's proposal
+may carry the command that puts it back (`Outcome::propose_undo`): after
+the Run click the reply offers Undo (`Undo::Shell`, made by the daemon,
+never by a model). ewe browser's own tiers are respected: a tool it marks tier 2 (closing
 a tab) becomes a proposal too.
 
 ## Commands
 
 ```sh
 cargo build                                   # debug: target/debug/ewe-companion{,d}
-cargo test                                    # core 107, daemon 58 unit tests
+cargo test                                    # core 128, daemon 65 unit tests
 cargo clippy --all-targets -- -D warnings     # CI runs it with --locked
 cargo fmt --all --check
-tests/chat.sh                                 # 164 checks: the chat path vs a mock LLM, Safe,
+tests/chat.sh                                 # 211 checks: the chat path vs a mock LLM, Safe,
                                               #   ewe browser, the finder, the desktop's
-                                              #   switches, the clock, system facts, windows
-                                              #   and memory vs tests/fakes/ (PATH shims)
-tests/brain.sh                                # 25 checks: streaming, look-ups, several
-                                              #   actions, compound lines, memory in the notes,
-                                              #   Claude Code lean and warm (a fake claude)
+                                              #   switches, the clock, system facts, windows,
+                                              #   memory, notes, the wiki, manuals, media,
+                                              #   keyboards, settings with Undo, translate
+                                              #   vs tests/fakes/ (PATH shims)
+tests/brain.sh                                # 28 checks: streaming, look-ups (the wiki,
+                                              #   why-no-play), several actions, compound
+                                              #   lines, memory in the notes, Claude Code
+                                              #   lean and warm (a fake claude)
 tests/relay-failsafe.sh                       # 26 checks: the hook relay's fail-safes
-tests/canary.sh                               # 9 checks: Safe's, the browser's and Bluetooth's
-                                              #   names reach no model, log or store
+tests/canary.sh                               # 10 checks: Safe's, the browser's, Bluetooth's,
+                                              #   songs' and files' names reach no model,
+                                              #   log or store
+scripts/coverage.py                           # rewrite knowledge/coverage.json from the repos
+scripts/news.sh                               # which releases news.md still owes a topic
 BIN=target/release tests/relay-failsafe.sh    # the same against a release build
 tests/island.sh up --scale 1.8                # the island in ewe's nested harness
 ```
@@ -193,7 +209,12 @@ crates/core/            companion-core: pure code, no I/O, every rule unit-teste
   src/persona.rs        the stable system prompt (Brief), the turn's <notes> (Turn, with_notes), the
                         ACTION protocol (parse_actions: up to 3), LOOKS (reads a model may see the
                         results of), visible() (a streaming answer without its ACTION lines)
-  src/knowledge.rs      the knowledge pack: parse, search, CONFIDENT, Topic::answer
+  src/knowledge.rs      the knowledge pack: parse, BM25F search (keys, title, text; SYNONYMS; typos),
+                        CONFIDENT, Topic::answer; parse_note (the user's notes), news topics; the
+                        coverage test over knowledge/coverage.json
+  src/lang.rs           languages: xkb layouts by name, input-method languages (ewe-ime ids), foreign()
+  src/media.rs          ffprobe's streams in words, the GStreamer decoders each codec needs
+  src/wiki.rs           wiki-search's list and pages (sections, the part that fits), man pages
   src/shell.rs          assess(cmd): Fine, Risky(why) or Refused(why), plus "needs a terminal"
 crates/daemon/          ewe-companiond (tokio)
   src/main.rs           start-up, logging (EWE_COMPANION_LOG), the accept loop
@@ -222,8 +243,15 @@ crates/daemon/          ewe-companiond (tokio)
                         force_quit (a proposal), through `hyprctl dispatch` in Lua
   src/memory.rs         remember / memories / forget (100 at most; looks_secret refuses),
                         prompt_block for the model's notes
+  src/notes.rs          the user's notes (~/Documents/Shaun, $EWE_COMPANION_NOTES) in the pack's index
+                        (notes::pack, rebuilt on change); learn (Undo deletes) and notes
+  src/lookup.rs         wiki (arch-wiki-lite), man_page (man, else --help), whats_new (the installed
+                        ewe's release notes)
+  src/media.rs          ewe Player: play_local, play_link, now_playing (playerctl), why_no_play
+                        (ffprobe, gst-inspect-1.0, yt-dlp); show_file / open_with (ewe Files); start()
+                        asks the island's `do app`
   src/safe.rs           Safe's command line: copy, login, lock, unlock (and what waited for it), status
-  src/finder.rs         files and folders under home by name (the ignore crate, 1.5 s), rows
+  src/finder.rs         files and folders under home by name (the ignore crate, 1.5 s) and plocate, rows
   src/places.rs         folders by the words people use; default apps via xdg-mime
   src/providers.rs      PROVIDERS: CLI lane (claude-code, codex, opencode) and API lane; Sink (streaming);
                         SSE for the APIs; Claude Code lean (claude_command) and warm (warm, take_warm,
@@ -240,13 +268,17 @@ crates/cli/             ewe-companion (std-only: it starts in milliseconds)
   src/hook.rs           the hook relay: Claude Code stdin → daemon → Claude's JSON, or nothing
   src/statusline.rs     forwards rate_limits for the plan-usage bars, then runs your old status line
   src/client.rs         connect within a budget, check the peer uid, one line out, one back
-knowledge/              the pack (Markdown, compiled in): primer.md + apps, howto, keys, fix, safe, browser, cli
+knowledge/              the pack (Markdown, compiled in): primer.md + apps, howto, keys, fix, safe, browser, cli,
+                        media, languages, news; coverage.json (what must have a topic)
+scripts/                coverage.py (writes knowledge/coverage.json), news.sh (releases news.md owes)
 integrations/claude-code/  a Claude Code plugin (hooks.json) + a local marketplace
 packaging/              PKGBUILD, ewe-companion.service (user unit, no [Install])
 tests/                  chat.sh, brain.sh, relay-failsafe.sh, canary.sh, island.sh, vptr.py, mock-llm.py
                         (SSE when asked; MOCK_DELAY), fake-island.py (--do answers `do`; --caps, --say,
                         --warm), fakes/ (ewe-safe, ewe-browser, claude, and the PATH
-                        shims nmcli, ewe-bt, qs, notify-send, ewe-theme, gio, hyprctl, ip),
+                        shims nmcli, ewe-bt, qs, notify-send, ewe-theme, gio, hyprctl, ip, playerctl,
+                        wl-paste, ffprobe, gst-inspect-1.0, yt-dlp, wiki-search, man, locate, ewe-ime,
+                        ewe-conf, ewe-plugin, ewe-player, ewe-files-app),
                         payloads/claude/*.json (recorded hook payloads)
 docs/                   PLAN.md, PROTOCOL.md, EXTENDING.md, TESTING.md
 ```
@@ -332,8 +364,10 @@ companion opens belongs to the desktop, not to the daemon's unit.
 3 s for `do.result {id, ok, error, data}`. The island's `Service.qml`
 `perform()` holds one `case` per action: `dnd`, `open`, `launch`, `term`,
 `screenshot`, `browse`, `browser` (ewe browser's command line; 20 s, through
-`hub.shell_do_within`) and `safe_unlock` (Safe's prompt). No island → "The
-island is not running."
+`hub.shell_do_within`), `safe_unlock` (Safe's prompt) and, from plugin 0.7,
+`app` (ewe Player, ewe Files or ewe Viewer with arguments; `media::start`
+falls back to `launch` with one argument on an older island). No island →
+"The island is not running."
 
 ## Where each change goes
 
@@ -396,11 +430,11 @@ edits need the release build (the pack is compiled in).
   the shell's in `env.hypr`; use `hub.env().hypr`.
 - **tracing's macros import `debug`:** a local `let debug` breaks
   `info!(…, debug, …)`.
-- **ewe Settings (0.18 to 0.22) ignores `--page`.** "Open Settings" opens
-  Appearance, so replies name the page to pick (`commands::page_label`,
-  whose labels follow ewe-settings' `src/lib/pages.js`). Komble and Quick
-  settings pages do open (Quick settings has no rail since ewe 0.39: a
-  page opens in place of home).
+- **ewe Settings 0.18 to 0.22 ignored `--page`; 0.24 opens the page.**
+  Replies say "Opened ewe Settings → Keyboard and mouse"
+  (`commands::page_label`, whose labels follow ewe-settings'
+  `src/lib/pages.js`). Komble and Quick settings pages open too (Quick
+  settings has no rail since ewe 0.39: a page opens in place of home).
 - **Never `pkill -f` a pattern that appears in your own command** (it kills
   your shell). Find the PID and check `readlink /proc/PID/exe`;
   `tests/island.sh down` does.
@@ -478,6 +512,24 @@ edits need the release build (the pack is compiled in).
   "windows"): such a topic outranks a better one (0.2.3's "connect my
   github with an ssh key" went to the SSH topic). And a one-word key that
   stems to a stop word ("computers" → "computer") fails the parse test.
+- **A one-word key makes any question with that word confident** (the
+  pack's BM25 keeps "a key phrase said whole" as CONFIDENT): "how do I use
+  rsync to exclude a folder" went to ewe Sync ("folders"). With no model,
+  "how do I use <program>" reads its manual first; a typo fix needs six
+  letters ("rsync" is not "sync"); a phrase never ends inside a hyphenated
+  name, and one cut short by a longer name that follows ("what is ewe
+  sync") counts as words only. Probe with `QS="q1|q2" cargo test -p
+  companion-core calibrate -- --ignored --nocapture`.
+- **The island drew answers as rich text**: `<url>` in a topic vanished.
+  Answers are `Text.PlainText` (plugin 0.7); keep angle brackets out of a
+  row's title anyway (the shell's ListRow is not ours).
+- **wiki-search opens `dialog` when it is installed** (then waits on a
+  terminal) and writes `/tmp/.wiki-search.$USER.tmp`: `wiki_width` is set
+  for every call. This box has no man-db: `man_page` falls back to
+  `--help`, never for the programs on `lookup::NO_HELP`.
+- **The harness daemon reads the real home** (`tests/island.sh`): give it
+  `EWE_MUSIC_DIR`, `XDG_CACHE_HOME` and `EWE_COMPANION_NOTES` in your
+  scratchpad before `up`, or a music search shows the owner's library.
 - **QML traps** (a Qt Column skips zero-width children, layer windows blink
   when they grow, focus grabs die when an exclusive layer takes the
   keyboard …) are in the plugin's AGENTS.md.
@@ -500,6 +552,9 @@ edits need the release build (the pack is compiled in).
 | `EWE_FAKE_DIR`, `FAKE_SAFE_ITEMS`, `FAKE_SAFE_LOCKED` | the fakes | their state and log dir; the fake Safe's items (a JSON file); start it locked |
 | `FAKE_BROWSER_MARK` | the browser and ewe-bt fakes | added to every title, name and file name they hold (the canary) |
 | `XDG_STATE_HOME` | daemon | the store goes in `$XDG_STATE_HOME/ewe/companion/` |
+| `EWE_COMPANION_NOTES` | daemon | the user's notes folder instead of `~/Documents/Shaun` (tests, the harness) |
+| `EWE_COMPANION_EWE_VERSION` | daemon | the ewe version `whats_new` reads instead of `/usr/share/ewe/VERSION` (tests) |
+| `EWE_MUSIC_DIR`, `XDG_CACHE_HOME` | daemon | the music library (as ewe Player reads them: its index in `$XDG_CACHE_HOME/ewe-player/music-index.json`, else the folder) |
 | `ISLAND_WORK`, `EWE_DIR`, `PLUGIN_DIR` | `tests/island.sh` | the harness's work dir and the sibling checkouts |
 
 ## Open questions for the owner
@@ -526,6 +581,8 @@ A change is not done until what describes it says so, in the same change:
 | something building taught you | `docs/PLAN.md` §25, and *Traps* above |
 | a way to extend or test | `docs/EXTENDING.md`, `docs/TESTING.md` |
 | ewe itself (a page, a label, a shortcut) | `knowledge/*.md`; the pack must follow ewe |
+| a new Settings page, `ewe-*` tool, app or built-in plugin | `scripts/coverage.py` (rewrites `knowledge/coverage.json`), then a topic until `cargo test` is green |
+| an ewe release | a topic in `knowledge/news.md` (`scripts/news.sh` says which are owed) |
 | status, a contract, a gotcha | the vault: `10-Roadmap/Roadmap — ewe-companion.md`, `Troubleshooting Knowledge.md`, `Contracts and Public API.md`, `ewe-facts.json`; then `project-map/.vault/vault-check.sh --diagrams` |
 
 ## Git

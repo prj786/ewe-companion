@@ -1744,6 +1744,60 @@ Branches `feat/shaun-wiser` (here and in the plugin).
       split. The island harness: a slow mock (`MOCK_DELAY`) shows the answer
       growing, then whole.
 
+### P2.12 — knowledge 2.0 and new powers (M), owner ask 2026-11-21
+
+The owner: "make shaun more powerfull. we can add knowledge." (the wave
+"every format, every language, a wiser Shaun, a new installer", Phase S).
+Branches `feat/shaun-knowledge` here (on `feat/shaun-wiser`) and in the
+plugin (on 0.6.0, origin/main 0.5.2 merged). Ships with P2.11 as Shaun
+0.3.0-beta + the plugin 0.7.0 (it adds `do app`), in ewe 0.47.0-beta.
+
+- [x] **The pack follows ewe 0.40–0.47** (128 → 174 topics): ewe Files,
+      Player and Viewer, the bar fold, the dock's displays, display
+      workspaces, Remote, game mode, the cursor, codecs, Stremio, HEIC,
+      subtitles, typing in other languages, spell checking, regional
+      formats, `ewe-settings --page`; `media.md`, `languages.md`, `news.md`.
+- [x] **Coverage test:** `knowledge/coverage.json` (scripts/coverage.py,
+      from the repos and `ewe-facts.json`: 70 Settings pages, tools, apps,
+      plugins); `every_shipped_feature_has_a_topic` fails the build when one
+      has no topic.
+- [x] **What's new:** `news.md` (one topic per release), `whats_new` picks
+      the installed ewe's (`/usr/share/ewe/VERSION`); `scripts/news.sh`
+      says which releases still owe a topic.
+- [x] **BM25F search** over keys, title and text; synonyms; typos from six
+      letters; one phrase once per topic; cut-short phrases ("what is ewe
+      sync"); CONFIDENT kept (a key phrase said whole), recalibrated on
+      every test question.
+- [x] **Other languages:** the system prompt asks a model to answer in the
+      question's language; with no model, a question not in English is
+      told why the answer would be English (`lang::foreign`).
+- [x] **The ArchWiki offline** (`arch-wiki-lite`, a dependency): `wiki`, a
+      look; with no model, a question that is a page's title gets the page.
+      Checked once against the real package (bwrap, 2026-11-21): ~0.7 s a
+      look-up.
+- [x] **Manuals:** `man_page` (man, else `--help` when the program names it
+      and is not on a deny list); "how do I use rsync to …" with no model.
+- [x] **Your own notes:** `~/Documents/Shaun` in the pack's index,
+      rebuilt on change; `learn` (Undo deletes), `notes`; secrets refused
+      and left out.
+- [x] **Media:** `play_local`, `play_link`, `now_playing`, `why_no_play`
+      (ffprobe, gst-inspect-1.0, yt-dlp); `show_file` (ewe Files
+      --select=), `open_with`; the island's `do app`.
+- [x] **Languages:** `keyboard_layout` (Undo), `typing_add` (ewe-ime, else
+      ewe Settings → Keyboard and mouse), "translate this" (a model, the
+      clipboard as untrusted).
+- [x] **Files:** plocate joins the finder.
+- [x] **Settings by text:** `dock_display`, `bar_fold` (proposals with Undo
+      after Run); dark and light mode gain the Undo.
+- [x] Tests: core 128, daemon 65; chat.sh 211, brain.sh 28, canary.sh 10,
+      relay 26. The island harness (dark and light, 1.8): an offline answer
+      about ewe Player links, a wiki excerpt, "why won't this play", a music
+      search, a dock proposal and its Undo after Run.
+- [ ] The real ewe-apps (ewe Player playing a link, ewe Files --select) and
+      ewe-ime (L slice) on a real desktop; the pack's labels for ewe 0.46
+      against the shipped apps (each such topic says so in a comment).
+- **Gate:** the owner's word (P2.11's gate covers both).
+
 ### P3 — notifications (L), crosses repos and merges as one wave
 
 - [ ] **ewe:** Plugin API 4 `Shell` members + host `apiVersions [2,3,4]`;
@@ -2053,3 +2107,19 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   `commands::SESSION` refuses them, so their rows carry no Quit.
 - **A `libc::tm` across an `.await`** (2026-11-08) made the future
   non-`Send` (it holds a raw pointer) and `tokio::spawn` refused it.
+- **Qt guessed rich text** (2026-11-21): the pack's "`ewe-player <url>`"
+  showed as "`ewe-player `": a Text with no `textFormat` reads anything
+  tag-like as HTML. The island's answers are plain text now (plugin 0.7),
+  which also keeps a model's or a page's words from styling themselves.
+- **A one-word key is a confident match** (2026-11-21): "how do I use rsync
+  to exclude a folder" answered with ewe Sync, whose key "folders" stems to
+  "folder". With no model, "how do I use <a program>" goes to its manual
+  before the pack; and a typo fix needs six letters ("rsync" is not a typo
+  of "sync").
+- **A phrase can end inside a name** (2026-11-21): "what is ewe" matched in
+  "what is ewe-bt" and "what is ewe sync". A phrase never ends inside a
+  hyphenated name, and one cut short by another topic's longer name that
+  follows counts as words only.
+- **`wiki-search` opens `dialog` when it is installed** (2026-11-21) and
+  writes `/tmp/.wiki-search.$USER.tmp`: `wiki_width` set skips the menu;
+  the tmp file is the tool's own (shared with the user's own searches).
