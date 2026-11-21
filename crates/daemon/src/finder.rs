@@ -14,9 +14,14 @@
 //! well a name answers are `companion_core::find`'s rules; here the best
 //! come first, then the newest.
 //!
-//! What it finds shows on the island as rows (Open, Show in folder, Copy
-//! path, and Open terminal here for a folder); a model gets how many. Paths
-//! are never logged.
+//! With plocate (`locate`, its daily index of every file), the finder also
+//! asks it: what the walk could not reach in its budget, or too deep down,
+//! still turns up. Only what is under home (or a mounted drive), not
+//! hidden, not in a build tree, and still there counts.
+//!
+//! What it finds shows on the island as rows (Open, Show in folder: ewe
+//! Files with the file selected, Copy path, and Open terminal here for a
+//! folder); a model gets how many. Paths are never logged.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -144,14 +149,86 @@ pub fn walk(root: &Path, q: &Query, limit: usize, budget: Duration) -> (Vec<Hit>
     (hits, partial.load(Ordering::Relaxed))
 }
 
-/// The finder under home, off the async threads.
+/// The finder under home, off the async threads, with plocate's answer
+/// when there is one.
 pub async fn find(q: Query, limit: usize) -> (Vec<Hit>, bool) {
     let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
         return (vec![], false);
     };
-    tokio::task::spawn_blocking(move || walk(&home, &q, limit, BUDGET))
-        .await
-        .unwrap_or_default()
+    let (q2, home2) = (q.clone(), home.clone());
+    let (walked, located) = tokio::join!(
+        tokio::task::spawn_blocking(move || walk(&home2, &q2, KEEP, BUDGET)),
+        locate(&q, &home),
+    );
+    let (mut hits, partial) = walked.unwrap_or_default();
+    for h in located {
+        if !hits.iter().any(|x| x.path == h.path) {
+            hits.push(h);
+        }
+    }
+    hits.sort_by(|a, b| {
+        b.rank
+            .cmp(&a.rank)
+            .then(b.modified.cmp(&a.modified))
+            .then(a.path.cmp(&b.path))
+    });
+    hits.truncate(limit);
+    (hits, partial)
+}
+
+/// plocate's answer (`locate -i -b -l 400 WORDS…`: every word in the
+/// name), kept to what the walk would accept: under home or a mounted
+/// drive, nothing hidden or in a build tree on the way, still there.
+async fn locate(q: &Query, home: &Path) -> Vec<Hit> {
+    if q.words.is_empty() {
+        return vec![];
+    }
+    let Some(bin) = crate::context::tool("locate") else {
+        return vec![];
+    };
+    let mut c = tokio::process::Command::new(bin);
+    c.args(["-i", "-b", "-l", "400", "--"])
+        .args(&q.words)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true);
+    let Ok(Ok(out)) = tokio::time::timeout(BUDGET, c.output()).await else {
+        return vec![];
+    };
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    let home = home.to_path_buf();
+    let q = q.clone();
+    tokio::task::spawn_blocking(move || {
+        text.lines()
+            .map(PathBuf::from)
+            .filter(|p| {
+                p.starts_with(&home) || p.starts_with("/run/media") || p.starts_with("/media")
+            })
+            .filter(|p| {
+                let rel = p.strip_prefix(&home).unwrap_or(p);
+                rel.parent().is_none_or(|parent| {
+                    parent.components().all(|c| {
+                        let n = c.as_os_str().to_string_lossy();
+                        !n.starts_with('.') && !SKIP.contains(&n.as_ref())
+                    })
+                })
+            })
+            .filter_map(|p| {
+                let m = std::fs::symlink_metadata(&p).ok()?;
+                let name = p.file_name()?.to_string_lossy().to_string();
+                let rank = find::rank(&name, m.is_dir(), &q)?;
+                Some(Hit {
+                    dir: m.is_dir(),
+                    rank,
+                    modified: m.modified().unwrap_or(UNIX_EPOCH),
+                    path: p,
+                })
+            })
+            .take(KEEP)
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// The best folder these words name anywhere under home, for "open the
@@ -179,8 +256,13 @@ fn row(h: &Hit) -> Value {
         } else {
             json!({"label": "Open", "command": "open_file", "args": {"path": path}})
         },
-        json!({"label": "Show in folder", "command": "open_folder",
-               "args": {"path": parent.to_string_lossy()}}),
+        if h.dir {
+            json!({"label": "Show in folder", "command": "open_folder",
+                   "args": {"path": parent.to_string_lossy()}})
+        } else {
+            // ewe Files with the file selected, else its folder
+            json!({"label": "Show in folder", "command": "show_file", "args": {"path": path}})
+        },
         json!({"label": "Copy path", "copy": path}),
     ];
     if h.dir {

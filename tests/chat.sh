@@ -10,7 +10,10 @@
 # airplane mode, keeping awake, the calculator, timers (across a daemon
 # restart) and the proposals, with every desktop tool a PATH shim from
 # tests/fakes/ (nmcli, ewe-bt, qs, notify-send, ewe-theme, gio): never the
-# owner's real radios, shell, theme or trash.
+# owner's real radios, shell, theme or trash. Then "Shaun gets wiser": the
+# clock and dates, units, this computer's state (read for real, read-only),
+# the network (nmcli and ip fakes), windows and workspaces (a hyprctl fake:
+# never the owner's compositor), what Shaun remembers, and typos.
 #   cargo build && tests/chat.sh
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,9 +24,9 @@ mkdir -p "$W/bin" "$W/fakes" && cp "$ROOT"/tests/fakes/* "$W/bin/"
 export EWE_COMPANION_SOCK="$W/c.sock" XDG_STATE_HOME="$W/state" MOCK_LOG="$W/mock.jsonl" \
        EWE_COMPANION_SAFE="$W/bin/ewe-safe" EWE_COMPANION_BROWSER="$W/bin/ewe-browser" EWE_FAKE_DIR="$W/fakes"
 # the daemon's PATH starts with the fakes: a desktop command must never
-# reach the real nmcli, ewe-bt, qs, notify-send, ewe-theme or gio
+# reach the real nmcli, ewe-bt, qs, notify-send, ewe-theme, gio, hyprctl or ip
 DPATH="$W/bin:$PATH"
-for t in nmcli ewe-bt qs notify-send ewe-theme gio; do
+for t in nmcli ewe-bt qs notify-send ewe-theme gio hyprctl ip playerctl wl-paste ffprobe gst-inspect-1.0 yt-dlp wiki-search man ewe-ime ewe-conf ewe-plugin locate ewe-player ewe-files-app; do
   if [ "$(PATH="$DPATH" command -v "$t")" != "$W/bin/$t" ]; then
     echo "FAIL  the fake $t is not first on the daemon's PATH: refusing to run"; exit 1
   fi
@@ -39,12 +42,20 @@ no() { echo "FAIL  $*"; fail=$((fail + 1)); }
 check() { if eval "$1"; then ok "$2"; else no "$2  [$3]"; fi; }
 field() { python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1]) or "")' "$1"; }
 IP=""
-cleanup() { kill "$MP" "$DP" $IP 2>/dev/null; wait 2>/dev/null; rm -rf "$W"; }
+# a process called firefox (python3 through a link of that name, off the
+# PATH) that the fake Hyprland's windows belong to: "kill firefox" must find
+# it, and never end it. Not a copy of sleep: a multi-call coreutils (uutils,
+# on newer Ubuntu runners) reads its name from the file and exits
+mkdir -p "$W/procs" && ln -s "$(command -v python3)" "$W/procs/firefox"
+"$W/procs/firefox" -c 'import time; time.sleep(600)' & FP=$!
+export FAKE_HYPR_PID="$FP"
+cleanup() { kill "$MP" "$DP" $IP "$FP" 2>/dev/null; wait 2>/dev/null; rm -rf "$W"; }
 trap cleanup EXIT
 
 python3 "$ROOT/tests/mock-llm.py" "$PORT" & MP=$!
 daemon() {
-  env -u HYPRLAND_INSTANCE_SIGNATURE -u WAYLAND_DISPLAY -u XDG_DATA_HOME HOME="$H" PATH="$DPATH" \
+  env -u HYPRLAND_INSTANCE_SIGNATURE -u WAYLAND_DISPLAY -u XDG_DATA_HOME -u XDG_CACHE_HOME -u EWE_MUSIC_DIR \
+    -u EWE_COMPANION_NOTES HOME="$H" PATH="$DPATH" EWE_COMPANION_EWE_VERSION=0.45.0-beta \
     EWE_COMPANION_DEBUG=1 "$BIN/ewe-companiond" >>"$W/daemon.log" 2>&1 & DP=$!
 }
 daemon
@@ -113,8 +124,8 @@ out=$("$BIN/ewe-companion" ask "open the pod bay doors in hal-zz")
 check '[ "$(echo "$out" | field text)" = "echo: open the pod bay doors in hal-zz" ]' \
       "words that name no app or folder go to the provider as a question" "$out"
 out=$("$BIN/ewe-companion" ask "where do I turn on bluetooth")
-check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; p=b[\"messages\"][0][\"content\"]; sys.exit(0 if \"# What you know about ewe\" in p and \"## Pair a Bluetooth device\" in p and \"# This computer now\" in p and \"<!--\" not in p else 1)" "$MOCK_LOG"' \
-      "a provider is told the primer, the topics that fit, and this computer now" "$(tail -c 300 "$MOCK_LOG")"
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; p=b[\"messages\"][0][\"content\"]; q=b[\"messages\"][-1][\"content\"]; sys.exit(0 if \"# What you know about ewe\" in p and \"## Pair a Bluetooth device\" in q and \"# This computer now\" in q and \"<!--\" not in p + q else 1)" "$MOCK_LOG"' \
+      "a provider is told the primer (system prompt), and with the question the topics that fit and this computer now" "$(tail -c 300 "$MOCK_LOG")"
 check '[ "$(echo "$out" | python3 -c "import json,sys; print((json.load(sys.stdin).get(\"action\") or {}).get(\"label\",\"\"))")" = "Open Bluetooth" ]' \
       "the model's answer still carries the topic's button" "$out"
 out=$("$BIN/ewe-companion" ask "  ")
@@ -122,7 +133,7 @@ check '[ "$(echo "$out" | field ok)" = "False" ] || [ "$(echo "$out" | field err
 
 # ── Safe, ewe browser and the finder (TRIO.md C1) ──────────────────────────
 # a scripted island answers `do` (ewe browser's acts, Safe's unlock prompt)
-python3 "$ROOT/tests/fake-island.py" --do --env '{"wayland": "wayland-test"}' >"$W/island.log" 2>&1 & IP=$!
+python3 "$ROOT/tests/fake-island.py" --do --env '{"wayland": "wayland-test", "hypr": "fake-hypr-sig"}' >"$W/island.log" 2>&1 & IP=$!
 for _ in $(seq 50); do "$BIN/ewe-companion" status | grep -q '"island":true' && break; sleep 0.05; done
 js() { python3 -c 'import json,sys; r=json.load(sys.stdin); print(eval(sys.argv[1], {"r": r, "json": json}))' "$1"; }
 slog() { tail -n 1 "$W/fakes/safe.log"; }
@@ -375,6 +386,336 @@ mkdir -p "$H/.local/share/Trash/files" && touch "$H/.local/share/Trash/files/old
 out=$("$BIN/ewe-companion" ask "empty the trash")
 check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "gio trash --empty" ] && echo "$out" | grep -q "The 1 item in it goes for good" && [ ! -e "$W/fakes/gio.log" ]' \
       "empty the trash → gio trash --empty, offered with Run, not run" "$out"
+
+# ── Shaun gets wiser: offline answers, the window manager, memory ─────────
+# the clock and dates (the real clock; a zone from /usr/share/zoneinfo)
+out=$("$BIN/ewe-companion" ask "what time is it")
+check '[ "$(echo "$out" | field command)" = "clock" ] && echo "$out" | field text | grep -Eq "^It.s [0-9]{2}:[0-9]{2}, (Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day [0-9]{1,2} [A-Z][a-z]+ [0-9]{4}$"' \
+      "what time is it → the clock, offline" "$out"
+out=$("$BIN/ewe-companion" ask "what time is it in tokyo")
+check 'echo "$out" | field text | grep -Eq "^In Tokyo it.s [0-9]{2}:[0-9]{2}, .*\(Asia/Tokyo, "' \
+      "what time is it in tokyo → date with TZ=Asia/Tokyo in the child" "$out"
+out=$("$BIN/ewe-companion" ask "what time is it in narniazz")
+check '[ "$(echo "$out" | field text)" = "echo: what time is it in narniazz" ]' "a place with no zone goes to the model" "$out"
+out=$("$BIN/ewe-companion" ask "how many days until christmas")
+check '[ "$(echo "$out" | field command)" = "date_math" ] && echo "$out" | field text | grep -q "^Christmas is "' \
+      "how many days until christmas → date_math" "$out"
+out=$("$BIN/ewe-companion" ask "what's the date in 30 days")
+check 'echo "$out" | field text | grep -q "^In 30 days it.s "' "the date in 30 days" "$out"
+# units and sums; a currency is never guessed
+out=$("$BIN/ewe-companion" ask "convert 10 km to miles")
+check '[ "$(echo "$out" | field text)" = "10 km = 6.21 miles" ]' "convert 10 km to miles" "$out"
+out=$("$BIN/ewe-companion" ask "20 c in f")
+check '[ "$(echo "$out" | field text)" = "20 °C = 68 °F" ]' "20 c in f" "$out"
+out=$("$BIN/ewe-companion" ask "100 usd in eur")
+check '[ "$(echo "$out" | field text)" = "echo: 100 usd in eur" ]' "a currency goes to the model, never guessed" "$out"
+out=$("$BIN/ewe-companion" ask "sqrt 144")
+check '[ "$(echo "$out" | field text)" = "sqrt 144 = 12" ]' "sqrt 144" "$out"
+# this computer, read for real (read-only)
+out=$("$BIN/ewe-companion" ask "how much battery do i have")
+check '[ "$(echo "$out" | field command)" = "system_info" ] && echo "$out" | field text | grep -Eq "^(Battery [0-9]+ %|This computer has no battery|There is a battery)"' \
+      "battery → /sys/class/power_supply" "$out"
+out=$("$BIN/ewe-companion" ask "how much ram is free")
+check 'echo "$out" | field text | grep -Eq "^Memory: .* in use, .* free"' "memory → /proc/meminfo" "$out"
+out=$("$BIN/ewe-companion" ask "what's using my memory")
+check 'echo "$out" | field text | grep -q "uses the most memory" && [ "$(echo "$out" | js "len(r[\"rows\"])")" -ge 1 ]' \
+      "what's using my memory → the programs, as rows" "$out"
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][0][\"command\"] + str(r[\"rows\"][0][\"actions\"][0][\"args\"][\"force\"])")" = "force_quitFalse" ]' \
+      "…each program's row has Quit (force_quit, not forced)" "$out"
+out=$("$BIN/ewe-companion" debug run force_quit '{"app": "firefox", "force": false}')
+check '[ "$(echo "$out" | js "(r.get(\"confirm\") or {}).get(\"command\", \"\")")" = "pkill -x firefox" ]' \
+      "…and Quit only offers pkill -x with Run: nothing is stopped by the click on the row" "$out"
+out=$("$BIN/ewe-companion" ask "what's using my cpu")
+check 'echo "$out" | field text | grep -q "^The processor is [0-9]* % busy"' "what's using my cpu → two samples of /proc" "$out"
+out=$("$BIN/ewe-companion" ask "how long has my computer been on")
+check 'echo "$out" | field text | grep -q "^Up .*, since "' "uptime" "$out"
+out=$("$BIN/ewe-companion" ask "how much disk space is left")
+check 'echo "$out" | field text | grep -q "% full"' "disk space left → statvfs" "$out"
+out=$("$BIN/ewe-companion" ask "why is my laptop slow")
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"title\"]")" = "Processor" ] && [ "$(echo "$out" | js "r[\"rows\"][1][\"title\"]")" = "Memory" ]' \
+      "why is my laptop slow → the overview, offline" "$out"
+# the network: nmcli and ip fakes; the network's name and the addresses stay
+# on the island
+out=$("$BIN/ewe-companion" ask "am i connected to the internet")
+check 'echo "$out" | field text | grep -q "^You.re online, over Wi-Fi. Your local addresses are below; your public address would need asking a website" && echo "$out" | grep -q "192.168.1.23" && echo "$out" | grep -q HomeNet && ! echo "$out" | grep -q fe80' \
+      "am I online → nmcli says how, ip -j addr the local addresses (no public IP)" "$out"
+mkdir -p "$H/Downloads" && head -c 1000000 /dev/zero >"$H/Downloads/huge-zz-download.iso"
+out=$("$BIN/ewe-companion" ask "what's eating my disk")
+check 'echo "$out" | field text | grep -q "^What takes space, biggest first: " && echo "$out" | grep -q "huge-zz-download.iso" && echo "$out" | js "[x[\"title\"] for x in r[\"rows\"]]" | grep -q "The trash"' \
+      "what's eating my disk → the categories and Downloads' biggest files" "$out"
+out=$("$BIN/ewe-companion" ask "what did I ask you just now")
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; t=json.dumps(b[\"messages\"][1:]); sys.exit(0 if \"HomeNet\" not in t and \"192.168.1.23\" not in t and \"huge-zz-download\" not in t and \"Disk use, biggest first\" in t else 1)" "$MOCK_LOG"' \
+      "the network's name, the addresses and Downloads' files never reach the model" "$(tail -c 400 "$MOCK_LOG")"
+# workspaces and windows: the hyprctl fake, with the island's signature
+hlast() { tail -n 1 "$W/fakes/hyprctl.log"; }
+hst() { python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {"s": s}))' "$W/fakes/hypr.json" "$1"; }
+out=$("$BIN/ewe-companion" ask "switch to workspace 3")
+check '[ "$(echo "$out" | field text)" = "Workspace 3" ] && hlast | grep -q "\"hl.dsp.focus({ workspace = 3 })\"" && hlast | grep -q "\"sig\": \"fake-hypr-sig\""' \
+      "switch to workspace 3 → hl.dsp.focus, with the island's HYPRLAND_INSTANCE_SIGNATURE" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check '[ "$(echo "$out" | field text)" = "Workspace 1" ]' "…its Undo goes back to workspace 1" "$out"
+out=$("$BIN/ewe-companion" ask "next workspace")
+check '[ "$(echo "$out" | field text)" = "Workspace 2" ]' "next workspace → the next one in use on this display" "$out"
+out=$("$BIN/ewe-companion" ask "swich to worksapce 4")
+check '[ "$(echo "$out" | field text)" = "Workspace 4" ]' "a typo gets a second try (swich to worksapce 4)" "$out"
+"$BIN/ewe-companion" ask "workspace 1" >/dev/null
+out=$("$BIN/ewe-companion" ask "move this window to workspace 2")
+check '[ "$(echo "$out" | field text)" = "Moved Firefox to workspace 2" ] && hlast | grep -q "address:0xaaa1.*follow = false" && [ "$(hst "s[\"clients\"][0][\"workspace\"][\"id\"]")" = "2" ]' \
+      "move this window to workspace 2 → by address, not following; the line names the app" "$out"
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+check '[ "$(hst "s[\"clients\"][0][\"workspace\"][\"id\"]")" = "1" ]' "…its Undo moves it back" "$(hlast)"
+out=$("$BIN/ewe-companion" ask "make this window fullscreen")
+check '[ "$(echo "$out" | field text)" = "Firefox is fullscreen" ] && [ "$(hst "s[\"clients\"][0][\"fullscreen\"]")" = "2" ]' \
+      "make this window fullscreen → mode 0, set" "$out"
+utok=$(tok "$out")
+out=$("$BIN/ewe-companion" ask "fullscreen")
+check '[ "$(echo "$out" | field text)" = "Firefox is fullscreen already" ]' "…already: said, nothing toggled" "$out"
+"$BIN/ewe-companion" debug undo "$utok" >/dev/null
+check '[ "$(hst "s[\"clients\"][0][\"fullscreen\"]")" = "0" ]' "…its Undo unsets it" "$(hlast)"
+out=$("$BIN/ewe-companion" ask "float this window")
+check '[ "$(echo "$out" | field text)" = "Firefox floats" ] && [ "$(hst "s[\"clients\"][0][\"floating\"]")" = "True" ]' "float this window" "$out"
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+out=$("$BIN/ewe-companion" ask "minimise this window")
+check 'echo "$out" | field text | grep -q "^Minimised Firefox" && [ "$(hst "s[\"clients\"][0][\"workspace\"][\"name\"]")" = "special:minimized" ]' \
+      "minimise this window → special:minimized" "$out"
+out=$("$BIN/ewe-companion" ask "bring back the minimized window")
+check '[ "$(echo "$out" | field text)" = "Brought back Firefox" ] && [ "$(hst "s[\"clients\"][0][\"workspace\"][\"id\"]")" = "1" ]' \
+      "bring back the minimized window → onto the workspace in focus" "$out"
+# closing asks first; only the button's one-time token closes
+out=$("$BIN/ewe-companion" ask "close this window")
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && [ "$(echo "$out" | field kind)" = "answer" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \
+      "close this window → a Close Firefox button (an offer, not done); nothing closed yet" "$out"
+close=$(echo "$out" | js 'json.dumps(r["action"]["args"])')
+out=$("$BIN/ewe-companion" debug run window '{"action": "close"}')
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && ! grep -q "window.close" "$W/fakes/hyprctl.log"' \
+      "a model's window close (no token) only offers the button" "$out"
+out=$("$BIN/ewe-companion" debug run window '{"action": "close", "token": "0123456789abcdef01234567"}')
+check '! grep -q "window.close" "$W/fakes/hyprctl.log"' "…and a made-up token closes nothing" "$out"
+out=$("$BIN/ewe-companion" debug run window "$close")
+check '[ "$(echo "$out" | field text)" = "Closed Firefox" ] && hlast | grep -q "hl.dsp.window.close({ window = .*address:0xaaa1"' \
+      "the button's click closes it (gracefully, by address)" "$out"
+"$BIN/ewe-companion" debug run window "$close" >/dev/null
+check '[ "$(grep -c "window.close" "$W/fakes/hyprctl.log")" = "1" ]' "…once" "$(grep window.close "$W/fakes/hyprctl.log")"
+out=$("$BIN/ewe-companion" ask "close firefox")
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Close Firefox" ] && ! echo "$out" | grep -q Recipes' \
+      "close firefox → a button for its window; the title never shows" "$out"
+# a frozen app: pkill shown with Run, never run
+out=$("$BIN/ewe-companion" ask "firefox is frozen")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "pkill -KILL -x firefox" ] && [ "$(echo "$out" | js "r[\"confirm\"][\"risk\"]")" = "danger" ] && kill -0 "$FP"' \
+      "firefox is frozen → pkill -KILL -x firefox offered with Run (risky), not run" "$out"
+out=$("$BIN/ewe-companion" ask "kill firefox")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "pkill -x firefox" ] && kill -0 "$FP"' "kill firefox → pkill -x firefox, offered" "$out"
+out=$("$BIN/ewe-companion" ask "kill nosuchappzz")
+check '[ "$(echo "$out" | field text)" = "echo: kill nosuchappzz" ]' "an app that is not running goes to the model" "$out"
+out=$("$BIN/ewe-companion" ask "opne firefox")
+check '[ "$(echo "$out" | field command)" = "launch_app" ] && grep -q "do launch {\"app\": \"firefox\"" "$W/island.log"' \
+      "a typo gets a second try (opne firefox)" "$out"
+# memory: kept in companion.db, never a secret
+out=$("$BIN/ewe-companion" ask "remember that my dentist is on friday")
+check '[ "$(echo "$out" | field text)" = "I'"'"'ll remember that: my dentist is on friday" ] && [ -n "$(tok "$out")" ]' \
+      "remember that … → kept, with Undo" "$out"
+out=$("$BIN/ewe-companion" ask "remember my pin is 90817263")
+check '[ "$(echo "$out" | field kind)" = "error" ] && echo "$out" | grep -q "looks like a secret. ewe Safe is the place for it"' \
+      "a PIN is refused: ewe Safe is the place for it" "$out"
+out=$("$BIN/ewe-companion" ask "what do you remember")
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"title\"]")" = "my dentist is on friday" ] && [ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][0][\"label\"]")" = "Forget" ] && [ "$(echo "$out" | js "len(r[\"rows\"])")" = "1" ]' \
+      "what do you remember → rows with Forget (the PIN was never kept)" "$out"
+check '! cat "$W/state/ewe/companion/"companion.db* 2>/dev/null | grep -qa 90817263' "the refused PIN is not in the store" ""
+out=$("$BIN/ewe-companion" ask "forget about my dentist")
+check '[ "$(echo "$out" | field text)" = "Forgot: my dentist is on friday" ]' "forget about my dentist" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check '[ "$(echo "$out" | field text)" = "I'"'"'ll remember that: my dentist is on friday" ]' "…its Undo puts it back" "$out"
+out=$("$BIN/ewe-companion" ask "forget everything")
+check '[ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Forget it" ] && [ "$("$BIN/ewe-companion" ask "what do you remember" | js "len(r[\"rows\"] or [])")" = "1" ]' \
+      "forget everything → asks first (a button), forgets nothing yet" "$out"
+all=$(echo "$out" | js 'json.dumps(r["action"]["args"])')
+out=$("$BIN/ewe-companion" debug run forget "$all")
+check '[ "$(echo "$out" | field text)" = "Forgot the one thing I remembered." ]' "…its click forgets it all" "$out"
+out=$("$BIN/ewe-companion" ask "remember to call mum at 5pm")
+check '[ "$(echo "$out" | field command)" = "timer" ] && echo "$out" | grep -q "I.ll remind you at 17:00: call mum"' \
+      "remember to … at 5pm is a reminder, not a memory" "$out"
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+
+# ── the 2026-11-21 wave: knowledge beyond the pack, media, languages,
+#    settings by text. Every tool is a fake: wiki-search, man, playerctl,
+#    wl-paste, ffprobe, gst-inspect-1.0, yt-dlp, locate, ewe-ime, ewe-conf,
+#    ewe-plugin, ewe-player, ewe-files-app (tests/fakes) ──
+provider() {
+  python3 - "$1" <<'PY'
+import json, socket, os, sys
+s = socket.socket(socket.AF_UNIX); s.connect(os.environ["EWE_COMPANION_SOCK"])
+p = sys.argv[1]
+base = "" if p == "" else os.environ["MOCK_BASE"]
+s.sendall((json.dumps({"type": "cli", "verb": "settings", "args": {"provider": p, "model": "", "base_url": base}}) + "\n").encode())
+s.recv(65536)
+PY
+}
+export MOCK_BASE="http://127.0.0.1:$PORT/v1"
+provider ""
+dolog() { grep '^do ' "$W/island.log" | tail -n 1; }
+
+# what's new: the release notes of the ewe here
+out=$("$BIN/ewe-companion" ask "what's new")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^You have ewe 0.45.0-beta. What.s new in ewe 0.45:" && [ "$(echo "$out" | js "len(r[\"rows\"] or [])")" -ge 1 ]' \
+      "what's new → the notes of the ewe installed here, older releases as rows" "$out"
+out=$("$BIN/ewe-companion" ask "what's new in ewe 0.44")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^What.s new in ewe 0.44:"' "what's new in ewe 0.44 → that release's notes" "$out"
+out=$("$BIN/ewe-companion" ask "what's new in ewe 0.99")
+check 'echo "$out" | grep -q "no notes for ewe 0.99 yet"' "a release newer than the notes says so, and shows the newest" "$out"
+
+# your own notes: learn writes one, the pack finds it, Undo deletes it
+out=$("$BIN/ewe-companion" ask "Shaun, learn this: The Printer is on the 2nd floor, by the kitchen")
+NOTE="$H/Documents/Shaun/The Printer is on the 2nd floor, by the kitchen.md"
+check 'echo "$out" | field text | grep -q "^Learned" && [ -f "$H/Documents/Shaun/The Printer is on the 2nd floor.md" ] && grep -q "by the kitchen" "$H/Documents/Shaun/The Printer is on the 2nd floor.md"' \
+      "learn this: … → a note in ~/Documents/Shaun, in the user's own case" "$out $(ls "$H/Documents/Shaun" 2>&1)"
+ntok=$(tok "$out")
+out=$("$BIN/ewe-companion" ask "where is the printer")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^From your notes (The Printer is on the 2nd floor.md):" && [ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Open the note" ]' \
+      "no provider: a note answers its own words, offline, with Open the note" "$out"
+out=$("$BIN/ewe-companion" ask "show my notes")
+check '[ "$(echo "$out" | js "r[\"rows\"][0][\"title\"]")" = "The Printer is on the 2nd floor.md" ]' "show my notes → rows" "$out"
+out=$("$BIN/ewe-companion" debug undo "$ntok")
+check '[ "$(echo "$out" | field text)" = "Deleted the note" ] && [ ! -e "$H/Documents/Shaun/The Printer is on the 2nd floor.md" ]' \
+      "…its Undo deletes the note" "$out"
+out=$("$BIN/ewe-companion" ask "learn this: my bank pin is 4321")
+check '[ "$(echo "$out" | field kind)" = "error" ] && ! grep -rqs 4321 "$H/Documents/Shaun"' "a PIN is never written to a note" "$out"
+
+# the ArchWiki on this computer (a fake wiki-search: three pages)
+out=$("$BIN/ewe-companion" ask "wiki bluetooth headset not silent")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^From the ArchWiki, Bluetooth headset → Troubleshooting:" && [ "$(echo "$out" | js "r[\"action\"][\"args\"][\"url\"]")" = "https://wiki.archlinux.org/title/Bluetooth_headset#Troubleshooting" ]' \
+      "wiki … → the page and the section that fits, with Open the page" "$out"
+check 'tail -n 2 "$W/fakes/wiki.log" | head -n 1 | grep -q "\"wiki_width\": \"200\""' "…asked with wiki_width set (no dialog menu)" "$(tail -n 2 "$W/fakes/wiki.log")"
+out=$("$BIN/ewe-companion" ask "how do I set up pipewire")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^From the ArchWiki, PipeWire"' \
+      "no provider: a question that is a wiki page's title gets the page" "$out"
+out=$("$BIN/ewe-companion" ask "wiki zzqx unknown")
+check 'echo "$out" | grep -q "The ArchWiki on this computer has nothing on zzqx unknown"' "a wiki miss says so" "$out"
+
+# manual pages (a fake man: rsync only)
+out=$("$BIN/ewe-companion" ask "man rsync exclude")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^rsync, from its manual:" && echo "$out" | js "r[\"text\"]" | grep -q -- "--exclude=PATTERN" && [ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "man rsync" ]' \
+      "man rsync exclude → the part that fits, and the whole manual one click away" "$out"
+check 'grep -q "\"pager\": \"cat\"" "$W/fakes/man.log"' "…read with MANPAGER=cat" "$(cat "$W/fakes/man.log")"
+printf '#!/bin/sh\n' >"$W/bin/rsync" && chmod +x "$W/bin/rsync"
+out=$("$BIN/ewe-companion" ask "how do I use rsync to exclude a folder")
+check 'echo "$out" | js "r[\"text\"]" | grep -q "^rsync, from its manual:"' "no provider: how do I use rsync → its manual" "$out"
+
+# music from the library, a link, what is playing (a fake playerctl)
+mkdir -p "$H/Music/Miles Davis/Kind of Blue" "$H/Music/Massive Attack"
+touch "$H/Music/Miles Davis/Kind of Blue/So What.flac" "$H/Music/Miles Davis/Kind of Blue/Blue in Green.flac" \
+      "$H/Music/Massive Attack/Teardrop.mp3"
+out=$("$BIN/ewe-companion" ask "play miles davis from my music")
+check '[ "$(echo "$out" | js "len(r[\"rows\"])")" = "2" ] && echo "$out" | js "r[\"text\"]" | grep -q "^Playing 2 songs for miles davis in ewe Player"' \
+      "play … from my music → the library's songs as rows" "$out"
+check 'dolog | grep -q "^do app .*ewe-player.*So What.flac" && dolog | grep -q "Blue in Green.flac"' \
+      "…started by the island: ewe Player with the two paths (do app)" "$(dolog)"
+out=$("$BIN/ewe-companion" ask "play my polka")
+check '[ "$(echo "$out" | field command)" = "play_music" ] || [ "$(echo "$out" | field kind)" != "done" ]' \
+      "nothing in the library → not a done (the browser or the question takes it)" "$out"
+out=$("$BIN/ewe-companion" ask "play https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+check '[ "$(echo "$out" | field text)" = "Playing the YouTube link in ewe Player" ] && dolog | grep -q "watch?v=dQw4w9WgXcQ"' \
+      "play <a YouTube link> → ewe Player, the link's case kept" "$out $(dolog)"
+printf 'https://www.twitch.tv/videos/2210000000' >"$W/fakes/clipboard.txt"
+out=$("$BIN/ewe-companion" ask "play this link")
+check '[ "$(echo "$out" | field text)" = "Playing the Twitch link in ewe Player" ] && grep -q "\"wayland\": \"wayland-test\"" "$W/fakes/wl-paste.log"' \
+      "play this link → the copied link, read on the island's display" "$out"
+before=$(grep -c "^do app" "$W/island.log")
+out=$("$BIN/ewe-companion" ask "play https://vimeo.com/76979871")
+check 'echo "$out" | grep -q "This Vimeo video is locked" && [ "$(grep -c "^do app" "$W/island.log")" = "$before" ] && [ "$(echo "$out" | js "r[\"action\"][\"command\"]")" = "open_url" ]' \
+      "a Vimeo link is said to be locked (DRM or a sign-in), never handed to ewe Player" "$out"
+out=$("$BIN/ewe-companion" ask "what's playing")
+check '[ "$(echo "$out" | field text)" = "Playing: So What — Miles Davis (ewe Player)" ] && [ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Pause" ]' \
+      "what's playing → ewe Player's track (WebKit's own player skipped), with Pause" "$out"
+
+# why won't this play (fake ffprobe, gst-inspect-1.0 and yt-dlp)
+mkdir -p "$H/Videos" && touch "$H/Videos/old.wmv" "$H/Videos/film.mkv"
+out=$("$BIN/ewe-companion" ask "why won't ~/Videos/old.wmv play")
+check 'echo "$out" | grep -q "Windows Media Video 9" && echo "$out" | grep -q "gst-libav" && [ "$(echo "$out" | js "r[\"action\"][\"args\"][\"page\"]")" = "search=gst-libav" ] && [ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][0][\"command\"]")" = "open_with" ]' \
+      "why won't old.wmv play → WMV named in words, gst-libav is the fix, Open with another app" "$out"
+touch "$W/fakes/gst-libav"
+out=$("$BIN/ewe-companion" ask "why won't ~/Videos/old.wmv play")
+check 'echo "$out" | grep -q "can decode all of it"' "…with gst-libav there: it can decode it, try another app" "$out"
+rm -f "$W/fakes/gst-libav"
+out=$("$BIN/ewe-companion" ask "why won't https://www.youtube.com/watch?v=x play")
+check 'echo "$out" | grep -q "This is a YouTube web page, not a video file" && [ "$(echo "$out" | js "r[\"action\"][\"command\"]")" = "play_link" ]' \
+      "a YouTube link is a web page: Play in ewe Player" "$out"
+out=$("$BIN/ewe-companion" ask "why won't https://drm.example/watch/1 play")
+check 'echo "$out" | grep -q "video is locked" && [ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Open in the browser" ]' \
+      "a page whose formats are all DRM (yt-dlp -J) is locked, not \"plays through yt-dlp\"" "$out"
+printf '%s' "$H/Videos/film.mkv" >"$W/fakes/clipboard.txt"
+out=$("$BIN/ewe-companion" ask "why won't this video play")
+check 'echo "$out" | grep -q "an MKV file with HEVC (H.265) video and DTS audio" && echo "$out" | grep -q "DTS"' \
+      "why won't this play → the file copied (MKV: HEVC + DTS, DTS needs gst-libav)" "$out"
+
+# keyboard layouts (the fake hyprctl: us and ge) and typing (a fake ewe-ime)
+out=$("$BIN/ewe-companion" ask "switch to georgian keyboard")
+check '[ "$(echo "$out" | field text)" = "Keyboard: Georgian" ] && tail -n 1 "$W/fakes/hyprctl.log" | grep -q "\"switchxkblayout\", \"all\", \"1\""' \
+      "switch to georgian keyboard → hyprctl switchxkblayout all 1" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check 'echo "$out" | field text | grep -q "^Keyboard: English" && tail -n 1 "$W/fakes/hyprctl.log" | grep -q "\"switchxkblayout\", \"all\", \"0\""' \
+      "…its Undo switches back" "$out"
+out=$("$BIN/ewe-companion" ask "russian keyboard")
+check 'echo "$out" | grep -q "Russian is not one of your keyboard layouts" && [ "$(echo "$out" | js "r[\"action\"][\"args\"][\"page\"]")" = "input" ]' \
+      "a layout that is not there → where to add it" "$out"
+out=$("$BIN/ewe-companion" ask "add japanese typing")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "ewe-ime add mozc" ]' "add japanese typing → ewe-ime add mozc, with Run" "$out"
+out=$("$BIN/ewe-companion" debug confirm "$(echo "$out" | js "r[\"confirm\"][\"token\"]")")
+check '[ "$(echo "$out" | field kind)" = "done" ] && [ -n "$(tok "$out")" ] && tail -n 1 "$W/fakes/ime.log" | grep -q "\"add\", \"mozc\""' \
+      "…the Run click adds it, and offers Undo" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check '[ "$(echo "$out" | field text)" = "Put back as it was" ] && tail -n 1 "$W/fakes/ime.log" | grep -q "\"remove\", \"mozc\""' "…Undo removes it" "$out"
+out=$("$BIN/ewe-companion" ask "add korean typing")
+check 'echo "$out" | grep -q "Opened ewe Settings → Keyboard and mouse" && dolog | grep -q "^do open .*\"page\": \"input\""' \
+      "a language not installed yet → ewe Settings → Keyboard and mouse" "$out"
+
+# settings by text: proposals with Undo, through ewe-plugin and ewe-conf
+out=$("$BIN/ewe-companion" ask "show the dock on all displays")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "ewe-plugin set ewe.dock display all" ] && ! grep -q "\"set\"" "$W/fakes/plugin.log"' \
+      "dock on all displays → the command with Run, nothing set yet" "$out"
+out=$("$BIN/ewe-companion" debug confirm "$(echo "$out" | js "r[\"confirm\"][\"token\"]")")
+check '[ "$(echo "$out" | field kind)" = "done" ] && grep -q "\"set\", \"ewe.dock\", \"display\", \"all\"" "$W/fakes/plugin.log"' "…the Run click sets it" "$out"
+out=$("$BIN/ewe-companion" debug undo "$(tok "$out")")
+check 'tail -n 1 "$W/fakes/plugin.log" | grep -q "\"set\", \"ewe.dock\", \"display\", \"primary\""' "…Undo puts primary back" "$out"
+out=$("$BIN/ewe-companion" ask "dock on primary")
+check 'echo "$out" | grep -q "already on the main display"' "…asked again: already so" "$out"
+out=$("$BIN/ewe-companion" ask "fold the bar")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "ewe-conf set desktop.bar.collapse true" ]' "fold the bar → ewe-conf set desktop.bar.collapse true" "$out"
+out=$("$BIN/ewe-companion" debug confirm "$(echo "$out" | js "r[\"confirm\"][\"token\"]")")
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+check 'grep -q "\"set\", \"desktop.bar.collapse\", \"true\"" "$W/fakes/conf.log" && tail -n 1 "$W/fakes/conf.log" | grep -q "\"set\", \"desktop.bar.collapse\", \"false\""' \
+      "…Run folds it, Undo unfolds it (only ewe-conf writes ewe.conf)" "$(cat "$W/fakes/conf.log")"
+out=$("$BIN/ewe-companion" ask "switch to dark mode")
+check '[ "$(echo "$out" | js "r[\"confirm\"][\"command\"]")" = "ewe-theme scheme apply ewe-dark" ]' "dark mode still asks first" "$out"
+out=$("$BIN/ewe-companion" debug confirm "$(echo "$out" | js "r[\"confirm\"][\"token\"]")")
+"$BIN/ewe-companion" debug undo "$(tok "$out")" >/dev/null
+check 'tail -n 1 "$W/fakes/theme.log" | grep -q "\"scheme\", \"apply\", \"ewe-light\""' "…after its Run, Undo puts back the scheme that was on" "$(tail -n 2 "$W/fakes/theme.log")"
+
+# find: plocate's answer reaches what the walk cannot (fake locate)
+DEEP="$H/x/1/2/3/4/5/6/7/8/9/10/11/12/13"
+mkdir -p "$DEEP" "$H/.cache/z" && touch "$DEEP/lease-2026.pdf" "$H/.cache/z/lease-old.pdf"
+printf '%s\n%s\n/etc/lease.pdf\n' "$DEEP/lease-2026.pdf" "$H/.cache/z/lease-old.pdf" >"$W/fakes/locate.txt"
+out=$("$BIN/ewe-companion" ask "find the pdf about the lease")
+check '[ "$(echo "$out" | js "len(r[\"rows\"])")" = "1" ] && [ "$(echo "$out" | js "r[\"rows\"][0][\"title\"]")" = "lease-2026.pdf" ] && [ "$(echo "$out" | js "r[\"rows\"][0][\"actions\"][1][\"command\"]")" = "show_file" ]' \
+      "find the pdf about the lease → plocate's deep file (not a hidden one, not outside home), Show in folder selects it" "$out"
+out=$("$BIN/ewe-companion" debug run show_file "{\"path\": \"$DEEP/lease-2026.pdf\"}")
+check 'dolog | grep -q "^do app .*ewe-files-app.*--select=$DEEP/lease-2026.pdf"' "…Show in folder: ewe Files with --select" "$(dolog)"
+
+# with a model: translate the copied text (untrusted), answers in the question's language
+provider custom
+printf 'Bonjour tout le monde' >"$W/fakes/clipboard.txt"
+out=$("$BIN/ewe-companion" ask "translate this")
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; q=b[\"messages\"][-1][\"content\"]; sys.exit(0 if \"<untrusted source=\\\"clipboard\\\"\" in q and \"Bonjour tout le monde\" in q and q.startswith(\"Translate the text below into English\") else 1)" "$MOCK_LOG"' \
+      "translate this → the copied text goes to the model as untrusted" "$(tail -c 400 "$MOCK_LOG")"
+out=$("$BIN/ewe-companion" ask "как сменить обои")
+check 'python3 -c "import json,sys; b=[json.loads(l) for l in open(sys.argv[1])][-1][\"body\"]; sys.exit(0 if \"Answer in the language the question is written in\" in b[\"messages\"][0][\"content\"] else 1)" "$MOCK_LOG"' \
+      "a model is told to answer in the question's language (the system prompt, the same every time)" ""
+check '! tail -n 1 "$MOCK_LOG" | grep -q Bonjour' "…and the next question carries none of the translated text" "$(tail -c 300 "$MOCK_LOG")"
+provider ""
+out=$("$BIN/ewe-companion" ask "translate this")
+check '[ "$(echo "$out" | field kind)" = "info" ] && echo "$out" | grep -q "Translating needs someone to answer"' "no provider: translate says what it needs" "$out"
+out=$("$BIN/ewe-companion" ask "как сменить обои")
+check 'echo "$out" | grep -q "Without a model I answer in English only"' "no provider: a question in Russian is told why the answer would be English" "$out"
+provider custom
 
 # timers: a notification when due (a fake notify-send), cancellable, listed
 out=$("$BIN/ewe-companion" ask "set a timer for 1 second")

@@ -9,10 +9,16 @@
      and privacy.tsx, BottomBar.tsx, overlay/workspace-menu.ts,
      shared/input.ts (the page's right-click menu), SafePrompt.tsx and
      safe-menu.ts (ewe Safe's exact words). Wave 2's features (0.4) have
-     long landed, so they carry no marker. Comments never reach a model. -->
+     long landed, so they carry no marker.
+     Refreshed 2026-11-21: ewe Browser 0.8.4 (25a5e39) has Play in ewe
+     Player on videos in its Files and Home (pages/files/main.tsx,
+     pages/home/main.tsx); Play in ewe Player on a page or a link and the
+     spelling menu's Add to dictionary are ewe Browser 0.9 (ewe 0.46), from
+     the 2026-11-21 wave plan (l-browser had no commits yet).
+     Comments never reach a model. -->
 
 ## The bottom bar and workspaces in ewe Browser
-keys: browser workspace, browser workspaces, workspaces in the browser, bottom bar, workspace chips, new workspace, rename workspace, move tab to workspace, switch workspace in the browser
+keys: browser workspace, workspaces in the browser, bottom bar, workspace chips, new workspace, rename workspace, move tab to workspace, switch workspace in the browser
 ewe Browser keeps tabs in workspaces, shown as chips at the left of the bar along its bottom: click one to switch, double-click to rename, right-click for Rename, a colour, Move tabs here and Remove workspace (which closes its tabs; Undo, in the note that shows, brings it back). "+" makes "Workspace N" and opens it on Home. Drag a tab onto a chip to move it, or right-click the tab → Move to workspace. The right of the bar has Bookmarks, Downloads, History, Music, Files and Settings.
 
 Keys: Alt+Shift+1…9 jumps to a workspace (9 is the last), Ctrl+Alt+Right and Ctrl+Alt+Left (or Alt+Shift+Right and Left, or Ctrl+Shift+Page Down and Page Up) go to the next and previous one, Alt+Shift+N makes a new one, Alt+Shift+R renames it, and Ctrl+Alt+Shift+Right or Left moves the tab to the next or previous one. A four-finger swipe on the touchpad switches them while ewe Browser is in front.
@@ -38,7 +44,7 @@ keys: browser bookmarks, my bookmarks, bookmark this page, add bookmark, browser
 Ctrl+D bookmarks the page, Ctrl+Shift+B opens the Bookmarks sidebar and Ctrl+J the Downloads one; the palette finds bookmarks with `b:`. Ask me: "bookmark this page" (with Undo), "find recipes in my bookmarks", "what did I download" (each with Open and Show in folder), "open the browser's settings" (or its history, music, files or home).
 
 ## Shortcuts in ewe Browser
-keys: browser shortcuts, browser shortcut, browser keys, ewe browser shortcuts, browser keyboard shortcuts, shortcuts in the browser
+keys: browser shortcuts, browser keys, ewe browser shortcuts, browser keyboard shortcuts, shortcuts in the browser
 Settings → Shortcuts changes any of them (Edit, then the new keys; Backspace puts the default back). Address bar Ctrl+L, palette Ctrl+K (`t:` tabs, `b:` bookmarks, `w:` the web), Home Alt+Home, back Alt+Left, forward Alt+Right, reload Ctrl+R or F5 (Ctrl+Shift+R skips the cache), bookmark Ctrl+D, Files Ctrl+Shift+E, fill a password Ctrl+Shift+L, Bookmarks, Downloads and History sidebars Ctrl+Shift+B, Ctrl+J and Ctrl+H, the History page Ctrl+Shift+H, hide the tab rail Ctrl+Shift+S, new window Ctrl+N, close it Ctrl+Shift+W, zoom Ctrl+= Ctrl+- Ctrl+0, full screen F11, developer tools F12, quit Ctrl+Shift+Q.
 
 Find in page Ctrl+F, Settings Ctrl+,, print Ctrl+P, page source Ctrl+U, mute the tab Ctrl+M, pin it Alt+Shift+P, duplicate it Alt+Shift+D, copy its address Alt+Shift+C, search your tabs Ctrl+Shift+A, Music Alt+Shift+M, Home also Alt+Shift+H.
@@ -55,8 +61,11 @@ Swipe two fingers to the right on the touchpad to go back and to the left to go 
 keys: right click in the browser, right-click menu, context menu, open link in new tab, save image, copy image, inspect element, open link in new workspace
 Right-click on a page: a link opens in a new tab, a new workspace or a new window, or is copied or saved; an image opens, saves or copies; a video or song plays, pauses, mutes, loops or saves; selected text copies or is searched on the web; in a text field you get spelling suggestions, undo, cut, copy, paste and Paste as plain text, and in a login field Fill from ewe Safe (Use a strong password in a new-password field). Anywhere: Back, Forward, Reload, Bookmark this page, Save page, Print…, View page source and Inspect.
 
+From ewe 0.46 (ewe Browser 0.9), a video page, a video or a link to one (YouTube and the like) also offers Play in ewe Player, and a misspelt word offers its suggestions, Add to dictionary and Ignore. The spelling languages come from ewe Settings → Language → Spell checking; ewe Browser's own switch is in its Settings → Browsing → Spelling. Georgian and a few other languages are not checked in ewe Browser: it has no dictionary for them.
+<!-- checked 2026-11-21 against ewe-browser .wt/l-browser (staged): packages/shared/src/input.ts (Play in ewe Player, Add to dictionary, Ignore), main/spelling.ts (Chromium's dictionaries; Georgian unsupported), pages/settings/main.tsx (Browsing → Spelling). -->
+
 ## Privacy and security in ewe Browser
-keys: secure dns, dns over https, https only, https-only, site permissions, camera permission, microphone permission, notification permission, third party cookies, global privacy control, gpc, privacy settings
+keys: secure dns, dns over https, https only, site permissions, camera permission, microphone permission, notification permission, third party cookies, global privacy control, gpc, privacy settings
 Settings → Privacy and security. Secure DNS: Off (the system's, the default), Automatic, or a provider (Cloudflare, Quad9, Mullvad, AdGuard, NextDNS, or your own address). HTTPS-Only turns http addresses into https and, when a site has no https, asks before going on to the http one. Third-party cookies are blocked and "Ask sites not to sell or share your data" (Global Privacy Control) is sent, both on by default.
 
 A site that wants the camera, the microphone, your location or to send notifications asks with a card at the top: Allow or Block, remembered for that site. The lock in the address bar shows whether the connection is secure, the site's permissions with switches, and Clear this site's data; Settings → Site permissions lists every site's permissions to change or forget.

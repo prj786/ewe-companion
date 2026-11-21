@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""A stand-in for gst-inspect-1.0, for the companion's tests: only
+`--exists NAME`, true for the elements listed in $EWE_FAKE_DIR/gst.txt (one
+a line), else for a box without gst-libav: VA-API H.264/HEVC, VP8/VP9, AV1,
+faad, mpg123, opus, vorbis, flac. A file gst-libav there adds every avdec_*."""
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+argv = sys.argv[1:]
+if argv[:1] != ["--exists"] or len(argv) != 2:
+    sys.exit(1)
+try:
+    have = set(open(os.path.join(D, "gst.txt")).read().split())
+except OSError:
+    have = {"vah264dec", "vah265dec", "vp8dec", "vp9dec", "dav1ddec", "faad", "mpg123audiodec",
+            "opusdec", "vorbisdec", "flacdec"}
+name = argv[1]
+if name in have or (name.startswith("avdec_") and os.path.exists(os.path.join(D, "gst-libav"))):
+    sys.exit(0)
+sys.exit(1)

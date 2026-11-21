@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""A stand-in for man, for the companion's tests (a CI runner may lack the
+pages): rsync's page, short; "No manual entry" for anything else. Logs the
+argv and MANPAGER to man.log."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "man.log"), "a") as f:
+    f.write(json.dumps({"argv": argv, "pager": os.environ.get("MANPAGER")}) + "\n")
+if argv[-1:] == ["rsync"]:
+    print("""RSYNC(1)                    User Commands                    RSYNC(1)
+
+NAME
+       rsync - a fast, versatile, remote (and local) file-copying tool
+
+SYNOPSIS
+       Local:
+           rsync [OPTION...] SRC... [DEST]
+
+DESCRIPTION
+       Rsync is a fast and extraordinarily versatile file copying tool.
+
+OPTIONS
+       --exclude=PATTERN
+              exclude files matching PATTERN
+
+       --delete
+              delete extraneous files from dest dirs
+""")
+    sys.exit(0)
+print("No manual entry for %s" % (argv[-1] if argv else ""), file=sys.stderr)
+sys.exit(16)

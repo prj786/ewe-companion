@@ -7,7 +7,16 @@
      0.13), the shell's QuickSettings.qml and Overview.qml (ewe 0.39.0-beta,
      origin/main db58e95), ewe Browser 0.8 (BottomBar.tsx, models.ts);
      re-checked 2026-11-01 after the UI revamp. The command-line tools are
-     in cli.md. -->
+     in cli.md.
+     Refreshed 2026-11-21 against ewe 0.45.0-beta (e19bfbb: QuickSettings.qml
+     has no Screenshot button since 0.45 and a Game mode tile since 0.42;
+     packages/common.list; hyprland.lua fileManager = ewe-files-app),
+     ewe Settings 0.25 (fa5f91a; src-tauri/src/lib.rs takes --page since
+     0.24), Komble 0.23.1 (curated.js "Popular"), ewe Browser 0.8.4 and
+     ewe apps 0.1.1 (f88522d: AGENTS.md, docs/PLAN.md, packaging/*.desktop,
+     the apps' menus), and the website's docs/apps/files-player-viewer.
+     ewe Settings' Language page comes from the 2026-11-21 wave plan
+     (l2-settings, uncommitted). -->
 
 ## What is ewe
 keys: what is ewe, about ewe, ewe os, this os, operating system, desktop, version, arch, hyprland, quickshell
@@ -16,22 +25,25 @@ ewe is an Arch Linux desktop: Hyprland draws the windows and ewe's own shell dra
 ## The ewe Settings app
 keys: settings, settings app, ewe-settings, preferences, control panel, system settings, configure
 open: settings
-ewe Settings (Super+,) holds every desktop setting, in four groups. Look: Appearance, Wallpaper, Animations, Accessibility. Desktop: Layout, Window rules, Displays, Startup apps, Keyboard shortcuts. Devices: Network, Bluetooth, Keyboard and mouse, Power, Screensaver. System: Default apps, Time and place, User, About this computer. "Find a setting" at the top of the list (Ctrl+F) searches every page and row, and opens the one you pick. Up and Down move between pages and Ctrl+1…9 jumps to the first nine. Restart the shell is in About this computer (your windows stay open). Plugin settings are not here: click the plugin in Komble → Plugins. Your account, sign-in and backups are in ewe Sync.
+ewe Settings (Super+,) holds every desktop setting, in four groups. Look: Appearance, Wallpaper, Animations, Accessibility. Desktop: Layout, Window rules, Displays, Startup apps, Keyboard shortcuts. Devices: Network, Bluetooth, Keyboard and mouse, Power, Screensaver. System: Default apps, Time and place, Language (from ewe 0.46), User, About this computer. "Find a setting" at the top of the list (Ctrl+F) searches every page and row, and opens the one you pick. Up and Down move between pages and Ctrl+1…9 jumps to the first nine. Restart the shell is in About this computer (your windows stay open). Plugin settings are not here: click the plugin in Komble → Plugins. Your account, sign-in and backups are in ewe Sync.
+
+From a terminal, `ewe-settings --page=wallpaper` opens ewe Settings on that page (since ewe Settings 0.24; an open window goes there too). The page names: appearance, wallpaper, animations, accessibility, layout, windowrules, displays, startup, shortcuts, network, bluetooth, input (Keyboard and mouse), power, saver (Screensaver), defaults (Default apps), time (Time and place), language (Language, from ewe 0.46), user and system (About this computer).
+<!-- "Language (from ewe 0.46)": checked against ewe-settings .wt/l-settings 6f0fb9e (pages.js, id "language"). -->
 
 ## Komble, the app store
 keys: komble, app store, store, software center, apps, discover, for you, installed apps, aur
 open: komble
-Komble installs apps and keeps the system up to date. Its list has three groups. Get apps: Discover searches the Arch repositories, the AUR and AppImages, For you lists apps your other computers have, and AUR builds community packages after you read their PKGBUILD. Your apps: Installed shows what Komble put here, and Updates installs updates (Update all). Desktop: Plugins adds parts of ewe. Settings, at the foot, holds Komble's own options. AUR builds run as you, never as root.
+Komble installs apps and keeps the system up to date. Its list has three groups. Get apps: Discover searches the Arch repositories, the AUR and AppImages (before you type, its Popular lists well-known apps by kind: Browsers, Communication, Media, Games …), For you lists apps your other computers have, and AUR builds community packages after you read their PKGBUILD. Your apps: Installed shows what Komble put here, and Updates installs updates (Update all). Desktop: Plugins adds parts of ewe. Settings, at the foot, holds Komble's own options. AUR builds run as you, never as root.
 
 ## ewe Sync, your account
-keys: ewe-sync, ewe sync, account, nextcloud account, machines, my computers, folders, folder sync, sync app, needs you
+keys: ewe-sync, account, nextcloud account, machines, my computers, folders, folder sync, sync app, needs you
 open: sync
 ewe Sync is the account app, and the only thing in ewe that syncs. Overview: what your account keeps and whether it is up to date, with "Needs you" at the top when something waits for you (a file changed in two places, settings from another computer). Folders: folders to keep in sync; each has one ⋯ menu (Open folder, Sync now, Pause on this computer, Change…, Stop syncing…). Settings & apps: Sync now, Auto-sync and Restore…. Computers: every computer signed in to your account. Account: sign in to your Nextcloud, your storage, sign out. Mail: any IMAP mailbox. Google: optional, with your own OAuth client file. It has no tray icon: the bar shows the account's state (syncing, a conflict, offline), and a click opens ewe Sync.
 
 ## Quick settings
 keys: quick settings, control center, control centre, quick panel, clock pill, status pill, toggles, tiles, quick settings tabs, quick settings pages
 open: quicksettings
-Quick settings (Super+N, or click the pill with the clock at the right of the bar) is one page, top to bottom. The header: your picture, name and today's date (a click opens ewe Sync), then Screenshot (with the Screenshot plugin), Settings, Lock and Power. Tiles: Wi-Fi (Network while a cable is in), Bluetooth, Do not disturb, Sharing and the plugins' tiles (VPN, Cast, ewe Safe …); a click switches one, its arrow opens its page. A row of small shortcuts: Calendar, then the plugins' pages (SSH, Mobile, Mail). Volume (its arrow opens the sound outputs) and brightness. The newest notifications, with Show all. At the foot, the battery and the power mode. Scrolling on the pill changes the volume.
+Quick settings (Super+N, or click the pill with the clock at the right of the bar) is one page, top to bottom. The header: your picture, name and today's date (a click opens ewe Sync), then Settings, Lock and Power (screenshots are the bar's camera and the Print key, since ewe 0.45). Tiles: Wi-Fi (Network while a cable is in), Bluetooth, Do not disturb, Game mode, Sharing and the plugins' tiles (VPN, Cast, ewe Safe, Insomnia …); a click switches one, its arrow opens its page. A row of small shortcuts: Calendar, then the plugins' pages (SSH, Mobile, Mail). Volume (its arrow opens the sound outputs) and brightness. The newest notifications, with Show all. At the foot, the battery and the power mode. Scrolling on the pill changes the volume.
 
 Pages open in place of the home page; Esc goes back one page, then closes Quick settings. Power opens a page with Suspend, Sign out, Restart and Shut down. There is no row of tabs down the side any more (it went in ewe 0.39), and the System monitor is not in Quick settings: it is in the top bar.
 
@@ -45,26 +57,53 @@ keys: launcher, app launcher, start menu, run app, open app, app menu, search ap
 Super+D opens the launcher, which fuzzy-searches apps and files; press it again to close. Clicking an app that is already open jumps to its window, and a middle click starts a fresh copy. Terminal apps open in kitty.
 
 ## The everyday apps
-keys: terminal, kitty, file manager, files, nemo, text editor, editor, zed, image viewer, pdf, video player, mpv, archive, zip, browser
-ewe comes with kitty (terminal, Super+Return), Nemo (files, Super+E), Zed (text editor), imv (pictures), Zathura (PDFs), mpv (video), Engrampa (archives) and Galculator (calculator). Super+B opens the browser chosen in ewe Settings → Default apps, else ewe Browser.
+keys: everyday apps, apps that come with, terminal, kitty, text editor, editor, zed, galculator, camera app, nemo, mpv, zathura, imv, engrampa
+ewe comes with kitty (the terminal: Super+Return or Ctrl+Alt+T), ewe Files (files and archives, Super+E), ewe Player (video and music), ewe Viewer (PDFs, books, pictures, documents), Zed (text editor), ewe Browser (Super+B), Galculator (calculator), guvcview (camera) and MATE System Monitor (the task manager). ewe Settings → Default apps decides which app opens each kind of file, and Super+B opens the browser chosen there.
+
+ewe's own Files, Player and Viewer replaced Nemo, Engrampa, imv, Zathura and mpv in ewe 0.44. After that update ewe made them the default once for anything that still opened in the old apps; your own choices stayed. The old apps stay installed until you remove them: `sudo pacman -Rns nemo engrampa imv zathura zathura-pdf-mupdf mpv-mpris mpv-uosc-git` (mpv itself stays: video wallpapers use it). Komble installs anything else, VLC or LibreOffice say.
+
+## ewe Files
+keys: ewe-files-app, ewe files, file manager, file explorer, files app, archive, zip, unzip, extract, compress, rar, split view, quick look, usb drive, eject, connect to server, smb, sftp
+open: files
+ewe Files is ewe's file manager: Super+E, the launcher, or `ewe-files-app` in a terminal (it replaced Nemo in ewe 0.44). Ctrl+T opens a tab, F3 shows two folders side by side, Ctrl+N a new window; Space shows a quick look and F9 keeps a preview pane open. Big copies show their progress, speed and time left, with pause and cancel; when a name is taken you choose Replace, Skip or Keep both, and Ctrl+Z undoes a move, a rename or a Move to Trash. The places on the left hold your folders, synced folders, USB drives, SD cards and phones (eject them there), and Connect to server… opens SMB, SFTP, FTP and WebDAV shares.
+
+Right-click a file for Open with… (and make that app the default for the kind), Compress… (zip, tar.gz, tar.zst or 7z), Extract here or Extract to… (zip, tar, 7z and RAR), Set as wallpaper, Open in Terminal, Copy path and Properties (Alt+Enter, with the permissions). Ctrl+F filters the folder as you type and Ctrl+Shift+F searches inside it or everywhere. Ctrl+H shows hidden files, F2 renames (several files at once too), Delete moves to the Trash and Shift+Delete deletes for good. A synced folder shows its sync state, and Keep in your account… adds a folder to ewe Sync.
+
+## ewe Player
+keys: ewe-player, video player, media player, music player, movie player, play a video, watch a video, play music, mini player, open url
+ewe Player plays video and music: open a file from ewe Files, drop it on the window, press Ctrl+O, or run `ewe-player <file or link>` (it replaced mpv in ewe 0.44). Ctrl+L (Open URL…) plays a web address. Space or K plays and pauses, Left and Right skip 5 seconds, J and L 10, Up and Down change the volume (up to 150 %), M mutes, F is full screen, C turns subtitles on and off, [ and ] change the speed, N and P go to the next and previous one, and S saves the frame to ~/Pictures/Screenshots. It remembers where you stopped, has a small player that stays on top, and plays the other videos of the folder next.
+
+Music: switch the top from Video to Music for your Music folder as Albums, Artists and Songs, with search, a queue, shuffle, repeat, Playlists (.m3u) and Now playing. The keyboard's media keys, the dock and the Music plugin control it. Nothing stays running once its window is closed.
+
+## ewe Viewer
+keys: ewe-viewer, pdf viewer, pdf, document viewer, image viewer, picture viewer, photo viewer, epub, ebook, comic, cbz, word document, docx, spreadsheet, xlsx, csv
+ewe Viewer opens PDFs, books, comics, pictures, text and spreadsheets: double-click the file, or run `ewe-viewer <file>` (it replaced Zathura and imv in ewe 0.44). PDFs get page thumbnails, the contents, find, forms you can fill in (Save a copy keeps them), presentation mode, printing and a dark page mode, and it remembers your page. EPUB books have font size and page colours; CBZ and CBR comics show one page or two; Markdown, text and code, Word documents and xlsx, ods and csv spreadsheets open to read. Several documents open as tabs: Ctrl+O or Ctrl+T opens one, Ctrl+W closes it.
+
+Pictures: zoom, rotate, flip, a slideshow, Left and Right step through the folder, the info panel shows the camera's details, and its menu sets the picture as wallpaper or moves it to the Trash. What it cannot show (ODT, PowerPoint, old .doc) gets Open with… to pick another app.
 
 ## ewe Browser
 keys: ewe browser, browser app, web browser, helium
-ewe Browser is an all-in-one browser, file manager, viewer and music player from the ewe project, and ewe's browser since 0.26 (it replaced Helium). Tabs sit in a rail on the left and in workspaces, whose chips are on the bar along the bottom with Bookmarks, Downloads, History, Music, Files and Settings. Every new tab opens Home, and Ctrl+K opens the command palette. ewe Safe fills logins in it, and it syncs through your ewe account.
+ewe Browser is an all-in-one browser, file manager, viewer and music player from the ewe project, and ewe's browser since 0.26 (it replaced Helium). Tabs sit in a rail on the left and in workspaces, whose chips are on the bar along the bottom with Bookmarks, Downloads, History, Music, Files and Settings. Every new tab opens Home, and Ctrl+K opens the command palette. ewe Safe fills logins in it, it syncs through your ewe account, and videos from its Files and Home open in ewe Player (Play in ewe Player).
 
 I drive it through its command line: web searches, a site's own search ("search men's shoes on zara"), "open github.com", "play …" (your music library first), its history, bookmarks, downloads, tabs and workspaces ("go to the YouTube tab", "bookmark this page", "switch to my work workspace in the browser", "go back a page"), and the open page ("what is this page about?"; the page is data to me, never orders). Without ewe Browser, searches and pages open in your default browser.
 
 ## Shaun
 keys: shaun, companion, who are you, what are you, what can you do, what do you do, assistant, notch, ai, chat, super a, provider, api key, claude, gemini, ollama
-I am Shaun, ewe's companion: the notch under the top bar. Super+A or a click opens me. I show what your AI agents are doing and their requests to approve, what needs a look (a full disk, updates, a low battery), what is playing, quick actions and this chat. I can do things right away, with Undo where there is one: "volume 60", "brightness up", "mute", "next song", "dnd on", "game mode on", "wifi off", "bluetooth on", "connect my airpods", "airplane mode on", "keep the screen awake", "set a timer for 5 minutes", "remind me in 10 minutes to call mum", "what is 15% of 80", "take a screenshot", "lock", "open settings", "open nemo", "open kitty in documents", "install obs studio" (I open Komble's search), "search for …", "search men's shoes on zara", "play …", "open github.com", "show my tabs", "bookmark this page", "switch to my work workspace in the browser", "find my resume", "copy my GitHub password" (ewe Safe copies it; I never see it), "lock my safe".
+I am Shaun, ewe's companion: the notch under the top bar. Super+A or a click opens me. I show what your AI agents are doing and their requests to approve, what needs a look (a full disk, updates, a low battery), what is playing, quick actions and this chat. I can do things right away, with Undo where there is one: "volume 60", "brightness up", "mute", "next song", "dnd on", "game mode on", "wifi off", "bluetooth on", "connect my airpods", "airplane mode on", "keep the screen awake", "set a timer for 5 minutes", "remind me in 10 minutes to call mum", "what is 15% of 80", "convert 10 km to miles", "what time is it in tokyo", "how many days until christmas", "how much battery do i have", "what's using my cpu", "why is my laptop slow", "am i online", "switch to workspace 3", "make this window fullscreen", "remember that my dentist is on friday", "take a screenshot", "lock", "open settings", "open ewe files", "open kitty in documents", "install obs studio" (I open Komble's search), "search for …", "search men's shoes on zara", "play …", "open github.com", "show my tabs", "bookmark this page", "switch to my work workspace in the browser", "find my resume", "copy my GitHub password" (ewe Safe copies it; I never see it), "lock my safe".
 
-What changes the system I only offer: "dark mode", "suspend", "restart", "shut down", "log out" and "empty the trash" show the exact command with Run, and so does any shell command that does what you ask; type "$ " and a command to run your own the same way. Nothing runs until you press Run or In terminal.
+Since ewe 0.47 also: "play jazz from my music", "play this link", "what's playing", "why won't this video play", "georgian keyboard", "find the pdf about the lease", "what's new", "learn this: …" (a note of yours I then know), "wiki bluetooth headset" (the ArchWiki, on this computer), "man rsync", and with a model "translate this". Ask in your own language and whoever answers replies in it.
+
+What changes the system I only offer: "dark mode", "show the dock on all displays", "fold the bar", "add japanese typing", "suspend", "restart", "shut down", "log out", "empty the trash" and "force quit firefox" show the exact command with Run, "close firefox" shows a Close button, and so does any shell command that does what you ask; type "$ " and a command to run your own the same way. Nothing runs until you press Run or In terminal.
 
 For other questions, choose who answers in Komble → Plugins → Shaun (click it) → Who answers questions: your Claude Code, Codex or OpenCode login, an API key (Anthropic, OpenAI, Gemini, OpenRouter; the key goes to the keyring), a model on this computer (Ollama, LM Studio), or any OpenAI-compatible server (custom, with its address). Without one I still answer from what I know about ewe. I am optional: the Shaun plugin and the ewe-companion package.
 
+## What I remember
+keys: what do you remember, what do you know about me, remember that, remember things, forget what you remember, forget everything, forget about
+Say "remember that my dentist is on friday" (or "remember: …", "remember I like dark mode") and I keep it, in your words, with the day you said it; whoever answers your questions sees it too, so answers can use it. "What do you remember" lists them with Forget, "forget about my dentist" forgets one (Undo puts it back), and "forget everything" asks first. I keep 100 at most, on this computer only. A password, a PIN, a code, a key or a card number I refuse: ewe Safe is the place for those. With a time, "remember to call mum at 5pm" is a reminder.
+
 ## Game mode
-keys: game mode, gaming, games, gamemode, steam, performance mode, fps, ultra, lag, slow game
-Game mode is in Quick settings (the Game mode tile), in ewe Settings → Power → Gaming, and here: say "game mode on" or press the gamepad in my quick actions. It also turns on by itself while a Steam game, gamescope, or a game that asks GameMode runs (ewe Settings → Power → Gaming → Turn on while a game runs). Balanced keeps banners in the notification list, turns off window animations, blur and shadows, and holds GameMode's CPU boost. Ultra, the default, also sets the Performance power profile (on a laptop that gives an integrated GPU more power), sends a fullscreen game straight to the display, closes ewe Sync and ewe Browser's background process, hides desktop widgets and freezes a video wallpaper. "game mode off" puts everything back. In a terminal: ewe-game on, ewe-game off, ewe-game status. Steam and other games install from Komble.
+keys: game mode, ewe-game, gaming, games, gamemode, steam, performance mode, fps, ultra, lag, slow game
+Game mode is in Quick settings (the Game mode tile), in ewe Settings → Power → Gaming (Game mode, Game mode level, Turn on while a game runs, Close background apps), and here: say "game mode on" or press the gamepad in my quick actions. It also turns on by itself while a Steam game, gamescope, or a game that asks GameMode runs (ewe Settings → Power → Gaming → Turn on while a game runs). Balanced keeps banners in the notification list, turns off window animations, blur and shadows, and holds GameMode's CPU boost. Ultra, the default, also sets the Performance power profile (on a laptop that gives an integrated GPU more power), sends a fullscreen game straight to the display, closes ewe Sync and ewe Browser's background process, hides desktop widgets and freezes a video wallpaper. "game mode off" puts everything back. In a terminal: ewe-game on, ewe-game off, ewe-game status. Steam and other games install from Komble.
 
 ## Welcome, the first-login guide
 keys: welcome, first login, setup, first run, onboarding, tour, getting started

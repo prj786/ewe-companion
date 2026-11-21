@@ -8,8 +8,8 @@ you when a session finishes.
 
 It also has a small chat: ask a question, or say "volume 60", "brightness
 up", "game mode on", "open wifi" or "search for …". It opens any installed
-app ("open nemo", "open the browser") and opens apps in a folder ("open
-kitty in documents", "open documents in nemo", "open zed in ewe-companion").
+app ("open ewe files", "open the browser") and opens apps in a folder ("open
+kitty in documents", "open documents in ewe files", "open zed in ewe-companion").
 Plain commands work with no AI.
 
 It works with ewe Safe and ewe Browser, and finds your files:
@@ -68,11 +68,74 @@ It works with ewe Safe and ewe Browser, and finds your files:
   timers", "cancel the timer"; a notification when it is due, kept in
   `companion.db` so it survives a restart. "What is 15% of 80", "80 + 15%",
   "12 x 7" are worked out offline.
+- **The clock, dates and units** (0.3): "what time is it", "what's the
+  date", "what time is it in tokyo", "how many days until christmas",
+  "what day is 25 december", "the date in 30 days", "convert 10 km to
+  miles", "20 c in f", "5 gb in mb", "sqrt 144". No currencies: those need
+  the network.
+- **This computer** (0.3): "how much battery do I have", "how much ram is
+  free", "what's using my cpu" (the programs as rows, each with **Quit**,
+  which only offers the command with Run), "how long has my computer been
+  on", "am I online", "what's my ip" (the local addresses; it never asks a
+  website for your public one), "how much disk space is left", "what's
+  eating my disk" (the package cache, caches, the trash, Downloads, the
+  journal), "why is my laptop slow" (all of it at once). Programs are named
+  by their process name; the desktop's own (Hyprland, the shell, PipeWire)
+  never get a Quit.
+- **Windows and workspaces** (0.3): "switch to workspace 3", "next
+  workspace", "move this window to workspace 2", "make this window
+  fullscreen", "maximise", "float this window", "minimise this window",
+  each with Undo. "Close this window" and "quit firefox" show a **Close**
+  button first; "firefox is frozen" offers `pkill` with Run.
+- **What you tell it to remember** (0.3): "remember that my dentist is on
+  friday", "what do you remember", "forget about my dentist" (Undo puts it
+  back), "forget everything" (asks first). Kept on this computer, 100 at
+  most, and given to whoever answers your questions so answers can use
+  them. Anything that looks like a password, a PIN, a code, a key or a card
+  number is refused, and its words stay out of the conversation too.
+- **Two things at once** (0.3): "dnd on and set a timer for 25 minutes",
+  "mute, then lock the screen": up to three, with one Undo for all of
+  them. And small typos are forgiven: "opne firefox", "volme 50".
+- **Music and links in ewe Player** (0.3, ewe-apps): "play jazz from my
+  music", "play my massive attack" (your library: ewe Player's own index,
+  else ~/Music by name), "play this link" (the video or song link you
+  copied: YouTube, Twitch, news sites like the BBC and many others; not
+  Vimeo, which locks its videos), "play https://…", "what's
+  playing" (with Pause). "Play …" without "my" still asks ewe Browser.
+- **Why won't this play?** (0.3): the file or link you copied, or what
+  ewe Player has open, or "why won't ~/Videos/film.mkv play": its format
+  and codecs in words, whether this computer can decode them, and the fix
+  (gst-libav in Komble) or **Open with another app**. A YouTube link is a
+  web page: **Play in ewe Player**.
+- **Your own notes** (0.3): Markdown or text files in `~/Documents/Shaun`
+  are searched like ewe's guide, offline: "where is the printer" finds the
+  note that says so. "Learn this: …" or "remember for later: …" writes one
+  (Undo deletes it); "show my notes", "search my notes for …". Passwords,
+  PINs and card numbers are refused and never read.
+- **The ArchWiki and manuals, offline** (0.3): "wiki bluetooth headset",
+  "what does the wiki say about zram", "man rsync", "rsync --help": the
+  part that fits, with **Open the page** or the whole manual in a terminal.
+  With no AI, "how do I set up pipewire" gets the wiki's page and "how do I
+  use tar to extract" its manual (or `--help`).
+- **What's new** (0.3): "what's new", "what changed in my last update",
+  "what's new in ewe 0.44": the notes of the ewe you have, in plain words.
+- **Languages** (0.3): "switch to georgian keyboard", "russian keyboard",
+  "next layout" (your own layouts, with Undo); "add japanese typing"
+  (`ewe-ime add mozc` with Run when it is installed, else ewe Settings →
+  Keyboard and mouse); "translate this" (what you copied, with an AI).
+  Ask in your own language and an AI answers in it; without one, answers
+  are English.
+- **Files** (0.3): "find the pdf about the lease" also asks plocate, so a
+  file deep down still turns up; **Show in folder** opens ewe Files with
+  it selected.
 - **Asked first** (shown with Run, never run by the matcher): "dark mode" /
-  "switch to light mode" (`ewe-theme scheme apply …`), "suspend",
-  "restart", "shut down", "log out" (ewe's own `power.sh`, what the Power
-  button runs), "empty the trash" (`gio trash --empty`, after saying how
-  many items).
+  "switch to light mode" (`ewe-theme scheme apply …`), "show the dock on
+  all displays", "dock on primary", "turn off the dock" (`ewe-plugin set
+  ewe.dock display …`), "fold the bar" / "unfold the bar" (`ewe-conf set
+  desktop.bar.collapse …`): after Run, **Undo** puts the old value back.
+  "Suspend", "restart", "shut down", "log out" (ewe's own `power.sh`, what
+  the Power button runs), "empty the trash" (`gio trash --empty`, after
+  saying how many items).
 
 All of these work with no AI, and an AI you picked can ask for them too:
 it then hears back only "done" or a count.
@@ -97,6 +160,14 @@ login, an API key (Anthropic, OpenAI, Gemini, OpenRouter), or a local model
 (Ollama, LM Studio). They are told what the pack knows and what this
 computer is like now.
 
+Answers are quick and appear as they are written (0.3). Your Claude Code
+runs lean, without your own plugins, skills, MCP servers or settings
+(those once made "2+2" take 7.5 s), and it is started when you type the
+first letter of a question, so the answer starts in about a second. When
+the answer depends on this computer, the model looks it up first (what
+uses the CPU, what fills the disk) and answers from what it found; one
+reply can do up to three things, with one Undo.
+
 **Status: 0.2.0-beta (wave 2, 2026-10-18: a site's own search, more of the
 browser, the desktop's switches, timers, sums, every ewe command-line tool),
 P1 and P2 working, plus P2.5 (the notch, the home
@@ -114,7 +185,18 @@ Quick settings without the rail, the System monitor in the bar, Komble's
 plugin sheet, ewe Settings' four groups, ewe Sync's words, ewe Browser's
 save prompt and ewe Safe as the SSH gate. 0.2.4-beta (2026-11-08) hands
 "game mode" to ewe's own (`ewe-game`, ewe 0.42): one mode for the
-tile, ewe Settings and Shaun, with Undo.**
+tile, ewe Settings and Shaun, with Undo. 0.3.0-beta (released
+2026-11-21) is faster and wiser: Claude Code lean and started ahead of the
+question, answers that stream in, the time and this computer's state for
+the model, look-ups, up to three things at once; and new things to ask:
+the clock, dates and units, this computer's battery, memory, CPU, disk and
+network, windows and workspaces, and what you tell it to remember. Its
+knowledge 2.0 (2026-11-21, also unreleased) follows ewe to 0.47 with a test
+that fails when something ewe ships has no topic, knows what is new in each
+release, searches better, reads the ArchWiki, manuals and your own notes
+offline, and plays your music and links in ewe Player, says why something
+will not play, switches keyboard languages, translates, and moves the dock
+or folds the bar when you ask.**
 
 **Install:** `sudo pacman -S ewe-companion`, then Komble → Plugins → From
 ewe → Shaun (or `ewe-plugin install ewe.companion`). For the agent cards:
@@ -174,9 +256,11 @@ plugin.
 ## The knowledge pack
 
 `knowledge/*.md` is user-facing text about ewe, researched from the repos
-(ewe 0.29, ewe Settings 0.18, Komble 0.20, ewe Sync 0.14, ewe Browser 0.3 and
-the wave-2 contracts for 0.4, ewe Safe 0.2); `cli.md` covers every ewe
-command-line tool. A topic is a
+(checked 2026-11-21 against ewe 0.45, ewe Settings 0.25, Komble 0.23, ewe
+Sync 0.17, ewe Browser 0.8, ewe Safe 0.5, ewe apps 0.1, and the wave plan
+for ewe 0.46); `cli.md` covers every ewe command-line tool, `media.md` and
+`languages.md` this wave's formats and languages, `news.md` every release
+since 0.38. A topic is a
 `## Title`, a `keys:` line (the words people use), an optional `open:` line
 (`settings wallpaper`, `komble updates`, `quicksettings wifi`, `overview`,
 `sync`) and the text. `<!-- … -->` comments are for whoever keeps the pack
@@ -188,17 +272,24 @@ and never reach a model.
 - **It must follow ewe.** When a page, a label or a shortcut changes in ewe,
   change the pack in the same change. `cargo test` checks that every topic
   parses and that every `open:` line is a valid command.
-- **ewe Settings ignores page links today** (0.18 to 0.22 open on
-  Appearance), so answers name the page to pick. Komble and Quick settings
-  pages do open.
+- **Nothing ewe ships goes without a topic.** `knowledge/coverage.json`
+  (written by `scripts/coverage.py`) lists every Settings page, `ewe-*`
+  tool, app and built-in plugin; a unit test fails until each has one.
+- **It is searched with BM25** over each topic's keys, title and text, with
+  synonyms and typos; a key phrase said whole answers with no AI.
+- **ewe Settings opens the page** (0.24 and later), so "Open ewe Settings"
+  lands where the answer says. Komble and Quick settings pages open too.
 
-What a provider is told with each question: the primer, the topics that fit,
-and *this computer now*: the ewe and kernel versions, which ewe apps and
-plugins are here, the plugins' and your own shortcuts, the scheme, accent
-and Glass, the disks, waiting updates, battery, volume, brightness, Do not
-disturb, game mode and your agents. Never ewe.conf as a whole (its account
-and mail sections name your servers), never a key or a password. With no
-provider, nothing leaves the machine.
+What a provider is told: the primer (the same every time, so it can be
+cached), and with each question the topics that fit, what you asked it to
+remember, and *this computer now*: the date and time, the ewe and kernel
+versions, which ewe apps and plugins are here, the plugins' and your own
+shortcuts, the scheme, accent and Glass, uptime, memory in use, CPU load,
+online or not, the disks, waiting updates, battery, volume, brightness, Do
+not disturb, game mode and your agents. Never ewe.conf as a whole (its
+account and mail sections name your servers), never a key or a password,
+never a network's name or an address. With no provider, nothing leaves the
+machine.
 
 ## Honest limits
 
@@ -224,7 +315,15 @@ provider, nothing leaves the machine.
   browser, or `Super+P`.
 - **The finder is by name only.** It does not read what is inside your
   files, and it stops after 1.5 s on a very large home folder (the reply
-  says so).
+  says so); with plocate, files its walk did not reach still turn up, as of
+  plocate's last daily index.
+- **The offline answers are English.** The pack, the wiki and the manuals
+  are English; an AI you set up answers in the question's language.
+- **The ArchWiki is a snapshot** (arch-wiki-lite, refreshed with the
+  package); "Open the page" goes online unless arch-wiki-docs is installed.
+- **Playing links and HEIC photos need ewe 0.46's apps** (ewe Player with
+  yt-dlp). "Add japanese typing" needs ewe 0.46's `ewe-ime`; before that it
+  says to update.
 - **Browser history, tabs, the page and "play" from your library need ewe
   Browser's command line,** which comes after 0.1.0-beta. Until then those
   say so, and searches and pages open the old way. A site's own search,
@@ -236,6 +335,11 @@ provider, nothing leaves the machine.
   on). Bluetooth comes back on at the next boot anyway.
 - **Keeping the screen awake needs the Insomnia plugin,** and a shell
   restart turns it off (the plugin keeps no state).
+- **A quick answer from Claude Code costs memory for a while.** The
+  `claude` started ahead of your question holds about 190 MB until it
+  answers, or for 3 minutes if you never ask.
+- **Window commands speak Hyprland's Lua** (0.56 and later, as ewe ships).
+  "This window" is the last window you used before opening the notch.
 - **Timers are not alarms.** A due timer is a normal notification: Do not
   disturb hides its banner (it still lands in Quick settings →
   Notifications), and nothing rings.

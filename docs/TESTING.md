@@ -68,8 +68,16 @@ Tests that guard data, and fail when you add without finishing:
   row (the count must match);
 - `the_built_in_pack_parses`, `every_open_line_is_a_valid_command`,
   `every_run_line_is_one_the_guard_lets_through`: the knowledge pack;
-- `questions_find_their_topic`, `small_talk_finds_nothing_confident`: the
-  search, with real questions (add yours).
+- `questions_find_their_topic`, `small_talk_finds_nothing_confident`,
+  `typos_synonyms_and_names_still_find_their_topic`: the search, with real
+  questions (add yours);
+- `every_shipped_feature_has_a_topic`: each item of
+  `knowledge/coverage.json` has a topic (EXTENDING.md recipe 4 says how to
+  refresh the list).
+
+`QS="q1|q2" cargo test -p companion-core calibrate -- --ignored
+--nocapture` prints each question's three best topics with their scores
+(`CONFIDENT` is 3.0): look before you add a key.
 
 ## tests/chat.sh
 
@@ -114,18 +122,70 @@ touch the real ones:
   `insomnia.json`; a file `insomnia-gone` means no plugin), `notify-send`
   (`notify.log`), `ewe-theme` (`scheme list`; `theme.json` names the
   current scheme) and `gio` (`gio.log`: a line there means a proposal ran,
-  which a test must never do). Each logs its argv to `<name>.log`.
+  which a test must never do). Since 0.3 also `hyprctl` (monitors, clients,
+  the active window and `dispatch`, logged to `hyprctl.log`; the window's
+  pid is `$FAKE_HYPR_PID`), `ip` (`-j addr`) and `nmcli` answers
+  connectivity and devices. Each logs its argv to `<name>.log`. The
+  2026-11-21 wave adds `hyprctl -j devices` and `switchxkblayout` (layouts
+  us and ge, `kb.json`), `playerctl` (`players.json`: WebKit's own player,
+  ewe Player playing, Spotify paused), `wl-paste` (`clipboard.txt`; it logs
+  the `WAYLAND_DISPLAY` it got), `ffprobe` (streams by the file's
+  extension: .wmv, .mkv, .mp4, .flac, .mp3), `gst-inspect-1.0 --exists`
+  (`gst.txt`, a file `gst-libav` adds every `avdec_*`), `yt-dlp -J`
+  (YouTube and Twitch; every format DRM on drm.example; never the network), `wiki-search` (three pages,
+  printed like the real one), `man` (rsync's page), `locate`
+  (`locate.txt`), `ewe-ime` (Japanese installed, Chinese and Korean not),
+  `ewe-conf` (`conf.json`), `ewe-plugin` (the Dock, `dock.json`; a file
+  `dock-none` means not installed), `ewe-player` and `ewe-files-app` (they
+  only need to be on PATH: the island starts them).
+- A process called `firefox` (`python3` through a link of that name, off
+  the PATH: a copy of `sleep` fails on a multi-call coreutils) stands in
+  for an app to close or quit: `FAKE_HYPR_PID` is its pid, and the checks
+  prove it is still alive after every offer (`kill -0`). Window and
+  workspace commands must never reach the real compositor.
 - `$FAKE_BROWSER_MARK` is added to every title, name and file name the
   browser and ewe-bt fakes hold (`tests/canary.sh` sets it to the canary).
 - `tests/fake-island.py --do` answers the daemon's `do` requests: it runs
-  `browser` and `safe_unlock` with the binary the daemon names (the fakes)
-  and answers the rest ok, printing `do …` and `chat.reply …` lines.
+  `browser` and `safe_unlock` with the binary the daemon names (the fakes),
+  refuses an `app` that is not one of ewe's (as `Service.qml` does) and
+  answers the rest ok, printing `do …` and `chat.reply …` lines.
 - The daemon runs with `HOME` set to a scratch tree, so the finder's
   answers are known.
 - `debug run <command> <args-json>` stands in for a button's click (a row's
   Copy, Unlock Safe), and `debug undo <token>` for the Undo under a reply.
 - The last check stops the daemon with a reminder pending and starts it
   again: the reminder must fire from `companion.db`.
+
+## tests/brain.sh
+
+How Shaun thinks (0.3), end to end: the mock LLM (which streams as
+server-sent events when asked), a fake Claude Code (`tests/fakes/claude`:
+stream-json in and out, 1.5 s to start, a log of its argv and of how long
+each question waited), the scripted island with `--caps partial`, `--say
+TEXT` (chat.send, one answer at a time) and `--warm` (chat.warm). It
+checks:
+
+- an island that says `partial` sees the answer grow (each piece the start
+  of the answer, never an ACTION line), and one that does not gets it whole;
+- a reply of looks only runs them and asks again, with what they found
+  wrapped as untrusted;
+- a reply with several ACTION lines runs them all, with one Undo that puts
+  all of them back;
+- two plain commands in one line run offline, with one Undo; a line that is
+  one command whole stays one ("search for salt and pepper");
+- the system prompt is the same each time, and the topics, the time and
+  "this computer now" ride with the question (the history keeps the user's
+  words, not the notes);
+- Claude Code: a cold question waits for it to start, the next one does
+  not (it was started after the answer), `chat.warm` starts it before the
+  question, with the settings' model; it runs lean (no skills, MCP servers,
+  settings or hooks of the user's, `--setting-sources ""`, never `--bare`,
+  which refuses OAuth) with our relay quiet.
+
+The fake `claude` is first on the daemon's PATH or the script refuses to
+run: a test must never spend the owner's own login. `MOCK_DELAY` (seconds
+per streamed piece) slows the mock down for screenshots in the island
+harness.
 
 ## tests/canary.sh
 
@@ -142,6 +202,24 @@ nothing), and must be in no request the mock provider got, no line of the
 daemon's log at `EWE_COMPANION_LOG=debug`, and no byte of `companion.db`,
 its WAL or any table row. Run it after any change to the chat, Safe, the
 logs or the store.
+
+### The real ArchWiki, once
+
+arch-wiki-lite is not installed on the dev box (nor on CI): unpack the
+package into a scratch root and run the daemon under bwrap with it laid
+over `/usr`, never `pacman -S`:
+
+```sh
+pacman -Sp arch-wiki-lite                       # the URL; curl it into $S/pkgs
+mkdir -p $S/wikiroot && bsdtar -xf $S/pkgs/arch-wiki-lite-*.pkg.tar.zst -C $S/wikiroot
+bwrap --ro-bind / / --overlay-src /usr --overlay-src $S/wikiroot/usr --ro-overlay /usr \
+      --tmpfs /tmp --bind $S $S --dev /dev --proc /proc -- bash $S/try-wiki.sh
+```
+
+where the script starts a debug daemon on a socket in `/tmp` and asks
+"wiki bluetooth headset" and friends (2026-11-21: about 0.7 s each, the
+right pages). Without `man-db` (this box), `man_page` answers from
+`--help`.
 
 ## tests/relay-failsafe.sh
 
@@ -189,6 +267,14 @@ tests/island.sh ctl say "Download done · archlinux.iso" --level success
 tests/island.sh log | grep -i companion
 tests/island.sh down
 ```
+
+The daemon the harness starts reads the real home: before `up`, export
+`EWE_MUSIC_DIR`, `XDG_CACHE_HOME` and `EWE_COMPANION_NOTES` pointing into
+your scratchpad, or a music search lists the owner's library. Its PATH
+starts with `tests/fakes`, so ewe Player, ewe Files, ewe-plugin, ewe-conf
+and the media tools are the fakes (a Run click on "show the dock on all
+displays" writes the fake's `dock.json`, never the owner's settings); the
+fakes keep their state in `$ISLAND_WORK/fakes` across `up`s.
 
 Options for `up`: `--light` (Ewe Light), `--glass` (bar opacity 80, so the
 notch's blur shows), `--scale S` and `--mode WxH` (a hi-DPI output; bugs like

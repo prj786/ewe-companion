@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 const MIGRATIONS: &[&str] = &[
     include_str!("store/migrations/001_init.sql"),
     include_str!("store/migrations/002_timers.sql"),
+    include_str!("store/migrations/003_memory.sql"),
 ];
 
 /// A timer or a reminder waiting in the store.
@@ -29,6 +30,16 @@ pub struct Timer {
     pub reminder: bool,
     /// the user's words ("call mum"); empty for a plain timer
     pub text: String,
+}
+
+/// Something the user asked Shaun to remember (003).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Memory {
+    pub id: String,
+    /// the user's words ("my dentist is on friday")
+    pub text: String,
+    /// epoch milliseconds
+    pub created: i64,
 }
 
 /// How long events and cards are kept (PLAN §6 retention; a setting later).
@@ -268,6 +279,47 @@ impl Store {
         self.timers_where("WHERE due <= ?1", now_ms)
     }
 
+    // ── memories (003) ───────────────────────────────────────────────────
+
+    pub fn memory_add(&self, m: &Memory) -> bool {
+        self.db
+            .execute(
+                "INSERT INTO memories(id, text, created) VALUES(?1,?2,?3)",
+                params![m.id, m.text, m.created],
+            )
+            .is_ok()
+    }
+
+    pub fn memory_remove(&self, id: &str) -> bool {
+        self.db
+            .execute("DELETE FROM memories WHERE id=?1", params![id])
+            .is_ok_and(|n| n > 0)
+    }
+
+    /// Every memory, newest first.
+    pub fn memories(&self) -> Vec<Memory> {
+        let Ok(mut st) = self
+            .db
+            .prepare("SELECT id, text, created FROM memories ORDER BY created DESC, rowid DESC")
+        else {
+            return vec![];
+        };
+        st.query_map([], |r| {
+            Ok(Memory {
+                id: r.get(0)?,
+                text: r.get(1)?,
+                created: r.get(2)?,
+            })
+        })
+        .map(|rows| rows.flatten().collect())
+        .unwrap_or_default()
+    }
+
+    /// Forget them all; how many there were.
+    pub fn memory_clear(&self) -> usize {
+        self.db.execute("DELETE FROM memories", []).unwrap_or(0)
+    }
+
     pub fn count(&self, table: &str) -> i64 {
         // table names come from our own code, never from a client
         self.db
@@ -330,6 +382,30 @@ mod tests {
         assert!(s.timer_remove("t1"));
         assert!(!s.timer_remove("t1"));
         assert_eq!(s.timers().len(), 1);
+    }
+
+    #[test]
+    fn memories_are_kept_newest_first() {
+        let s = Store::memory();
+        let m = |id: &str, text: &str, created: i64| Memory {
+            id: id.into(),
+            text: text.into(),
+            created,
+        };
+        assert!(s.memory_add(&m("m1", "my dentist is on friday", 1)));
+        assert!(s.memory_add(&m("m2", "i like dark mode", 2)));
+        assert!(!s.memory_add(&m("m2", "again", 3)), "ids are unique");
+        assert_eq!(
+            s.memories()
+                .iter()
+                .map(|m| m.id.as_str())
+                .collect::<Vec<_>>(),
+            ["m2", "m1"]
+        );
+        assert!(s.memory_remove("m1"));
+        assert!(!s.memory_remove("m1"));
+        assert_eq!(s.memory_clear(), 1);
+        assert!(s.memories().is_empty());
     }
 
     #[test]

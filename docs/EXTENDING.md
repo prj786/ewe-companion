@@ -159,7 +159,11 @@ case "night_light":
 ```
 
 Close the notch first (`CompanionState.dropOpen = false`) when the action
-puts something on screen. Use the shell's public API (`Shell.launch`,
+puts something on screen. To start one of ewe's own apps with arguments
+(ewe Player with songs or a link, ewe Files with `--select=`), use
+`media::start(hub, bin, args)`: it asks the island's `app` (plugin 0.7;
+only `ewe-player`, `ewe-files-app`, `ewe-viewer`, as argv) and falls back
+to `launch` with one argument on an older island. Use the shell's public API (`Shell.launch`,
 `Shell.openSettings`, `Globals.*`; ewe's `docs/PLUGINS.md`) rather than
 reaching into the shell's internals.
 
@@ -243,9 +247,25 @@ first line of text (after it, they are just text). `keys:` is required, and
 a one-word key may not be a stop word ("help", "show", "set" …: it would
 match nearly any question); `the_built_in_pack_parses` checks both.
 
+How a question finds a topic (`Pack::search`, 0.3): BM25F over the
+topic's keys (weighted most), title and text, so the words a topic shares
+with the question count, rare words more than common ones; a question word
+the pack does not know is tried as a synonym (`SYNONYMS`) and, from six
+letters, as a typo. On top, **a key phrase said whole** in the question is
+a *confident* match on its own (`CONFIDENT`): one phrase counts once per
+topic ("monitor" and "monitors" are one), a phrase never ends inside a
+hyphenated name, and a phrase cut short by another topic's longer name that
+follows ("what is ewe" in "what is ewe sync") counts as words only. Two
+strong shared words can be confident too. Probe a question before you
+add keys: `QS="how do I play a youtube video|what is ewe player" cargo test
+-p companion-core calibrate -- --ignored --nocapture` prints the top three
+with their scores.
+
 - **`keys:`** the words people actually use, phrases first. A question that
   contains a whole key phrase is a *confident* match (score ≥
-  `CONFIDENT`, 3.0): with no provider, the topic answers by itself.
+  `CONFIDENT`, 3.0): with no provider, the topic answers by itself. A
+  one-word key is a confident match for every question with that word
+  ("folders" made "exclude a folder" ewe Sync's): prefer phrases.
 - **`open:`** (optional) an `open` command, `<what> [page]`, offered as a
   button under the answer ("Open Settings"). The test
   `every_open_line_is_a_valid_command` checks it against `validate`.
@@ -267,6 +287,55 @@ match nearly any question); `the_built_in_pack_parses` checks both.
 `crates/core/src/knowledge.rs`. `EWE_COMPANION_KNOWLEDGE` loads every `.md`
 in its folder, so a file missing from `BUILT_IN` works in the harness and
 silently disappears from the build.
+
+**Keep angle brackets out of the text** a user reads (`ewe-player <url>` is
+fine since plugin 0.7 draws answers as plain text, but an older island
+drops `<url>`): write "a link" or "`ewe-player https://…`".
+
+**The coverage test keeps the pack from going stale.**
+`knowledge/coverage.json` lists everything ewe ships that must have a
+topic: every Settings page, every `ewe-*` tool, every first-party app and
+every built-in plugin, each with the words that count as naming it
+(`terms`). `every_shipped_feature_has_a_topic` fails until some topic's
+title or keys say one of them. Refresh the list whenever ewe adds one (and
+at every release):
+
+```sh
+git -C ../../project-map show origin/main:ewe-facts.json > /tmp/facts.json   # the vault's newest
+python3 scripts/coverage.py --facts /tmp/facts.json                         # writes knowledge/coverage.json
+cargo test -p companion-core every_shipped                                   # names what still needs a topic
+```
+
+The script reads ewe-settings' `src/lib/pages.js`, ewe's `bin/`,
+`packaging/ewe-setup` and `plugins/bundle.json` (names from each
+manifest), and the vault's `cli_tools` and `repos`. A new repo stops it
+until it is in `APPS` (an app people use, with its names) or `NOT_APPS`;
+a name people say differently goes in `ALIASES`. Never edit the JSON by
+hand. `--check` exits 1 when the file is out of date.
+
+**What's new.** `knowledge/news.md` holds one topic per ewe minor release,
+newest first, titled exactly `What's new in ewe X.Y` with only version
+spellings as keys (`ewe 0.46, version 0.46, 0.46 update`): the `whats_new`
+command picks the one for the ewe installed (`/usr/share/ewe/VERSION`) and
+shows the earlier ones as rows. Write them in plain words, by hand: release
+notes are for developers. `scripts/news.sh` prints the notes of every
+release that still owes a topic, with a skeleton to fill (`--check` says
+which, as JSON); a patch release folds into its minor.
+
+**The user's own notes** (`~/Documents/Shaun`, or `$EWE_COMPANION_NOTES`)
+are parsed by `knowledge::parse_note` (a file written like the pack keeps
+its topics; any other file is one topic: its `# ` heading or file name as
+the title, the title's words as keys) and searched in the same index
+(`notes::pack`, rebuilt when a file changes). An answer from one says
+"From your notes (file):" and offers Open the note. Secret-looking
+paragraphs are left out (`memory::looks_secret`).
+
+**Beyond the pack** (looks, `daemon/lookup.rs`): the ArchWiki
+(`arch-wiki-lite`'s `wiki-search`, a dependency of the package; the parsing
+is `core/wiki.rs`) and manual pages (`man`, else `--help`). A model asks
+for them as looks; with no model, "wiki …" is a command, "how do I use
+rsync to …" reads rsync's manual before the pack answers, and a question
+whose words are a wiki page's whole title gets that page.
 
 Iterate with `EWE_COMPANION_KNOWLEDGE=<dir of .md files>` on the daemon
 (also through `tests/island.sh up`); the daemon reads the pack once, so
@@ -296,6 +365,15 @@ To change what the guard thinks (`crates/core/src/shell.rs`):
   reason in plain words ("deletes files", "runs as root").
 - **Terminal** is for what needs a person: a password (sudo), an editor, a
   pager, a prompt, something that never ends (the `TALKERS` list).
+
+**A setting changed by a proposal can offer Undo.** A run arm that reads
+the old value first sets `Outcome::propose_undo` to the command that puts
+it back (`ewe-conf set desktop.bar.collapse false`,
+`ewe-plugin set ewe.dock display primary`, `ewe-theme scheme apply <the
+scheme that was on>`); after the Run click succeeds, the reply carries an
+Undo token (`Undo::Shell`). Only the daemon writes these commands (never a
+model), and the guard checks them like the proposal. Settings go through
+ewe's tools only (rule 1): `ewe-conf`, `ewe-plugin set`, `ewe-theme`.
 
 Each rule gets a test sentence in the matching test
 (`machine_killers_are_refused`, `risky_commands_warn`, …). The guard is a
@@ -351,6 +429,28 @@ Add one line per fact, in the same `- fact` style. Read with ewe's own tools
 accounts, servers, mail or contacts, never `ewe.conf` as a whole, never a
 secret (C3). Tests: `tests/chat.sh` checks what the mock provider was sent;
 extend that check if your fact matters.
+
+Since 0.3 the snapshot rides with the question in `<notes>`
+(`persona::with_notes`), never in the system prompt: the system prompt must
+stay the same from one question to the next (a warm `claude` is keyed by it,
+and Anthropic caches it). The live part now starts with the date and time,
+uptime, memory, load and online/offline.
+
+**A fact on demand: a look.** A read too slow or too detailed for every
+question (what uses the CPU, what fills the disk) is a catalog command whose
+`Outcome` sets `facts`: model-safe text (numbers, generic program names,
+category sizes; never a file name, a window title, a network's name or an
+address, which stay in rows with a `private` line). List its name in
+`persona::LOOKS`. A reply made only of looks runs them, and the model is
+asked once more with their `facts` wrapped as untrusted; an ACTION in that
+second answer is a "Do it" button (C4). `tests/brain.sh` has the pattern
+(`how is my memory doing` → `system_info`).
+
+**An action that asks first without a shell command** (closing a window,
+"forget everything"): the outcome offers a button (`Outcome::action`)
+whose call carries a one-time token kept in the daemon (`windows.rs`,
+`memory.rs`: random, two minutes, once). The same call without a valid
+token only offers the button again, so a model can never do it by itself.
 
 ## 8. A glance row
 
@@ -460,7 +560,8 @@ machine, never synced.
   `crates/daemon/src/store/migrations/00N_<what>.sql`, appended to
   `MIGRATIONS` in `store.rs` (the example: `002_timers.sql`, the timers
   that must survive a daemon restart; `Store::timer_add` and friends, a
-  test in `store.rs`). `PRAGMA user_version` records the last one
+  test in `store.rs`; `003_memory.sql`, what the user asked Shaun to
+  remember, 100 at most). `PRAGMA user_version` records the last one
   applied. Never edit a migration that has shipped.
 - `001_init.sql` already has the tables later phases fill (notifications,
   chats, messages, memory, nudges, usage): use them before adding one.

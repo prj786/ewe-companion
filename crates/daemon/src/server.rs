@@ -69,9 +69,9 @@ pub async fn handle(hub: Arc<Hub>, stream: UnixStream) {
         return;
     };
     match proto::decode(&first) {
-        Ok(Inbound::Hello { client, pid }) => {
-            debug!(client, pid, "hello");
-            island(hub, rd, wr).await
+        Ok(Inbound::Hello { client, pid, caps }) => {
+            debug!(client, pid, ?caps, "hello");
+            island(hub, rd, wr, caps.iter().any(|c| c == "partial")).await
         }
         Ok(Inbound::Agent(msg)) => agent(hub, msg, rd, wr).await,
         Ok(Inbound::Cli { verb, args }) => {
@@ -94,13 +94,14 @@ pub async fn handle(hub: Arc<Hub>, stream: UnixStream) {
 
 // ── the island ──────────────────────────────────────────────────────────
 
-async fn island(hub: Arc<Hub>, mut rd: Reader, mut wr: OwnedWriteHalf) {
-    let (id, mut rx) = hub.add_island();
-    info!(island = id, "island connected");
+async fn island(hub: Arc<Hub>, mut rd: Reader, mut wr: OwnedWriteHalf, partial: bool) {
+    let (id, mut rx) = hub.add_island(partial);
+    info!(island = id, partial, "island connected");
     hub.set_glance(crate::glance::read());
     let hello = proto::line(
         "welcome",
-        json!({"daemon": VERSION, "caps": ["cards", "peeks", "sessions", "jump"]}),
+        json!({"daemon": VERSION,
+               "caps": ["cards", "peeks", "sessions", "jump", "stream", "warm"]}),
     );
     let state = proto::line("state", hub.snapshot());
     if !write(&mut wr, &hello).await || !write(&mut wr, &state).await {
@@ -128,6 +129,9 @@ async fn island(hub: Arc<Hub>, mut rd: Reader, mut wr: OwnedWriteHalf) {
                     hub.clone(),
                     companion_core::trim::cut(&text, 4000),
                 ));
+            }
+            Ok(Inbound::ChatWarm) => {
+                tokio::spawn(crate::chat::warm(hub.clone()));
             }
             Ok(Inbound::KeySet { provider, key }) => {
                 let hub = hub.clone();

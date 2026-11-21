@@ -28,10 +28,17 @@ The first line of a connection says what it is: `hello`, `agent` or `cli`.
 ## The island (`hello`)
 
 ```json
-{"v":1,"type":"hello","client":"island","pid":0}
+{"v":1,"type":"hello","client":"island","pid":0,"caps":["partial"]}
 ```
 
 The daemon replies `welcome`, then a full `state`, and keeps the connection.
+
+`caps` (0.3, optional) says what the island draws beyond v1: `partial`, a
+`chat.reply` whose text grows while the answer streams in. The daemon
+streams only while **every** connected island says `partial` (an older one
+would show each piece as a message of its own). The daemon's own `caps`
+come in `welcome`: `cards`, `peeks`, `sessions`, `jump`, and since 0.3
+`stream` (it sends `partial`) and `warm` (it understands `chat.warm`).
 
 ### Daemon → island
 
@@ -42,8 +49,8 @@ The daemon replies `welcome`, then a full `state`, and keeps the connection.
 | `peek` | `key`, `line`, `level` (`info` · `success` · `warning` · `danger`), `actions: [Action]`, `ttl_ms` (0 = the island's own `peek_seconds`) | one line; the same `key` replaces the line |
 | `card` | a `Card` | followed at once by a `state` that includes it |
 | `card.close` | `id`, `reason` | `answered` · `answered-elsewhere` · `no-ack` · `timeout` · `locked` · `island-gone` · `agent-gone` · `daemon-stopping` |
-| `chat.reply` | `id`, `kind` (`thinking` · `answer` · `done` · `error` · `info`), `text`, `undo?` (a token), `command?`, `action?` (`{label, command, args}`), `confirm?` (`{token, command, about, risk, reason, terminal}`), `output?`, `rows?` | `thinking` first, then the answer under the same `id` (a reply that comes later by itself, such as the copy that waited for Safe's unlock, has its own `id` and no `thinking`). `action` is a button under the answer ("Open Settings", "Unlock Safe", a tainted turn's "Do it"); a click sends it back as `command.run`. `confirm` is a proposed shell command: the island shows it exactly, with Run and In terminal (only In terminal when `terminal`), and `reason` in warning ink when `risk` is `danger`; a click sends `confirm.run`. `output` is the last lines a command printed. `rows` is what a command found (see *Rows*) |
-| `do` | `id`, `action`, `args` | what only the shell does: `dnd {on}` · `open {what, page}` · `launch {app, path?, dir?}` · `term {command}` (kitty runs it in the user's shell and stays open) · `screenshot {mode}` · `browse {url}` (ewe-browser when installed, else the default browser) · `browser {bin, args}` (ewe browser's command line: the island runs `bin` + `args` as argv, `bin`'s name must be `ewe-browser`, and answers `data: {reply}`, the last line it printed, parsed; the daemon waits 20 s, since it may start the browser) · `safe_unlock {bin}` (runs `bin unlock --ask`, Safe's own prompt, detached; `bin`'s name must be `ewe-safe`). The island answers `do.result` within 3 s (`browser`: 20 s). `launch` finds `app` (a desktop id, a name, a program) in the shell's desktop-entry index and answers `data: {name}`, or `ok:false` with `error:"not-found"` |
+| `chat.reply` | `id`, `kind` (`thinking` · `partial` · `answer` · `done` · `error` · `info`), `text`, `undo?` (a token), `command?`, `action?` (`{label, command, args}`), `confirm?` (`{token, command, about, risk, reason, terminal}`), `output?`, `rows?` | `thinking` first, then (0.3, only to islands whose `hello` said `partial`) any number of `partial` replies whose `text` is the answer so far, never an ACTION line, at most one every 80 ms, then the answer under the same `id`. A `partial` is not a message: the island draws it in place and shows no peek for it (a reply that comes later by itself, such as the copy that waited for Safe's unlock, has its own `id` and no `thinking`). `action` is a button under the answer ("Open Settings", "Unlock Safe", a tainted turn's "Do it"); a click sends it back as `command.run`. `confirm` is a proposed shell command: the island shows it exactly, with Run and In terminal (only In terminal when `terminal`), and `reason` in warning ink when `risk` is `danger`; a click sends `confirm.run`. `output` is the last lines a command printed. `rows` is what a command found (see *Rows*) |
+| `do` | `id`, `action`, `args` | what only the shell does: `dnd {on}` · `open {what, page}` · `launch {app, path?, dir?}` · `term {command}` (kitty runs it in the user's shell and stays open) · `screenshot {mode}` · `browse {url}` (ewe-browser when installed, else the default browser) · `browser {bin, args}` (ewe browser's command line: the island runs `bin` + `args` as argv, `bin`'s name must be `ewe-browser`, and answers `data: {reply}`, the last line it printed, parsed; the daemon waits 20 s, since it may start the browser) · `safe_unlock {bin}` (runs `bin unlock --ask`, Safe's own prompt, detached; `bin`'s name must be `ewe-safe`) · `app {bin, args}` (plugin 0.7: one of ewe's own apps with arguments, detached: `bin`'s name must be `ewe-player`, `ewe-files-app` or `ewe-viewer`, `args` is argv: songs or a link for ewe Player, `--select=<path>` or `--open-with=<path>` for ewe Files; an older island answers "The island cannot do app.", and the daemon falls back to `launch` with one argument). The island answers `do.result` within 3 s (`browser`: 20 s). `launch` finds `app` (a desktop id, a name, a program) in the shell's desktop-entry index and answers `data: {name}`, or `ok:false` with `error:"not-found"` |
 
 `presence` is one of `idle`, `working`, `waiting` or `error`. The `state`
 snapshot also carries:
@@ -56,8 +63,9 @@ snapshot also carries:
 Each session has `steps`, its last four actions.
 
 `open` (`companion_core::commands`) takes `what` (`settings` · `komble` ·
-`quicksettings` · `overview` · `sync` · `terminal` · `files`) and an
-optional `page`: a Settings sidebar id (`displays`, `wallpaper`, `input`, …),
+`quicksettings` · `overview` · `sync` · `terminal` · `files`: ewe Files,
+else Nemo) and an optional `page`: a Settings page id (`displays`,
+`wallpaper`, `input`, `language` …; ewe Settings opens it since 0.24),
 a Komble page (`updates` · `plugins` · `settings` · `search=<words>` ·
 `options=<plugin id>`), or a Quick settings tab (`home` · `wifi` · `bt` ·
 `audio` · `cal` · `notifs`, plus plugin tabs).
@@ -75,7 +83,10 @@ ewe browser's history and tabs.
 
 - `icon`: `folder` · `file` · `web` · `key`; since wave 2 also `download`
   (ewe browser's downloads) · `workspace` (its workspaces) · `timer` ·
-  `bluetooth`. An island that does not know an icon draws a chevron.
+  `bluetooth`; since 0.3 (plugin 0.6) `battery` · `cpu` · `memory` · `disk`
+  · `network` · `trash` · `remember`; since plugin 0.7 `music` (a song) ·
+  `note` (one of the user's notes) · `book` (an ArchWiki page) · `news` (a
+  release's notes). An island that does not know an icon draws a chevron.
 - A click on the row does its first action; the others are small buttons.
 - An action with `command` is sent back as `command.run` (a catalog
   command, validated like any other). An action with `copy` never leaves
@@ -121,8 +132,34 @@ Wave 2 (added, nothing renamed; a quick action may use any of them):
 | `power` | `action`: `suspend` · `restart` · `shutdown` · `logout` | 3 | a proposal: `~/.config/hypr/scripts/power.sh suspend|reboot|poweroff|logout` |
 | `empty_trash` | — | 3 | a proposal: `gio trash --empty` (or "already empty") |
 
-`theme_mode`, `power` and `empty_trash` never run from a call
-(`commands::PROPOSALS`): their reply carries `confirm`, like `run_shell`,
+Knowledge 2.0 and new powers (0.3, the 2026-11-21 wave; added, nothing
+renamed). A *look* is a read a model may ask for and get the result of
+(`persona::LOOKS`, wrapped as untrusted):
+
+| command | args | tier | what |
+|---|---|---|---|
+| `whats_new` | `version?` (`0.45`) | 0, look | the release notes (`knowledge/news.md`) of the ewe installed (`/usr/share/ewe/VERSION`) or the one asked; earlier releases as rows (icon `news`, Read) |
+| `learn` | `text` | 1 | a new note in `~/Documents/Shaun` (`$EWE_COMPANION_NOTES`), named from its first words; secrets refused; Undo deletes it while it holds what was written |
+| `notes` | `query?` | 0 | the notes (or the ones the words fit), rows with Open and Show in folder |
+| `wiki` | `query` | 0, look | `wiki-search` (arch-wiki-lite): the best page by title, the section that fits (700 characters shown, 1800 to a model), Open the page (the local HTML with arch-wiki-docs, else wiki.archlinux.org), other pages as rows (Read). Not installed → Find arch-wiki-lite in Komble |
+| `man_page` | `name`, `query?` | 0, look | `man` (MANPAGER=cat), else `name --help` when the program names `--help` and is not on `lookup::NO_HELP`: NAME, usage and the part that fits; the whole manual as a proposal (`man rsync`, a terminal) |
+| `play_local` | `query` \| `path` | 1 | the music library (ewe Player's index in `$XDG_CACHE_HOME/ewe-player/music-index.json`, else `$EWE_MUSIC_DIR` or ~/Music by name): every word in title, artist, album, genre or path; up to 200 songs in ewe Player (`do app`); rows (icon `music`, Play, Show in folder). Names stay on the island |
+| `play_link` | `url?` | 1 | ewe Player plays the link (ewe 0.46 plays web pages through yt-dlp: YouTube, Twitch, the BBC …); no `url`: the copied one (`wl-paste` on the island's display). A Vimeo or Netflix link is never handed over: the reply says it is locked (DRM or a sign-in), with Open it in the browser |
+| `now_playing` | — | 0, look | playerctl's players (WebKit's own `org.webkit.*` skipped): what plays and where, with Pause/Play; a model hears only the app |
+| `why_no_play` | `path?` \| `url?` | 0, look | ffprobe's streams in words, `gst-inspect-1.0 --exists` for each codec's decoders: the fix (Get gst-libav in Komble) or Open with another app; a web page link: `yt-dlp -J`, then Play in ewe Player, or "locked" when every video format is DRM (`has_drm`) or the site is Vimeo. Nothing named: the copied path or link, else ewe Player's MPRIS url. A model hears the codecs, never the file's name |
+| `keyboard_layout` | `layout` (a language, a code, `next`, `previous`), `index?` (the Undo) | 1 | `hyprctl -j devices` (the main keyboard's layouts), `switchxkblayout all N`; a layout not there → where to add it; a language typed with an input method → Add … typing |
+| `typing_add` | `language` | 1 / 2 | with `ewe-ime` and nothing missing for the language (its `ewe-ime catalog` entry: `installed`, `core`, `packages` empty): a proposal `ewe-ime add <id>` (Undo `ewe-ime remove <id>`); else opens ewe Settings → Keyboard and mouse (Typing in other languages → Add a language… installs it); no `ewe-ime` (before ewe 0.46): Open Updates |
+| `show_file` | `path` | 1 | ewe Files with the file selected (`--select=`), else its folder in the file manager |
+| `open_with` | `path` | 1 | ewe Files' Open with list (`--open-with=`), else mpv |
+| `dock_display` | `on`: `primary` · `all` · `none` | 2 | a proposal: `ewe-plugin set ewe.dock display <on>` (or "already"); after Run, Undo puts the old value back. No Dock → Open Plugins |
+| `bar_fold` | `on` | 2 | a proposal: `ewe-conf set desktop.bar.collapse true|false` (or "already"); after Run, Undo |
+
+`theme_mode` gains the same Undo after its Run click (the scheme that was
+on). A proposal's Undo is `chat.reply` `undo` on the reply to
+`confirm.run`, like a command's.
+
+`theme_mode`, `power`, `empty_trash`, `force_quit`, `dock_display` and
+`bar_fold` never run from a call (`commands::PROPOSALS`): their reply carries `confirm`, like `run_shell`,
 and only the Run click runs them. Names stay local here too: a tab's,
 bookmark's, download's, workspace's or device's name is on the island only.
 
@@ -143,6 +180,7 @@ and the chat treats them as a question.
 | `session.jump` | `id` | bring that session's terminal forward |
 | `settings` | `provider`, `model`, `base_url` | who answers questions (the plugin's options). **Never a key** |
 | `chat.send` | `text` | a question or a command in plain words |
+| `chat.warm` | — | (0.3) the user started typing a question: the daemon gets whoever answers ready (starts Claude Code, which takes seconds, and reads "this computer now"). Nothing else happens and nothing comes back; cheap to repeat (one `claude` waits at most, dropped after 3 idle minutes). An older daemon ignores it |
 | `key.set` | `provider`, `key` | an API key typed into the island; the daemon puts it in the keyring (`secret-tool`, on stdin) |
 | `undo` | `token` | run the Undo a reply offered |
 | `command.run` | `command`, `args` | a quick-action button: one catalog command (`companion_core::commands`), validated like any other |

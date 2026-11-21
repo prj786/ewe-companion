@@ -438,6 +438,15 @@ pub async fn keep_awake(on: bool) -> Outcome {
 
 // ── proposals: shown with Run, never run from here ─────────────────────────
 
+/// A scheme's slug as `ewe-theme scheme apply` takes it: one word.
+fn scheme_ok(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 64
+        && !s.starts_with('-')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
+}
+
 fn propose(line: impl Into<String>, command: &str, about: &str) -> Outcome {
     Outcome {
         ok: true,
@@ -471,10 +480,16 @@ pub async fn proposal(call: &Call) -> Outcome {
         "theme_mode" => {
             let mode = a["mode"].as_str().unwrap_or("dark");
             // the scheme on now, and whether it is already that variant
-            if let Ok(v) = tool_json("ewe-theme", &["scheme", "list"], READ).await
-                && let Some(cur) = v["schemes"]
-                    .as_array()
-                    .and_then(|s| s.iter().find(|s| s["current"] == true))
+            let current = tool_json("ewe-theme", &["scheme", "list"], READ)
+                .await
+                .ok()
+                .and_then(|v| {
+                    v["schemes"]
+                        .as_array()
+                        .and_then(|s| s.iter().find(|s| s["current"] == true))
+                        .cloned()
+                });
+            if let Some(cur) = &current
                 && cur["variant"].as_str() == Some(mode)
             {
                 let name = cur["name"].as_str().unwrap_or(mode);
@@ -485,13 +500,22 @@ pub async fn proposal(call: &Call) -> Outcome {
             } else {
                 "ewe-dark"
             };
-            propose(
-                format!(
-                    "Switch the whole desktop to {mode} mode? This does it (ewe Settings → Appearance → Scheme):"
-                ),
-                &format!("ewe-theme scheme apply {slug}"),
-                &format!("Switch to {mode} mode"),
-            )
+            // Undo puts back the scheme that was on (an imported one too)
+            let back = current
+                .as_ref()
+                .and_then(|c| c["slug"].as_str().or(c["id"].as_str()))
+                .filter(|s| scheme_ok(s))
+                .map(|s| format!("ewe-theme scheme apply {s}"));
+            Outcome {
+                propose_undo: back,
+                ..propose(
+                    format!(
+                        "Switch the whole desktop to {mode} mode? This does it (ewe Settings → Appearance → Scheme):"
+                    ),
+                    &format!("ewe-theme scheme apply {slug}"),
+                    &format!("Switch to {mode} mode"),
+                )
+            }
         }
         "power" => {
             let (arg, line, about) = match a["action"].as_str().unwrap_or("") {
@@ -526,6 +550,333 @@ pub async fn proposal(call: &Call) -> Outcome {
                 "Empty the trash",
             ),
         },
+    }
+}
+
+// ── settings by text: the dock's displays and the bar's fold ───────────────
+
+/// A tool's bare answer (`ewe-conf get` prints the value, not JSON).
+async fn tool_text(name: &str, args: &[&str]) -> Option<String> {
+    let bin = crate::context::tool(name)?;
+    let mut c = Command::new(bin);
+    c.args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .kill_on_drop(true);
+    let o = tokio::time::timeout(READ, c.output()).await.ok()?.ok()?;
+    o.status
+        .success()
+        .then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
+}
+
+fn displays_in_words(on: &str) -> &'static str {
+    match on {
+        "all" => "every display",
+        "none" => "no display",
+        _ => "the main display",
+    }
+}
+
+/// `dock_display {on}`: the Dock plugin's "Show the dock on" (Primary, All,
+/// None), through `ewe-plugin set` (ewe-conf underneath, rule 1). A
+/// proposal: Run changes it, Undo puts the old value back.
+pub async fn dock_display(a: &Value) -> Outcome {
+    let on = a["on"].as_str().unwrap_or("primary");
+    if crate::context::tool("ewe-plugin").is_none() {
+        return failed("ewe-plugin is not here, so I cannot change the dock.");
+    }
+    let info = tool_json("ewe-plugin", &["get", "ewe.dock"], READ).await;
+    let installed = info.as_ref().is_ok_and(|v| v["ok"] != false);
+    if !installed {
+        return Outcome {
+            action: Some((
+                "Open Plugins".into(),
+                Call::new("open", json!({"what": "komble", "page": "plugins"})),
+            )),
+            ..done(
+                "There is no dock yet: add the Dock plugin in Komble → Plugins.",
+                None,
+            )
+        };
+    }
+    let now = info
+        .ok()
+        .and_then(|v| {
+            v["settings"]["display"]
+                .as_str()
+                .or(v["value"]["display"].as_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "primary".into());
+    if now == on {
+        return done(
+            format!("The dock is already on {}", displays_in_words(on)),
+            None,
+        );
+    }
+    Outcome {
+        propose_undo: Some(format!("ewe-plugin set ewe.dock display {now}")),
+        ..propose(
+            format!(
+                "Show the dock on {}? This changes the Dock's option (Komble → Plugins → Dock → Show the dock on):",
+                displays_in_words(on)
+            ),
+            &format!("ewe-plugin set ewe.dock display {on}"),
+            &format!("The dock on {}", displays_in_words(on)),
+        )
+    }
+}
+
+/// `bar_fold {on}`: fold the bar's tray icons, plugin buttons and tiling
+/// switch behind a chevron (`desktop.bar.collapse`, ewe 0.45), through
+/// ewe-conf. A proposal: Run changes it, Undo puts it back.
+pub async fn bar_fold(a: &Value) -> Outcome {
+    let on = a["on"].as_bool().unwrap_or(true);
+    let Some(now) = tool_text("ewe-conf", &["get", "desktop.bar.collapse"]).await else {
+        return failed("ewe-conf did not answer, so I cannot change the bar.");
+    };
+    let was = now == "true";
+    if was == on {
+        return done(
+            if on {
+                "The bar is already folded"
+            } else {
+                "The bar is already unfolded"
+            },
+            None,
+        );
+    }
+    Outcome {
+        propose_undo: Some(format!("ewe-conf set desktop.bar.collapse {was}")),
+        ..propose(
+            if on {
+                "Fold the bar's tray icons, plugin buttons and tiling switch behind a chevron? This does it (ewe Settings → Layout → Top bar):"
+            } else {
+                "Show every icon in the bar again? This does it (ewe Settings → Layout → Top bar):"
+            },
+            &format!("ewe-conf set desktop.bar.collapse {on}"),
+            if on { "Fold the bar" } else { "Unfold the bar" },
+        )
+    }
+}
+
+// ── keyboard layouts and typing in other languages ──────────────────────────
+
+/// The xkb layouts' names (`/usr/share/X11/xkb/rules/base.lst`: "ge
+/// Georgian"), to tell which one Hyprland's `active_keymap` is.
+fn xkb_names() -> &'static Vec<(String, String)> {
+    static N: OnceLock<Vec<(String, String)>> = OnceLock::new();
+    N.get_or_init(|| {
+        let text = std::fs::read_to_string("/usr/share/X11/xkb/rules/base.lst").unwrap_or_default();
+        let mut out = Vec::new();
+        let mut in_layouts = false;
+        for l in text.lines() {
+            if l.starts_with('!') {
+                in_layouts = l.trim() == "! layout";
+                continue;
+            }
+            if in_layouts {
+                let t = l.trim();
+                if let Some((code, name)) = t.split_once(char::is_whitespace) {
+                    out.push((code.to_string(), name.trim().to_string()));
+                }
+            }
+        }
+        out
+    })
+}
+
+/// A layout code's name as Hyprland shows it ("English (US)").
+fn layout_name(code: &str) -> String {
+    xkb_names()
+        .iter()
+        .find(|(c, _)| c == code)
+        .map(|(_, n)| n.clone())
+        .or_else(|| companion_core::lang::xkb_name(code))
+        .unwrap_or_else(|| code.to_string())
+}
+
+/// The main keyboard's layouts and the one on now, from `hyprctl devices`.
+async fn layouts(hypr: &str) -> Option<(Vec<String>, usize)> {
+    let out = run_argv("hyprctl", &["-j", "devices"], hypr).await.ok()?;
+    let v: Value = serde_json::from_str(&out).ok()?;
+    let kbs = v["keyboards"].as_array()?;
+    let main = kbs
+        .iter()
+        .find(|k| k["main"] == true)
+        .or_else(|| kbs.first())?;
+    let codes: Vec<String> = main["layout"]
+        .as_str()
+        .unwrap_or("us")
+        .split(',')
+        .map(|c| c.trim().to_string())
+        .filter(|c| !c.is_empty())
+        .collect();
+    let active = main["active_keymap"].as_str().unwrap_or("").to_lowercase();
+    // longest name first: "english (uk)" must win over "english"
+    let mut named: Vec<(usize, String)> = codes
+        .iter()
+        .enumerate()
+        .map(|(i, c)| (i, layout_name(c).to_lowercase()))
+        .collect();
+    named.sort_by_key(|(_, n)| std::cmp::Reverse(n.len()));
+    let index = named
+        .iter()
+        .find(|(_, n)| !n.is_empty() && active.starts_with(n.as_str()))
+        .map_or(0, |(i, _)| *i);
+    Some((codes, index))
+}
+
+fn titled(s: &str) -> String {
+    let mut c = s.chars();
+    c.next()
+        .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+        .unwrap_or_default()
+}
+
+/// `keyboard_layout {layout, index?}`: switch to one of the user's layouts
+/// (by language, code, or next/previous); Undo switches back.
+pub async fn keyboard_layout(a: &Value, hypr: &str) -> Outcome {
+    let want = a["layout"].as_str().unwrap_or("").trim().to_lowercase();
+    let Some((codes, now)) = layouts(hypr).await else {
+        return failed("I could not read the keyboard layouts from Hyprland.");
+    };
+    let target = if let Some(i) = a.get("index").and_then(Value::as_u64) {
+        Some(i as usize)
+    } else {
+        match want.as_str() {
+            "next" => Some((now + 1) % codes.len().max(1)),
+            "previous" | "prev" => Some((now + codes.len().max(1) - 1) % codes.len().max(1)),
+            w => companion_core::lang::xkb_code(w).and_then(|c| codes.iter().position(|x| x == c)),
+        }
+    };
+    let Some(i) = target.filter(|i| *i < codes.len()) else {
+        // a language typed with an input method, not a layout
+        if let Some(_id) = companion_core::lang::ime_id(&want)
+            && companion_core::lang::xkb_code(&want).is_none_or(|c| !codes.iter().any(|x| x == c))
+        {
+            return Outcome {
+                action: Some((
+                    format!("Add {} typing", titled(&want)),
+                    Call::new("typing_add", json!({"language": want})),
+                )),
+                ..done(
+                    format!(
+                        "{} is typed with an input method, not a keyboard layout: ewe Settings → Keyboard and mouse → Typing in other languages.",
+                        titled(&want)
+                    ),
+                    None,
+                )
+            };
+        }
+        let have: Vec<String> = codes.iter().map(|c| titled(&layout_name(c))).collect();
+        return Outcome {
+            action: Some((
+                "Open Keyboard and mouse".into(),
+                Call::new("open", json!({"what": "settings", "page": "input"})),
+            )),
+            ..done(
+                format!(
+                    "{} is not one of your keyboard layouts ({}). Add it in ewe Settings → Keyboard and mouse → Keyboard layouts.",
+                    titled(&want),
+                    have.join(", ")
+                ),
+                None,
+            )
+        };
+    };
+    if i == now && a.get("index").is_none() {
+        return done(
+            format!(
+                "The keyboard is already {}",
+                titled(&layout_name(&codes[i]))
+            ),
+            None,
+        );
+    }
+    match run_argv("hyprctl", &["switchxkblayout", "all", &i.to_string()], hypr).await {
+        Ok(_) => done(
+            format!("Keyboard: {}", titled(&layout_name(&codes[i]))),
+            Some(Call::new(
+                "keyboard_layout",
+                json!({"layout": codes[now], "index": now}),
+            )),
+        ),
+        Err(_) => failed("Hyprland did not switch the layout."),
+    }
+}
+
+/// `typing_add {language}`: typing in a language that needs an input
+/// method. With `ewe-ime` (ewe 0.46) and nothing missing for the language
+/// (its `ewe-ime catalog` entry: `installed`, `core`, `packages`), the exact
+/// `ewe-ime add <id>` with Run (Undo: `ewe-ime remove <id>`); otherwise ewe
+/// Settings → Keyboard and mouse → Typing in other languages → Add a
+/// language…, which installs it (one password prompt).
+pub async fn typing_add(hub: &std::sync::Arc<crate::hub::Hub>, a: &Value) -> Outcome {
+    let lang = a["language"].as_str().unwrap_or("").trim().to_lowercase();
+    let Some(id) = companion_core::lang::ime_id(&lang) else {
+        return missed(format!("I don't know an input method for {lang}."));
+    };
+    let name = titled(&lang);
+    let open_settings = |line: String| async move {
+        match hub
+            .shell_do("open", json!({"what": "settings", "page": "input"}))
+            .await
+        {
+            Ok(_) => done(line, None),
+            Err(e) => failed(e),
+        }
+    };
+    if crate::context::tool("ewe-ime").is_none() {
+        return Outcome {
+            action: Some((
+                "Open Updates".into(),
+                Call::new("open", json!({"what": "komble", "page": "updates"})),
+            )),
+            ..done(
+                format!(
+                    "Typing in {name} comes with ewe 0.46 (Settings → Keyboard and mouse → Typing in other languages). Update ewe first: Komble → Updates."
+                ),
+                None,
+            )
+        };
+    }
+    let entry = tool_json("ewe-ime", &["catalog"], READ)
+        .await
+        .ok()
+        .and_then(|v| {
+            v["catalog"]
+                .as_array()
+                .and_then(|c| c.iter().find(|e| e["id"] == id).cloned())
+        });
+    // ewe-ime's catalog (ewe 0.46): `installed` is the language's own
+    // engine, `core` fcitx5 itself, `packages` what is still missing; only
+    // a language with nothing missing can be added from a Run click
+    let ready = |e: &Value| {
+        e["installed"] == true
+            && e["core"] != false
+            && e["packages"].as_array().is_none_or(|p| p.is_empty())
+    };
+    match entry {
+        Some(e) if ready(&e) => {
+            let method = e["method"].as_str().unwrap_or("");
+            Outcome {
+                propose_undo: Some(format!("ewe-ime remove {id}")),
+                ..propose(
+                    format!(
+                        "Add {name} typing ({method})? Ctrl+Space then turns it on and off; Super+Space still switches keyboard layouts."
+                    ),
+                    &format!("ewe-ime add {id}"),
+                    &format!("Add {name} typing"),
+                )
+            }
+        }
+        _ => {
+            open_settings(format!(
+                "Opened ewe Settings → Keyboard and mouse: under Typing in other languages, press Add a language… and pick {name}. ewe installs it and asks for your password once."
+            ))
+            .await
+        }
     }
 }
 

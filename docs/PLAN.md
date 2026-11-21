@@ -1668,6 +1668,143 @@ gesture, Contract 3). Branch `feat/more-powers` in both repos.
       notification banner for a timer (by the owner, after the release).
 - **Gate:** the owner's try after `pacman -Syu`.
 
+### P2.11 — wiser, faster, more functions (M), owner ask 2026-11-08
+
+The owner: "i want it more wise. smarter and faster. maybe more functions
+somehow". Measured first, on the owner's machine (Claude Code + Haiku):
+"2+2" took 7.5 s, because `claude -p` loaded ~94k tokens of the user's own
+Claude Code setup (plugins, skills, MCP servers) and spent ~4 s starting;
+about 30 of 50 everyday phrases missed the matcher and went to that call,
+where the model guessed the time, memory, CPU and uptime it was never told.
+Branches `feat/shaun-wiser` (here and in the plugin).
+
+- [x] **Lean Claude Code.** `--disable-slash-commands --strict-mcp-config
+      --setting-sources ""`: ~650 tokens, OAuth still works (`--bare`
+      refuses it). Measured 7.5 s → 5.3 s cold.
+- [x] **Warm Claude Code.** One `claude -p --input-format stream-json` is
+      started ahead of the question (after every answer, and on
+      `chat.warm`, the island's first keystroke) and dropped after 3 idle
+      minutes (~190 MB while it waits). Measured: 1.2 s to the whole
+      answer, 0.9 s to the first word. Keyed by model + system prompt.
+- [x] **Streaming.** Claude Code (stream-json, `--include-partial-messages`),
+      the Anthropic API and the OpenAI-compatible APIs (SSE) stream;
+      `chat.reply` `partial` to islands whose `hello` says `caps:
+      ["partial"]` (plugin 0.6.0 draws it on one growing line, "… is
+      writing"). Never an ACTION line, at most every 80 ms.
+- [x] **The prompt in two parts.** The system prompt is stable (who, how
+      to answer, the commands, the primer), so it caches (Anthropic:
+      `cache_control`) and a warm `claude` starts with it; the turn's
+      topics, "this computer now" and (with memory) what the user asked to
+      remember ride with the question in `<notes>`. Wiser words: say the
+      likely cause and the one next step, ask one short question when a
+      request could mean two things, facts only from the notes or a look-up.
+- [x] **This computer now** gains the date and time (with the time zone),
+      uptime, memory in use, CPU load and online/offline; the installed part
+      is read ahead on `chat.warm`.
+- [x] **Look-ups.** A reply made only of *looks* (`persona::LOOKS`: reads
+      whose results are safe to show a model) runs them and asks once more
+      with what they found, wrapped as untrusted (a program's name is
+      another program's words), so an ACTION in that answer is a "Do it"
+      button (C4).
+- [x] **Several actions.** Up to three ACTION lines in one reply all run,
+      with one Undo (`Undo::Many`, in reverse); two or three plain commands
+      in one line ("dnd on and a 25 minute timer") run offline the same way.
+- [x] **Anthropic API:** `effort: low` on 5-series models (Haiku 5.5 thinks
+      at `medium` by default), `max_tokens` 2000.
+- [x] **The clock, dates and units** (owner's pick): `clock` (here, or a
+      place from `/usr/share/zoneinfo` + aliases), `date_math` (until,
+      since, weekday, offset, Easter), `convert` (no currencies), calc's
+      roots and powers.
+- [x] **System facts** (owner's pick): `system_info` (battery, memory, CPU
+      from two `/proc` samples, uptime, network, disk, overview: "why is my
+      laptop slow") and `disk_usage`; program rows with Quit (a
+      `force_quit` proposal; never the desktop's own: `commands::SESSION`).
+- [x] **Windows and workspaces** (owner's pick): `workspace` (the display's
+      own numbers), `window` (move, fullscreen, maximise, float, minimise,
+      restore, each with Undo; close only from a one-time token's button),
+      `force_quit` (a proposal).
+- [x] **Memory** (owner's pick): `remember` / `memories` / `forget`
+      (migration 003, 100 at most, secrets refused and kept out of the
+      history), `memory::prompt_block` in the notes.
+- [x] **Typo tolerance:** a second pass over the matcher's own words
+      ("opne firefox", "volme 50"); free text is never corrected.
+- [x] Tests: core 107, daemon 58; `tests/chat.sh` 164 (the new commands
+      against the `hyprctl`, `ip` and `nmcli` fakes and a fake `firefox`
+      process), `tests/brain.sh` 25, `tests/canary.sh` 9 (network and
+      window chats added). The island harness: the clock, units, memory
+      and CPU rows (Quit), memories (star, Forget).
+- [ ] On the owner's desktop: the window commands on the live Hyprland
+      (close and fullscreen's Lua arguments come from 0.57.1's error
+      strings, never run live by rule), a real Claude Code answer streaming
+      in the notch, and the warm `claude`'s memory over a day.
+- **Gate:** the owner's try on this machine, then a release (owner's call).
+- [x] Tests: `tests/brain.sh` (22, a fake `claude` on PATH, never the real
+      login), unit tests for the SSE parser (every split point), the lean
+      flags, the notes, several actions, the streaming filter, the compound
+      split. The island harness: a slow mock (`MOCK_DELAY`) shows the answer
+      growing, then whole.
+
+### P2.12 — knowledge 2.0 and new powers (M), owner ask 2026-11-21
+
+The owner: "make shaun more powerfull. we can add knowledge." (the wave
+"every format, every language, a wiser Shaun, a new installer", Phase S).
+Branches `feat/shaun-knowledge` here (on `feat/shaun-wiser`) and in the
+plugin (on 0.6.0, origin/main 0.5.2 merged). Ships with P2.11 as Shaun
+0.3.0-beta + the plugin 0.7.0 (it adds `do app`), in ewe 0.47.0-beta.
+
+- [x] **The pack follows ewe 0.40–0.47** (128 → 174 topics): ewe Files,
+      Player and Viewer, the bar fold, the dock's displays, display
+      workspaces, Remote, game mode, the cursor, codecs, Stremio, HEIC,
+      subtitles, typing in other languages, spell checking, regional
+      formats, `ewe-settings --page`; `media.md`, `languages.md`, `news.md`.
+- [x] **Coverage test:** `knowledge/coverage.json` (scripts/coverage.py,
+      from the repos and `ewe-facts.json`: 70 Settings pages, tools, apps,
+      plugins); `every_shipped_feature_has_a_topic` fails the build when one
+      has no topic.
+- [x] **What's new:** `news.md` (one topic per release), `whats_new` picks
+      the installed ewe's (`/usr/share/ewe/VERSION`); `scripts/news.sh`
+      says which releases still owe a topic.
+- [x] **BM25F search** over keys, title and text; synonyms; typos from six
+      letters; one phrase once per topic; cut-short phrases ("what is ewe
+      sync"); CONFIDENT kept (a key phrase said whole), recalibrated on
+      every test question.
+- [x] **Other languages:** the system prompt asks a model to answer in the
+      question's language; with no model, a question not in English is
+      told why the answer would be English (`lang::foreign`).
+- [x] **The ArchWiki offline** (`arch-wiki-lite`, a dependency): `wiki`, a
+      look; with no model, a question that is a page's title gets the page.
+      Checked once against the real package (bwrap, 2026-11-21): ~0.7 s a
+      look-up.
+- [x] **Manuals:** `man_page` (man, else `--help` when the program names it
+      and is not on a deny list); "how do I use rsync to …" with no model.
+- [x] **Your own notes:** `~/Documents/Shaun` in the pack's index,
+      rebuilt on change; `learn` (Undo deletes), `notes`; secrets refused
+      and left out.
+- [x] **Media:** `play_local`, `play_link`, `now_playing`, `why_no_play`
+      (ffprobe, gst-inspect-1.0, yt-dlp); `show_file` (ewe Files
+      --select=), `open_with`; the island's `do app`.
+- [x] **Languages:** `keyboard_layout` (Undo), `typing_add` (ewe-ime, else
+      ewe Settings → Keyboard and mouse), "translate this" (a model, the
+      clipboard as untrusted).
+- [x] **Files:** plocate joins the finder.
+- [x] **Settings by text:** `dock_display`, `bar_fold` (proposals with Undo
+      after Run); dark and light mode gain the Undo.
+- [x] Tests: core 128, daemon 66; chat.sh 213, brain.sh 28, canary.sh 10,
+      relay 26. The island harness (dark and light, 1.8): an offline answer
+      about ewe Player links, a wiki excerpt, "why won't this play", a music
+      search, a dock proposal and its Undo after Run.
+- [x] The pack's ewe 0.46 topics checked against the merged branches
+      (2026-11-21: a-player, a-komble, l-ewe, l-settings, l-browser): Vimeo
+      does not play (DRM or a sign-in; ewe Player says "This video is
+      locked"), so `play_link` says so instead of trying and `why_no_play`
+      reads yt-dlp's `has_drm`; `typing_add` proposes `ewe-ime add <id>`
+      only when the catalog says nothing is missing (`installed`, `core`,
+      `packages`), else ewe Settings → Keyboard and mouse → Add a language…;
+      coverage.json lists ewe-ime and the Language page (72 items).
+- [ ] The real ewe-apps (ewe Player playing a link, ewe Files --select) and
+      the real ewe-ime on a real desktop.
+- **Gate:** the owner's word (P2.11's gate covers both).
+
 ### P3 — notifications (L), crosses repos and merges as one wave
 
 - [ ] **ewe:** Plugin API 4 `Shell` members + host `apiVersions [2,3,4]`;
@@ -1945,3 +2082,51 @@ Run `project-map/.vault/vault-check.sh --diagrams` after each.
   (2026-10-17): the old process's exe link ends in " (deleted)", so the
   binary check failed, nothing was stopped, and the new daemon stepped aside
   for the old one. The check strips the suffix now.
+- **`claude -p` brought the user's whole Claude Code along** (2026-11-08):
+  `--system-prompt` and `--tools ""` do not stop it loading the user's
+  plugins, skills, MCP servers and settings: ~94k tokens of cache creation
+  for "2+2", 7.5 s, and a model reading about tools that are not Shaun's.
+  `--disable-slash-commands --strict-mcp-config --setting-sources ""` cut it
+  to ~650 tokens. `--bare` would too, but it reads no OAuth, so the user's
+  own login stops working.
+- **Starting `claude` is most of the wait** (2026-11-08): ~4 s of the 5.3 s
+  even lean. A process started with `--input-format stream-json` waits on
+  stdin with its start-up done; written to later, it answered in 1.2 s.
+  Idle it holds ~190 MB, so it is started on the first keystroke and after
+  an answer, never on Super+A, and dropped after 3 minutes.
+- **A notes-free system prompt** (2026-11-08): the turn's topics and "this
+  computer now" moved into the question. The system prompt is then the same
+  for every question, which lets a warm `claude` start before the question
+  exists and lets Anthropic cache it; the history keeps the user's words
+  only, so the notes are never repeated turn after turn.
+- **Streaming rebuilt the whole conversation** (2026-11-08): the island's
+  `messages` is a JS array, and a Repeater makes every delegate again on
+  each assignment; replacing the answer twelve times a second would have
+  rebuilt the list as often. The growing text is one `TextBody` of its own
+  (`CompanionState.streamText`); the whole answer joins `messages` once.
+- **The typo pass corrected free text** (2026-11-08): "remind me to take a
+  break" became "make a break". Everything after remind, remember, open,
+  search, close, kill … is free text and never corrected; "lock" is left
+  out of the vocabulary so that "look" can never become it.
+- **Quit was offered for Hyprland** (2026-11-08): the CPU and memory rows'
+  Quit (a `pkill -x` proposal) listed the compositor and the shell among
+  the busiest programs. Behind a Run click still, but a trap:
+  `commands::SESSION` refuses them, so their rows carry no Quit.
+- **A `libc::tm` across an `.await`** (2026-11-08) made the future
+  non-`Send` (it holds a raw pointer) and `tokio::spawn` refused it.
+- **Qt guessed rich text** (2026-11-21): the pack's "`ewe-player <url>`"
+  showed as "`ewe-player `": a Text with no `textFormat` reads anything
+  tag-like as HTML. The island's answers are plain text now (plugin 0.7),
+  which also keeps a model's or a page's words from styling themselves.
+- **A one-word key is a confident match** (2026-11-21): "how do I use rsync
+  to exclude a folder" answered with ewe Sync, whose key "folders" stems to
+  "folder". With no model, "how do I use <a program>" goes to its manual
+  before the pack; and a typo fix needs six letters ("rsync" is not a typo
+  of "sync").
+- **A phrase can end inside a name** (2026-11-21): "what is ewe" matched in
+  "what is ewe-bt" and "what is ewe sync". A phrase never ends inside a
+  hyphenated name, and one cut short by another topic's longer name that
+  follows counts as words only.
+- **`wiki-search` opens `dialog` when it is installed** (2026-11-21) and
+  writes `/tmp/.wiki-search.$USER.tmp`: `wiki_width` set skips the menu;
+  the tmp file is the tool's own (shared with the user's own searches).

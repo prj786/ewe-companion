@@ -176,6 +176,10 @@ pub enum Inbound {
         client: String,
         #[serde(default)]
         pid: u32,
+        /// what this island can draw beyond v1: `partial` (a `chat.reply`
+        /// whose text grows while the answer streams in)
+        #[serde(default)]
+        caps: Vec<String>,
     },
     #[serde(rename = "agent")]
     Agent(AgentMsg),
@@ -208,6 +212,10 @@ pub enum Inbound {
     Settings(ChatSettings),
     #[serde(rename = "chat.send")]
     ChatSend { text: String },
+    /// the chat field got focus: a question is likely, so get whoever
+    /// answers ready (a warm `claude`); nothing else happens
+    #[serde(rename = "chat.warm")]
+    ChatWarm,
     /// an API key typed into the island; it goes straight to the keyring
     #[serde(rename = "key.set")]
     KeySet { provider: String, key: String },
@@ -301,8 +309,16 @@ mod tests {
             m,
             Inbound::Hello {
                 client: "island".into(),
-                pid: 42
+                pid: 42,
+                caps: vec![]
             }
+        );
+        // a newer island says what more it can draw
+        let m = decode(r#"{"type":"hello","client":"island","caps":["partial"]}"#).unwrap();
+        assert!(matches!(m, Inbound::Hello { caps, .. } if caps == ["partial"]));
+        assert_eq!(
+            decode(r#"{"v":1,"type":"chat.warm"}"#).unwrap(),
+            Inbound::ChatWarm
         );
     }
 

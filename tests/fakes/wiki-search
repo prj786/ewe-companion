@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""A stand-in for arch-wiki-lite's wiki-search, for the companion's tests
+(the real package is 21 MB and not on CI): three pages. Printed like the
+real one with no terminal and wiki_width set:
+  wiki-search WORDS → "N  Title  ID" rows (the pages whose text has a word)
+  wiki-search ID    → the page's text, as the real one prints it piped
+Logs the argv and wiki_width to wiki.log."""
+import json
+import os
+import sys
+
+D = os.environ.get("EWE_FAKE_DIR") or f"/tmp/ewe-companion-fakes-{os.getuid()}"
+os.makedirs(D, exist_ok=True)
+argv = sys.argv[1:]
+with open(os.path.join(D, "wiki.log"), "a") as f:
+    f.write(json.dumps({"argv": argv, "wiki_width": os.environ.get("wiki_width")}) + "\n")
+
+
+def page(title, slug, intro, sections):
+    toc = []
+    body = []
+    for i, (h, t) in enumerate(sections, 1):
+        toc += [str(i), h, "Toggle %s subsection" % h]
+        body += [h, t]
+    return "\n".join(["Jump to content", "Contents", "move to sidebar", "hide", "Beginning"] + toc +
+                     ["From ArchWiki", "Related articles", "Bluetooth", intro] + body +
+                     ["Categories: ", "Sound", 'Retrieved from "https://wiki.archlinux.org/index.php?title=%s&oldid=1"' % slug,
+                      "This page was last edited on 1 November 2026."])
+
+
+PAGES = {
+    "00000440": ("Bluetooth", page("Bluetooth", "Bluetooth", "Bluetooth is a standard for short-range wireless communication.",
+                                    [("Installation", "Install the bluez and bluez-utils packages."),
+                                     ("Pairing", "Run bluetoothctl, then power on and scan on.")])),
+    "00000441": ("Bluetooth headset", page("Bluetooth headset", "Bluetooth_headset",
+                                           "This article covers the configuration of Bluetooth headsets.",
+                                           [("Headset via PipeWire", "PipeWire supports Bluetooth headsets out of the box."),
+                                            ("Troubleshooting", "If the headset is silent, restart the wireplumber service and reconnect it.")])),
+    "00000877": ("PipeWire", page("PipeWire", "PipeWire", "PipeWire is a new low-level multimedia framework.",
+                                  [("Installation", "Install the pipewire package; WirePlumber is its session manager."),
+                                   ("Audio", "Install pipewire-pulse to replace PulseAudio.")])),
+}
+if len(argv) == 1 and argv[0].isdigit():
+    t = PAGES.get(argv[0].zfill(8))
+    if t is None:
+        sys.exit(0)
+    print(t[1])
+    sys.exit(0)
+words = [w.lower() for w in argv]
+rows = [(pid, title) for pid, (title, text) in PAGES.items() if any(w in text.lower() for w in words)]
+if not rows:
+    print("No matches found.")
+    sys.exit(0)
+print("Now choose a page with wiki-search [number]\n")
+for i, (pid, title) in enumerate(rows):
+    print("%d  %s  %s" % (i, title, pid))
