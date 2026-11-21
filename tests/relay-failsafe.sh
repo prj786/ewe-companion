@@ -47,6 +47,9 @@ trap cleanup EXIT
 [ -x "$BIN/ewe-companion" ] && [ -x "$BIN/ewe-companiond" ] || { echo "build first: cargo build"; exit 1; }
 
 # ── nobody home ────────────────────────────────────────────────────────
+# one untimed run first: the 50 ms promise is the relay's, not a cold disk's
+# (CI's first exec of the binary once took 74 ms)
+"$BIN/ewe-companion" --version >/dev/null 2>&1
 t0=$(ms); out=$(hook PermissionRequest <"$P/permission-bash.json"); rc=$?; t=$(($(ms) - t0))
 check '[ -z "$out" ] && [ $rc -eq 0 ] && [ $t -lt 50 ]' "no socket: nothing, exit 0, ${t} ms" "out=$out rc=$rc"
 

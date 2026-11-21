@@ -1789,7 +1789,7 @@ plugin (on 0.6.0, origin/main 0.5.2 merged). Ships with P2.11 as Shaun
 - [x] **Files:** plocate joins the finder.
 - [x] **Settings by text:** `dock_display`, `bar_fold` (proposals with Undo
       after Run); dark and light mode gain the Undo.
-- [x] Tests: core 128, daemon 66; chat.sh 213, brain.sh 28, canary.sh 10,
+- [x] Tests: core 128, daemon 67; chat.sh 213, brain.sh 28, canary.sh 10,
       relay 26. The island harness (dark and light, 1.8): an offline answer
       about ewe Player links, a wiki excerpt, "why won't this play", a music
       search, a dock proposal and its Undo after Run.

@@ -132,6 +132,30 @@ Wave 2 (added, nothing renamed; a quick action may use any of them):
 | `power` | `action`: `suspend` · `restart` · `shutdown` · `logout` | 3 | a proposal: `~/.config/hypr/scripts/power.sh suspend|reboot|poweroff|logout` |
 | `empty_trash` | — | 3 | a proposal: `gio trash --empty` (or "already empty") |
 
+The desktop's first commands and 0.3's (added, nothing renamed; each is a
+catalog `Call`, run by `commands::run`, T1 with Undo where there is a way
+back, T0 for reads):
+
+| command | args | tier | what |
+|---|---|---|---|
+| `volume_set` | `percent` 0–150 | 1 | the default sink's volume; Undo puts the old level back |
+| `volume_change` | `delta` −100…100 | 1 | up or down by that many points |
+| `brightness_set` | `percent` 1–100 | 1 | the screen's brightness |
+| `brightness_change` | `delta` −100…100 | 1 | brighter or dimmer by that many points |
+| `media` | `action`: `play_pause` · `next` · `previous` | 1 | the player that is playing (playerctl) |
+| `lock` | — | 1 | lock the screen |
+| `clock` | `place?` (a city, a country or a zone) | 0 | the time and date here or there, offline (`/usr/share/zoneinfo`, `date` with TZ in the child only) |
+| `date_math` | `op`: `until` · `since` · `weekday`, `date`; or `op`: `offset`, `days` | 0 | days until or since a date, its weekday, a date some days away (offline) |
+| `convert` | `value`, `from`, `to` | 0 | units, offline (length, mass, temperature, volume, speed, data, time; no currencies) |
+| `system_info` | `what`: `battery` · `memory` · `cpu` · `uptime` · `network` · `disk` · `overview`, `apps?` | 0, look | this computer now; program rows with Quit (a `force_quit` proposal; never for the desktop's own processes) |
+| `disk_usage` | — | 0, look | what takes the disk's space: the package cache, ~/.cache, the trash, Downloads, the journal, crash dumps |
+| `memories` | `query?` | 0 | what the user asked Shaun to remember, rows with Forget |
+| `forget` | `words` \| `id` \| `all` | 1 | forget one (Undo puts it back); `all` only offers a button |
+
+`remember {text}` (1, secrets refused, Undo forgets it), `workspace`,
+`window` and `force_quit` are described with the windows and memory of
+0.3 in `docs/PLAN.md` §20; their argument shapes are in `CATALOG`.
+
 Knowledge 2.0 and new powers (0.3, the 2026-11-21 wave; added, nothing
 renamed). A *look* is a read a model may ask for and get the result of
 (`persona::LOOKS`, wrapped as untrusted):

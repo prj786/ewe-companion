@@ -168,9 +168,8 @@ the answer depends on this computer, the model looks it up first (what
 uses the CPU, what fills the disk) and answers from what it found; one
 reply can do up to three things, with one Undo.
 
-**Status: 0.2.0-beta (wave 2, 2026-10-18: a site's own search, more of the
-browser, the desktop's switches, timers, sums, every ewe command-line tool),
-P1 and P2 working, plus P2.5 (the notch, the home
+**Status: 0.3.0-beta (2026-11-21, with the island 0.7.0 in ewe 0.47:
+faster, wiser, knowledge 2.0), P1 and P2 working, plus P2.5 (the notch, the home
 panel, the chat groundwork), P2.6 (the notch fixes, the ewe knowledge pack),
 P2.7 (apps and folders), P2.8 (it runs what it suggests, on a click),
 2026-10-14, and P2.9 (ewe Safe, ewe Browser, the finder), 2026-10-15. First
@@ -191,7 +190,7 @@ question, answers that stream in, the time and this computer's state for
 the model, look-ups, up to three things at once; and new things to ask:
 the clock, dates and units, this computer's battery, memory, CPU, disk and
 network, windows and workspaces, and what you tell it to remember. Its
-knowledge 2.0 (2026-11-21, also unreleased) follows ewe to 0.47 with a test
+knowledge 2.0 (2026-11-21, released with 0.3.0-beta) follows ewe to 0.47 with a test
 that fails when something ewe ships has no topic, knows what is new in each
 release, searches better, reads the ArchWiki, manuals and your own notes
 offline, and plays your music and links in ewe Player, says why something
