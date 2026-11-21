@@ -151,7 +151,7 @@ daemon_up 1500
 island --ack
 t0=$(ms); out=$(hook PermissionRequest <"$P/permission-bash.json"); t=$(($(ms) - t0))
 sleep 0.1
-check '[ -z "$out" ] && [ $t -ge 1400 ] && [ $t -lt 3000 ] && grep -q "card.close .* timeout" "$W/island.log"' "nobody answers in time: nothing after ${t} ms, card closes (timeout)" "out=$out"
+check '[ -z "$out" ] && [ $t -ge 1400 ] && [ $t -lt 3000 ] && grep -q "card.close .* timeout" "$W/island.log"' "nobody answers in time: nothing after ${t} ms, card closes (timeout)" "out=$out | island: $(tail -3 "$W/island.log" | tr '\n' ' ') | daemon: $(tail -4 "$W/daemon.log" | tr '\n' ' ')"
 island_down
 daemon_down
 
