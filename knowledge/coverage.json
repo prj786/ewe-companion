@@ -1,7 +1,7 @@
 {
  "about": "Everything ewe ships that Shaun must have a topic for. Written by scripts/coverage.py; checked by the unit test every_shipped_feature_has_a_topic. Do not edit by hand: rerun the script (docs/EXTENDING.md, recipe 4).",
- "facts_generated": "2026-11-19",
- "ewe_version": "0.45.0-beta",
+ "facts_generated": "2026-11-21",
+ "ewe_version": "0.47.0-beta",
  "items": [
   {
    "kind": "settings page",
