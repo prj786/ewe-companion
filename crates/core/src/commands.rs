@@ -102,14 +102,14 @@ pub const CATALOG: &[CommandInfo] = &[
         name: "open",
         args: r#"{"what": "settings"|"komble"|"quicksettings"|"overview"|"sync"|"terminal"|"files", "page": "…" (optional)}"#,
         summary: "open an ewe app or panel. ewe Settings pages: appearance wallpaper animations accessibility layout \
-                  windowrules displays startup shortcuts network bluetooth input power saver defaults time user system \
-                  (ewe Settings opens on Appearance whatever the page, so say which page to pick). Komble pages: updates \
+                  windowrules displays startup shortcuts network bluetooth input power saver defaults time language \
+                  user system (ewe Settings opens on that page). Komble pages: updates \
                   plugins settings search=<words> options=<plugin id>. Quick settings pages: home wifi bt audio cal notifs \
                   remote power, and the plugins' vpn ssh mobile mail cast",
     },
     CommandInfo {
         name: "launch_app",
-        args: r#"{"app": "nemo"|"kitty"|"zed"|"browser"|…, "path": "documents"|"~/Projects/ewe"|… (optional)}"#,
+        args: r#"{"app": "ewe files"|"kitty"|"zed"|"browser"|…, "path": "documents"|"~/Projects/ewe"|… (optional)}"#,
         summary: "open any installed app by its name. With a path, the app opens that folder or file \
                   (a terminal starts in it). Paths may be a folder's name (documents, downloads, pictures, \
                   music, videos, desktop, projects, screenshots, home), ~/…, /…, or a folder under home",
@@ -346,6 +346,89 @@ pub const CATALOG: &[CommandInfo] = &[
         summary: "forget something you were asked to remember (Undo puts it back)",
     },
     CommandInfo {
+        name: "whats_new",
+        args: r#"{"version": "0.45" (optional: else the ewe installed here)}"#,
+        summary: "what changed in an ewe release, in plain words: \"what's new\", \"what changed in my last update\" (a look)",
+    },
+    CommandInfo {
+        name: "learn",
+        args: r#"{"text": "the printer is on the second floor"}"#,
+        summary: "write what the user asks you to learn as a note in their notes folder (~/Documents/Shaun), \
+                  which you then search like ewe's guide (Undo deletes it). Never a password, PIN, code, key or \
+                  card number: refused",
+    },
+    CommandInfo {
+        name: "notes",
+        args: r#"{"query": "printer" (optional)}"#,
+        summary: "the user's own notes in ~/Documents/Shaun, with Open",
+    },
+    CommandInfo {
+        name: "wiki",
+        args: r#"{"query": "bluetooth headset"}"#,
+        summary: "look something up in the ArchWiki on this computer (offline, arch-wiki-lite): the best page's \
+                  title and the section that fits (a look)",
+    },
+    CommandInfo {
+        name: "man_page",
+        args: r#"{"name": "rsync", "query": "exclude" (optional: what to look for in it)}"#,
+        summary: "read a command's manual page (or its --help) on this computer: what it does and the part that \
+                  fits the query (a look)",
+    },
+    CommandInfo {
+        name: "play_local",
+        args: r#"{"query": "jazz"}  or  {"path": "~/Music/song.flac"}"#,
+        summary: "play songs from the user's own music library (~/Music: by title, artist, album or genre) in ewe Player",
+    },
+    CommandInfo {
+        name: "play_link",
+        args: r#"{"url": "https://www.youtube.com/watch?v=…" (optional: else the link the user copied)}"#,
+        summary: "play a video or song link (YouTube and 1000+ sites, or a direct file) in ewe Player",
+    },
+    CommandInfo {
+        name: "now_playing",
+        args: "{}",
+        summary: "what is playing now and in which app (a look)",
+    },
+    CommandInfo {
+        name: "why_no_play",
+        args: r#"{"path": "~/Videos/film.mkv"}  or  {"url": "https://…"}  (optional: else what was copied or last opened in ewe Player)"#,
+        summary: "why a video or song will not play: its format and codecs in words, whether this computer can \
+                  decode them, and the fix (a look)",
+    },
+    CommandInfo {
+        name: "keyboard_layout",
+        args: r#"{"layout": "georgian"|"ru"|"next"}"#,
+        summary: "switch to one of the keyboard layouts the user has (by language or code; Undo switches back)",
+    },
+    CommandInfo {
+        name: "typing_add",
+        args: r#"{"language": "japanese"}"#,
+        summary: "add typing in another language (Chinese, Japanese, Korean, Vietnamese, Hindi …: an input method): \
+                  proposes `ewe-ime add <id>` when it is installed, else opens ewe Settings → Keyboard and mouse",
+    },
+    CommandInfo {
+        name: "show_file",
+        args: r#"{"path": "~/Documents/lease.pdf"}"#,
+        summary: "show a file selected in ewe Files (else its folder in the file manager)",
+    },
+    CommandInfo {
+        name: "open_with",
+        args: r#"{"path": "~/Videos/film.mkv"}"#,
+        summary: "open a file with another app: ewe Files' Open with list",
+    },
+    CommandInfo {
+        name: "dock_display",
+        args: r#"{"on": "primary"|"all"|"none"}"#,
+        summary: "show the dock on the main display, on every display or on none (the Dock plugin's option; asks \
+                  first: shows the command with Run, then Undo)",
+    },
+    CommandInfo {
+        name: "bar_fold",
+        args: r#"{"on": true|false}"#,
+        summary: "fold the top bar's tray icons, plugin buttons and tiling switch behind a chevron, or unfold them \
+                  (asks first: shows the command with Run, then Undo)",
+    },
+    CommandInfo {
         name: "theme_mode",
         args: r#"{"mode": "dark"|"light"}"#,
         summary: "switch the whole desktop to dark or light mode (asks first: shows the command with Run)",
@@ -370,6 +453,8 @@ pub const PROPOSALS: &[&str] = &[
     "power",
     "empty_trash",
     "force_quit",
+    "dock_display",
+    "bar_fold",
 ];
 
 /// ewe browser's own pages (`browser_page`) and the address each has.
@@ -403,9 +488,9 @@ pub const OPEN_WHAT: &[&str] = &[
 ];
 
 /// The Settings app's pages: its pane ids and their labels, in nav order
-/// (ewe-settings 0.22 `src/lib/pages.js`: Look, Desktop, Devices, System).
-/// ewe Settings (0.18 to 0.22) opens on Appearance whatever page is asked
-/// for, so a reply names the page to pick.
+/// (ewe-settings 0.25 `src/lib/pages.js`: Look, Desktop, Devices, System;
+/// Language from 0.26). Since 0.24 `ewe-settings --page <id>` opens that
+/// page (0.18 to 0.22 opened Appearance whatever was asked).
 pub const SETTINGS_PAGES: &[(&str, &str)] = &[
     ("appearance", "Appearance"),
     ("wallpaper", "Wallpaper"),
@@ -423,6 +508,9 @@ pub const SETTINGS_PAGES: &[(&str, &str)] = &[
     ("saver", "Screensaver"),
     ("defaults", "Default apps"),
     ("time", "Time and place"),
+    // ewe Settings 0.26 (the 2026-11-21 wave): spell checking and the
+    // apps' language packs
+    ("language", "Language"),
     ("user", "User"),
     ("system", "About this computer"),
 ];
@@ -519,6 +607,33 @@ fn token_ok(id: &str) -> bool {
     (4..=64).contains(&id.len())
         && !id.starts_with('-')
         && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+/// An ewe version as people write it: `0.45`, `0.45.0`, `0.45.0-beta`.
+pub fn version_ok(v: &str) -> bool {
+    let core = v.trim().trim_end_matches("-beta");
+    let parts: Vec<&str> = core.split('.').collect();
+    v.len() <= 20
+        && (2..=3).contains(&parts.len())
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.len() <= 4 && p.chars().all(|c| c.is_ascii_digit()))
+}
+
+/// A command's name as `man` and PATH know it: one word, never a flag or
+/// a path.
+pub fn program_ok(n: &str) -> bool {
+    (1..=40).contains(&n.len())
+        && n.starts_with(|c: char| c.is_ascii_alphanumeric())
+        && n.chars()
+            .all(|c| c.is_ascii_alphanumeric() || "._+-".contains(c))
+}
+
+/// A link to play or look at: http or https, one line, a sane length.
+pub fn link_ok(u: &str) -> bool {
+    (u.starts_with("https://") || u.starts_with("http://"))
+        && u.len() <= 2000
+        && !u.chars().any(|c| c.is_control() || c.is_whitespace())
 }
 
 /// A name the user gave something (a site, a workspace, a device): one
@@ -922,6 +1037,87 @@ pub fn validate(call: &Call) -> Result<(), String> {
                 (None, false) => Err("forget: say what to forget (\"words\")".into()),
             }
         }
+        "whats_new" => match a.get("version").filter(|v| !v.is_null()) {
+            None => Ok(()),
+            Some(v) if v.as_str().is_some_and(version_ok) => Ok(()),
+            Some(_) => Err("whats_new: \"version\" must be like 0.45".into()),
+        },
+        "learn" => {
+            text("text")?;
+            let t = a["text"].as_str().unwrap_or("");
+            if t.len() > 4000 {
+                return Err("learn: that is too long for one note".into());
+            }
+            if t.chars().any(|c| c.is_control() && c != '\n') {
+                return Err("learn: \"text\" must be plain text".into());
+            }
+            Ok(())
+        }
+        "notes" => opt_text("query", 100),
+        "wiki" => {
+            text("query")?;
+            if a["query"].as_str().unwrap_or("").len() > 120 {
+                return Err("wiki: say it in a few words".into());
+            }
+            Ok(())
+        }
+        "man_page" => {
+            match a.get("name").and_then(Value::as_str) {
+                Some(n) if program_ok(n) => {}
+                _ => return Err("man_page: \"name\" must be a command's name".into()),
+            }
+            opt_text("query", 100)
+        }
+        "play_local" => match (
+            a.get("query").filter(|v| !v.is_null()),
+            a.get("path").filter(|v| !v.is_null()),
+        ) {
+            (Some(_), None) => opt_text("query", 200),
+            (None, Some(_)) => {
+                text("path")?;
+                path_text(a["path"].as_str().unwrap_or(""), &call.command)
+            }
+            _ => Err("play_local: give \"query\" or \"path\"".into()),
+        },
+        "play_link" => match a.get("url").filter(|v| !v.is_null()) {
+            None => Ok(()),
+            Some(u) if u.as_str().is_some_and(link_ok) => Ok(()),
+            Some(_) => Err("play_link: only an http or https link".into()),
+        },
+        "now_playing" => Ok(()),
+        "why_no_play" => match (
+            a.get("path").filter(|v| !v.is_null()),
+            a.get("url").filter(|v| !v.is_null()),
+        ) {
+            (None, None) => Ok(()),
+            (Some(p), None) => match p.as_str() {
+                Some(p) if !p.trim().is_empty() => path_text(p, &call.command),
+                _ => Err("why_no_play: \"path\" must be a path".into()),
+            },
+            (None, Some(u)) if u.as_str().is_some_and(link_ok) => Ok(()),
+            (None, Some(_)) => Err("why_no_play: only an http or https link".into()),
+            _ => Err("why_no_play: a path or a link, not both".into()),
+        },
+        "keyboard_layout" => match a.get("layout").and_then(Value::as_str) {
+            Some(l) if name_ok(l, 40) => {
+                // the Undo: back to the layout it left, by its place in the list
+                match a.get("index").filter(|v| !v.is_null()) {
+                    None => Ok(()),
+                    Some(_) => int("index", 0, 31),
+                }
+            }
+            _ => Err("keyboard_layout: \"layout\" must name a language or a layout".into()),
+        },
+        "typing_add" => match a.get("language").and_then(Value::as_str) {
+            Some(l) if name_ok(l, 40) => Ok(()),
+            _ => Err("typing_add: \"language\" must name a language".into()),
+        },
+        "show_file" | "open_with" => {
+            text("path")?;
+            path_text(a["path"].as_str().unwrap_or(""), &call.command)
+        }
+        "dock_display" => one_of("on", &["primary", "all", "none"]),
+        "bar_fold" => flag("on", true),
         "theme_mode" => one_of("mode", &["dark", "light"]),
         "power" => one_of("action", &["suspend", "restart", "shutdown", "logout"]),
         "browser_history" => match a.get("query") {
@@ -1122,12 +1318,62 @@ mod tests {
             ("theme_mode", json!({"mode": "light"})),
             ("power", json!({"action": "suspend"})),
             ("empty_trash", json!({})),
+            ("whats_new", json!({"version": "0.45"})),
+            (
+                "learn",
+                json!({"text": "the printer is on the second floor"}),
+            ),
+            ("notes", json!({})),
+            ("wiki", json!({"query": "bluetooth headset"})),
+            ("man_page", json!({"name": "rsync", "query": "exclude"})),
+            ("play_local", json!({"query": "jazz"})),
+            (
+                "play_link",
+                json!({"url": "https://www.youtube.com/watch?v=x"}),
+            ),
+            ("now_playing", json!({})),
+            ("why_no_play", json!({"path": "~/Videos/film.mkv"})),
+            ("keyboard_layout", json!({"layout": "georgian"})),
+            ("typing_add", json!({"language": "japanese"})),
+            ("show_file", json!({"path": "~/Documents/lease.pdf"})),
+            ("open_with", json!({"path": "~/Videos/film.mkv"})),
+            ("dock_display", json!({"on": "all"})),
+            ("bar_fold", json!({"on": true})),
         ];
         assert_eq!(good.len(), CATALOG.len());
         for (name, args) in good {
             assert!(known(name), "{name}");
             assert_eq!(validate(&Call::new(name, args)), Ok(()), "{name}");
         }
+    }
+
+    #[test]
+    fn the_new_powers_refuse_bad_calls() {
+        let bad = |c: &str, a: Value| validate(&Call::new(c, a)).is_err();
+        assert!(bad("whats_new", json!({"version": "latest"})));
+        assert!(bad("learn", json!({"text": ""})));
+        assert!(bad("learn", json!({"text": "a\u{7}b"})));
+        assert!(bad("wiki", json!({})));
+        assert!(bad("man_page", json!({"name": "--help"})));
+        assert!(bad("man_page", json!({"name": "/bin/rm"})));
+        assert!(bad("man_page", json!({"name": "rm; reboot"})));
+        assert!(bad("play_local", json!({})));
+        assert!(bad("play_local", json!({"query": "jazz", "path": "/x"})));
+        assert!(bad("play_link", json!({"url": "file:///etc/passwd"})));
+        assert!(bad("play_link", json!({"url": "https://a b"})));
+        assert!(bad("why_no_play", json!({"url": "ftp://x"})));
+        assert!(bad(
+            "why_no_play",
+            json!({"path": "/a", "url": "https://x"})
+        ));
+        assert!(bad("keyboard_layout", json!({"layout": "-ge"})));
+        assert!(bad("typing_add", json!({})));
+        assert!(bad("dock_display", json!({"on": "left"})));
+        assert!(bad("bar_fold", json!({})));
+        assert!(version_ok("0.45") && version_ok("0.45.0-beta") && !version_ok("0.x"));
+        assert!(program_ok("rsync") && program_ok("g++") && !program_ok("-rf"));
+        // the settings it changes only ever ask first
+        assert!(PROPOSALS.contains(&"dock_display") && PROPOSALS.contains(&"bar_fold"));
     }
 
     #[test]

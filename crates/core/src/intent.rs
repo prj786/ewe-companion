@@ -12,7 +12,7 @@
 use std::sync::OnceLock;
 
 use regex::Regex;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::commands::Call;
 
@@ -20,14 +20,77 @@ use crate::commands::Call;
 const STEP: i64 = 10;
 
 fn clean(text: &str) -> String {
-    let t = text
-        .trim()
-        .to_lowercase()
-        .replace(['\u{2019}', '\u{2018}'], "'");
+    clean_case(text).to_lowercase()
+}
+
+/// [`clean`] without the lower case: the same words in the same places,
+/// so a link, a path or a note can be given back as the user wrote it.
+fn clean_case(text: &str) -> String {
+    let t = text.trim().replace(['\u{2019}', '\u{2018}'], "'");
     let t = t.trim_end_matches(['.', '!', '?']).trim();
-    let t = t.strip_prefix("please ").unwrap_or(t);
-    let t = t.strip_suffix(" please").unwrap_or(t);
+    let low = t.to_lowercase();
+    let t = if low.starts_with("please ") {
+        &t[7..]
+    } else {
+        t
+    };
+    let low = t.to_lowercase();
+    let t = if low.ends_with(" please") {
+        &t[..t.len() - 7]
+    } else {
+        t
+    };
     t.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The commands whose words are the user's own and keep their case: a
+/// link (YouTube's ids), a path, a note.
+const KEEP_CASE: &[(&str, &str)] = &[
+    ("open_url", "url"),
+    ("play_link", "url"),
+    ("why_no_play", "url"),
+    ("why_no_play", "path"),
+    ("play_local", "path"),
+    ("open_file", "path"),
+    ("show_file", "path"),
+    ("open_with", "path"),
+    ("learn", "text"),
+];
+
+/// Put back the case the matcher's lower case took from a link, a path or
+/// a note: the value is found in the cleaned text and read from the same
+/// place of the text as written.
+fn keep_case(call: &mut Call, low: &str, cased: &str) {
+    if low.len() != cased.len() {
+        return; // a letter whose lower case is longer: leave it
+    }
+    for (cmd, key) in KEEP_CASE {
+        if call.command != *cmd {
+            continue;
+        }
+        let Some(v) = call
+            .args
+            .get(*key)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        // "https://" was added to a bare domain: find the rest
+        let needle = v
+            .strip_prefix("https://")
+            .filter(|r| !low.contains(&v) && low.contains(*r));
+        let (needle, prefix) = match needle {
+            Some(r) => (r.to_string(), "https://"),
+            None => (v.clone(), ""),
+        };
+        if let Some(at) = low.find(&needle)
+            && cased.is_char_boundary(at)
+            && cased.is_char_boundary(at + needle.len())
+        {
+            call.args[*key] = json!(format!("{prefix}{}", &cased[at..at + needle.len()]));
+        }
+    }
 }
 
 struct Rule {
@@ -656,6 +719,15 @@ fn rules() -> &'static [Rule] {
               }),
             r(r"what day (?:of the week )?(?:is|was|will be|falls on|does) (.+?)(?: fall on| on)?|(?:which|what) (?:day of the week|weekday) (?:is|was|will be) (.+)|what (?:day|weekday) (?:is|was) (.+?) on",
               |c| date_call("weekday", c.get(1).or(c.get(2)).or(c.get(3))?.as_str())),
+            // ── what's new in ewe: the release notes of the version here ──
+            r(r"(?:what(?:'?s| is) new|what(?:'?s| has) changed|what changed|what(?:'?s| is) in (?:the|this|my) (?:new |last |latest )?(?:update|version|release)|what did (?:the|my|this) (?:last |latest |new )?update (?:change|bring|do|add)|(?:show )?(?:me )?(?:the )?(?:release notes|changelog|change ?log|patch notes))(?: (?:in|with|for|since|of|after))?(?: (?:ewe|my last update|the last update|the latest update|the update|this update|this version|my update|the new version|the new ewe|ewe's last update))?(?: (?:version )?(\d+\.\d+(?:\.\d+)?(?:-beta)?))?",
+              |c| {
+                  let mut args = json!({});
+                  if let Some(v) = c.get(1) {
+                      args["version"] = json!(v.as_str());
+                  }
+                  Some(Call::new("whats_new", args))
+              }),
             // ── this computer: battery, memory, CPU, uptime, the network,
             //    disk space; "why is my laptop slow" is all of it ──
             r(r"(?:how much |what(?:'?s| is) (?:my |the )?)?battery(?: (?:level|left|life|charge|percentage|percent|status|state))?(?: (?:do i have|is left|left|now))?|how much (?:battery|charge|power) (?:do i have|is left|have i got|left|is there)(?: (?:on|in) (?:my |the )?(?:laptop|computer|battery))?(?: left)?|how(?:'?s| is) (?:my |the )?battery(?: doing)?|is (?:my |the )?(?:laptop|computer|battery) (?:charging|plugged in|on battery|full)|how long (?:will|does|can) (?:my |the )?(?:battery|laptop|charge) last|am i (?:charging|on battery|plugged in)",
@@ -708,6 +780,25 @@ fn rules() -> &'static [Rule] {
                   let up = matches!(w, "up" | "increase" | "raise" | "brighter");
                   let by = num(c, 2).or_else(|| num(c, 4)).unwrap_or(STEP);
                   Some(Call::new("brightness_change", json!({"delta": if up { by } else { -by }})))
+              }),
+            // ── what plays, and why something will not ──
+            r(r"what(?:'?s| is) (?:playing|on|this song|this track|the song|the music|this music)(?: now| right now| at the moment)?|what song is (?:this|playing|on)(?: now| right now)?|which song is (?:this|playing)|what am i listening to|who(?:'?s| is) (?:singing|playing)(?: this(?: song)?)?|now playing|(?:the )?current (?:song|track)|what(?:'?s| is) the name of this song",
+              |_| Some(Call::new("now_playing", json!({})))),
+            r(r"why (?:won'?t|doesn'?t|does not|will not|can'?t|cannot|isn'?t|is not)(?: (?:this|that|it|the|my))?(?: (?:video|film|movie|song|file|link|track|music|clip|stream|audio|sound))? (?:play(?:ing)?|work(?:ing)?|open(?:ing)?)(?: in (?:ewe )?player)?|why (?:won'?t|doesn'?t|can'?t|will not|does not) (.+?) play(?: in (?:ewe )?player)?|why (?:can'?t|cannot) i (?:play|watch|hear|open) (?:this|that|it|the|my)?(?: ?(?:video|film|movie|song|file|link|clip))?|(?:this|the|my|that) (?:video|film|movie|song|file|link|clip) (?:won'?t|doesn'?t|will not|does not|can'?t) play",
+              |c| {
+                  let mut args = json!({});
+                  if let Some(w) = c.get(1) {
+                      let w = w.as_str().trim();
+                      let w = w.strip_prefix("the ").or_else(|| w.strip_prefix("my ")).unwrap_or(w);
+                      if crate::commands::link_ok(w) {
+                          args["url"] = json!(w);
+                      } else if w.starts_with('~') || w.starts_with('/') || w.contains('.') {
+                          args["path"] = json!(w);
+                      } else if !matches!(w, "it" | "this" | "that" | "this video" | "this song" | "this file" | "the video" | "my video" | "video" | "this film" | "the film" | "this link") {
+                          return None;
+                      }
+                  }
+                  Some(Call::new("why_no_play", args))
               }),
             // ── media ──
             r(r"(?:play|pause|resume|stop)(?: (?:the )?(?:music|song|track|video|media))?|play ?pause|toggle (?:the )?music",
@@ -793,6 +884,22 @@ fn rules() -> &'static [Rule] {
               |_| Some(Call::new("timer_cancel", json!({})))),
             r(r"(?:show|list|what are)(?: me)?(?: my| the| all)? (?:timers|reminders|timers and reminders|alarms)|(?:what|which) (?:timers|reminders) (?:do i have|are (?:set|running|on|there))|how (?:long|much time) is left(?: on (?:my|the) timer)?|(?:my )?(?:timers|reminders)",
               |_| Some(Call::new("timers", json!({})))),
+            // ── what to learn: a note in ~/Documents/Shaun, searched like the
+            //    pack ("Shaun, learn this: …", "remember for later: …") ──
+            r(r"(?:shaun,? )?learn (?:this|that)[:,]? (.+)|(?:shaun,? )?learn: (.+)|remember (?:this |that )?for later[:,]? (.+)|(?:save|add|write|put) (?:this |that )?(?:to|in|into) (?:my |your )?notes[:,]? (.+)|(?:add|save) (?:a )?note(?: for later)?: (.+)",
+              |c| {
+                  let t = c.get(1).or(c.get(2)).or(c.get(3)).or(c.get(4)).or(c.get(5))?.as_str().trim();
+                  let t = t.strip_prefix("that ").unwrap_or(t);
+                  (!t.is_empty()).then(|| Call::new("learn", json!({"text": t})))
+              }),
+            r(r"(?:show|list|open)(?: me)?(?: my| your| the)? (?:shaun )?notes|what(?:'?s| is) in my notes|what notes do (?:i|you) have|(?:search|look in|check) (?:my|your) notes for (.+)|(?:find|look up) (.+?) in my notes|what do my notes say about (.+)",
+              |c| {
+                  let mut args = json!({});
+                  if let Some(q) = c.get(1).or(c.get(2)).or(c.get(3)) {
+                      args["query"] = json!(q.as_str().trim());
+                  }
+                  Some(Call::new("notes", args))
+              }),
             // ── memory: "remember that …" (a reminder when it has a time),
             //    "what do you remember", "forget …" ──
             r(r"(?:please )?remember(?: that|:)? (.+)|(?:please )?(?:don'?t|do not) forget(?: that)? (.+)|(?:keep in mind|make a note|take a note|note down)(?: that|:)? (.+)",
@@ -817,6 +924,40 @@ fn rules() -> &'static [Rule] {
                       return None;
                   }
                   Some(Call::new("forget", json!({"words": w})))
+              }),
+            // ── settings by text, through ewe-conf and ewe-plugin: proposals
+            //    (asks first, then Undo) ──
+            r(r"(?:show|put|have) the dock on (all|every|each|both|the main|the primary|my main|my primary|primary|main) (?:displays?|screens?|monitors?)(?: only)?|(?:show|put) the dock (?:only )?on (?:the )?(main|primary) (?:display|screen|monitor)(?: only)?|dock on (all|every|primary|main|no|none)(?: displays?| screens?| monitors?)?|(?:turn off|disable|remove|get rid of) the dock|no dock|dock off",
+              |c| {
+                  let w = c.get(1).or(c.get(2)).or(c.get(3)).map_or("none", |m| m.as_str());
+                  let on = match w {
+                      "all" | "every" | "each" | "both" => "all",
+                      "no" | "none" => "none",
+                      _ => "primary",
+                  };
+                  Some(Call::new("dock_display", json!({"on": on})))
+              }),
+            r(r"(fold|unfold|collapse|expand) (?:the )?(?:top )?bar(?:'?s)?(?: icons)?|(fold|unfold|collapse|expand) (?:the )?(?:tray|bar) icons|(?:the )?bar fold (on|off)|(?:turn|switch) (on|off) (?:the )?bar fold|(?:turn|switch) (?:the )?bar fold (on|off)",
+              |c| {
+                  let w = c.get(1).or(c.get(2)).or(c.get(3)).or(c.get(4)).or(c.get(5))?.as_str();
+                  let on = matches!(w, "fold" | "collapse" | "on");
+                  Some(Call::new("bar_fold", json!({"on": on})))
+              }),
+            // ── keyboard layouts and typing in other languages ──
+            r(r"(next|previous) (?:keyboard )?layout|(?:switch|change|go)(?: the)?(?: keyboard)?(?: layout)? to (?:the )?(.+?) (?:keyboard|layout|keyboard layout)|(?:switch|change|set) (?:the |my )?(?:keyboard|layout|keyboard layout|keyboard language|input language) to (.+)|(?:use|type with) (?:the )?(.+?) (?:keyboard|layout|keyboard layout)|(.+?) keyboard(?: layout)?(?: on)?",
+              |c| {
+                  if let Some(step) = c.get(1) {
+                      return Some(Call::new("keyboard_layout", json!({"layout": step.as_str()})));
+                  }
+                  let w = c.get(2).or(c.get(3)).or(c.get(4)).or(c.get(5))?.as_str().trim();
+                  let w = w.strip_prefix("the ").unwrap_or(w);
+                  (crate::lang::xkb_code(w).is_some() || crate::lang::ime_id(w).is_some())
+                      .then(|| Call::new("keyboard_layout", json!({"layout": w})))
+              }),
+            r(r"(?:add|set up|enable|turn on|install|get)(?: the)? (.+?) (?:typing|input|input method|writing)|(?:i want to|let me|how do i|how can i|help me|i need to) (?:type|write) in (.+)|(?:add|enable|set up) typing in (.+)|type in (.+)",
+              |c| {
+                  let w = c.get(1).or(c.get(2)).or(c.get(3)).or(c.get(4))?.as_str().trim();
+                  crate::lang::ime_id(w).map(|_| Call::new("typing_add", json!({"language": w})))
               }),
             // ── dark or light, power, the trash: proposals (asks first) ──
             r(r"(turn on|switch to|change to|go to|use|enable|turn off|disable) (?:the )?(light|dark) (?:mode|theme)|(light|dark) (?:mode|theme)(?: on)?|go (light|dark)",
@@ -1093,6 +1234,26 @@ fn rules() -> &'static [Rule] {
                   let app = app_words(&c[1])?;
                   Some(Call::new("window", json!({"action": "close", "app": app})))
               }),
+            // ── the ArchWiki on this computer (arch-wiki-lite), and manual
+            //    pages: looks, offline ──
+            r(r"(?:search|look up|look in|check|ask|read)(?: in)? the (?:arch ?wiki|wiki)(?: for| about| on)? (.+)|(?:arch ?wiki|wiki) (.+)|what does the (?:arch ?)?wiki say (?:about|on) (.+)|(?:look up|search|find|read about) (.+?) (?:on|in) the (?:arch ?)?wiki|(.+?) (?:on|in) the arch ?wiki",
+              |c| {
+                  let q = c.get(1).or(c.get(2)).or(c.get(3)).or(c.get(4)).or(c.get(5))?.as_str().trim();
+                  let q = q.strip_prefix("for ").or_else(|| q.strip_prefix("about ")).unwrap_or(q);
+                  (!q.is_empty() && q.len() <= 120).then(|| Call::new("wiki", json!({"query": q})))
+              }),
+            r(r"man (\S+)(?: (.+))?|(?:show |open |read )?(?:me )?(?:the )?(?:man ?page|manual page|manual)(?: for| of)? (?:the )?(\S+)(?: command)?(?: (?:about|for) (.+))?|(\S+) --help|(?:what are )?(?:the )?options (?:for|of) (?:the )?(\S+)(?: command)?|how (?:do i|to|can i) use (?:the )?(\S+) command(?: to (.+))?|help (?:for|with) (?:the )?(\S+) command",
+              |c| {
+                  let name = c.get(1).or(c.get(3)).or(c.get(5)).or(c.get(6)).or(c.get(7)).or(c.get(9))?.as_str();
+                  if !crate::commands::program_ok(name) || matches!(name, "page" | "pages" | "the" | "a") {
+                      return None;
+                  }
+                  let mut args = json!({"name": name});
+                  if let Some(q) = c.get(2).or(c.get(4)).or(c.get(8)) {
+                      args["query"] = json!(q.as_str().trim());
+                  }
+                  Some(Call::new("man_page", args))
+              }),
             // ── files and folders: the daemon's finder. "find" is the
             //    finder; "find … online", "search", "google" and "look up"
             //    are the web. A finder that finds nothing hands the words
@@ -1125,6 +1286,28 @@ fn rules() -> &'static [Rule] {
               |c| Some(Call::new("find_files", json!({"query": c[1].trim()})))),
             r(r"(?:search|google|look up|find)(?: the web| online| on the web)?(?: for)? (.+?)(?: online| on the web| on the internet| on google)?",
               |c| Some(Call::new("web_search", json!({"query": c[1].trim()})))),
+            // ── ewe Player: a link (YouTube and other sites, through yt-dlp),
+            //    or your own music library ──
+            r(r"play (?:this |the |that |my )?(?:link|url|video link|youtube link)(?: (?:i|i've|i have|you) (?:just )?copied)?(?: from (?:the|my) clipboard| in (?:the|my) clipboard)?(?: in (?:ewe )?player)?|play what i (?:just )?copied|play (https?://\S+)(?: in (?:ewe )?player)?|(?:open|watch) (https?://\S+) in (?:ewe )?player",
+              |c| {
+                  let mut args = json!({});
+                  if let Some(u) = c.get(1).or(c.get(2)) {
+                      args["url"] = json!(u.as_str());
+                  }
+                  Some(Call::new("play_link", args))
+              }),
+            r(r"(?:play|shuffle) (?:some |all )?(?:of )?(?:my |the )?(.+?) (?:from|in|off) (?:my |the )?(?:music|music library|library|songs|music folder|ewe player)|(?:play|shuffle) (?:some |all )?(?:of )?my (.+)|(?:play|shuffle) (?:all )?(?:of )?my (?:music|songs|library|music library)|shuffle (?:my |the )?(?:music|songs|library)",
+              |c| {
+                  let q = c.get(1).or(c.get(2)).map_or("", |m| m.as_str().trim());
+                  if [" on youtube", " on youtube music", " on the browser", " on spotify"].iter().any(|s| q.ends_with(s)) {
+                      return None;
+                  }
+                  let q = match q {
+                      "music" | "songs" | "library" | "music library" | "favourite songs" => "",
+                      q => q,
+                  };
+                  Some(Call::new("play_local", json!({"query": q})))
+              }),
             r(r"play (?:some |the song |the album |music by |songs by )?(.+?)(?: on (?:youtube|youtube music|the browser))?",
               |c| Some(Call::new("play_music", json!({"query": c[1].trim()})))),
             // ── apps and folders: "open nemo", "open kitty in documents",
@@ -1146,6 +1329,86 @@ fn rules() -> &'static [Rule] {
     })
 }
 
+/// "How do I use rsync to exclude a folder?": a program's name and what
+/// the question wants of it, for a manual look-up when no model answers.
+pub fn program_question(text: &str) -> Option<(String, String)> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(r"^(?:how (?:do i|to|can i|should i) use|how does) ([a-z0-9][a-z0-9._+-]{0,39})(?: (?:work|to (.+)))?$")
+            .expect("program question pattern")
+    });
+    let t = clean(text);
+    let c = re.captures(&t)?;
+    let name = c[1].to_string();
+    crate::commands::program_ok(&name).then(|| {
+        (
+            name,
+            c.get(2).map_or(String::new(), |m| m.as_str().to_string()),
+        )
+    })
+}
+
+/// "Translate this": what to translate (`None`: what the user copied) and
+/// into which language (`None`: English, or the system's language when the
+/// text is English). Not a command: the chat asks the model, with the text
+/// marked untrusted (C4), and only with a model.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Translate {
+    pub text: Option<String>,
+    pub to: Option<String>,
+}
+
+pub fn translate(text: &str) -> Option<Translate> {
+    static RE: OnceLock<Vec<Regex>> = OnceLock::new();
+    let res = RE.get_or_init(|| {
+        [
+            // the clipboard
+            r#"^(?:translate|translation of)(?: (?:this|that|it|what i (?:just )?copied|the clipboard|my clipboard|the copied text|the text i copied))?(?: (?:in)?to ([\p{L} ]{2,30}))?$"#,
+            r#"^what does (?:this|that|it|the text i copied|what i copied) (?:say|mean)(?: in ([\p{L} ]{2,30}))?$"#,
+            // inline text, quoted or not
+            r#"^translate ["“'](.+?)["”'](?: (?:in)?to ([\p{L} ]{2,30}))?$"#,
+            r#"^translate (.+?) (?:in)?to ([\p{L}]{3,20})$"#,
+            r#"^how do (?:you|i) say ["“'](.+?)["”'] in ([\p{L}]{3,20})$"#,
+            r#"^how do (?:you|i) say (.+?) in ([\p{L}]{3,20})$"#,
+        ]
+        .iter()
+        .map(|p| Regex::new(p).expect("translate pattern"))
+        .collect()
+    });
+    let cased = clean_case(text);
+    let low = cased.to_lowercase();
+    for (i, re) in res.iter().enumerate() {
+        let Some(c) = re.captures(&low) else { continue };
+        let to = |g: usize| c.get(g).map(|m| m.as_str().trim().to_string());
+        if i < 2 {
+            return Some(Translate {
+                text: None,
+                to: to(1),
+            });
+        }
+        let m = c.get(1)?;
+        let t = if low.len() == cased.len()
+            && cased.is_char_boundary(m.start())
+            && cased.is_char_boundary(m.end())
+        {
+            cased[m.start()..m.end()].to_string()
+        } else {
+            m.as_str().to_string()
+        };
+        if matches!(
+            t.to_lowercase().as_str(),
+            "this page" | "the page" | "this site" | "this website"
+        ) {
+            return None;
+        }
+        return Some(Translate {
+            text: Some(t),
+            to: to(2),
+        });
+    }
+    None
+}
+
 /// "What is this page about?": a question about the page open in ewe
 /// browser. Not a command: the chat reads the page and asks the model,
 /// with the page's text marked untrusted (C4).
@@ -1162,7 +1425,8 @@ pub fn about_page(text: &str) -> bool {
 
 /// The command these words ask for, if they plainly ask for one.
 pub fn match_text(text: &str) -> Option<Call> {
-    let t = clean(text);
+    let cased = clean_case(text);
+    let t = cased.to_lowercase();
     if t.is_empty() || t.len() > 300 {
         return None;
     }
@@ -1173,7 +1437,9 @@ pub fn match_text(text: &str) -> Option<Call> {
     };
     // a miss: once more with the command words' typos fixed ("opne
     // firefox", "volme 50"); free text is never touched (typo.rs)
-    find(&t).or_else(|| crate::typo::correct(&t).and_then(|c| find(&c)))
+    let mut call = find(&t).or_else(|| crate::typo::correct(&t).and_then(|c| find(&c)))?;
+    keep_case(&mut call, &t, &cased);
+    Some(call)
 }
 
 #[cfg(test)]
@@ -2540,8 +2806,306 @@ mod tests {
             "where is the night light",
             "how do I find a file",
             "what is my github password",
+            // the 2026-11-21 wave's words must leave these alone
+            "how do I learn japanese",
+            "my bluetooth keyboard is not working",
+            "what is a keyboard layout",
+            "man, that was quick",
+            "why is the sky blue",
+            "what is the dock",
         ] {
             assert_eq!(m(q), None, "{q:?}");
         }
+    }
+
+    #[test]
+    fn translations() {
+        let t = |s: &str| translate(s);
+        assert_eq!(
+            t("translate this"),
+            Some(Translate {
+                text: None,
+                to: None
+            })
+        );
+        assert_eq!(
+            t("Translate what I copied to French"),
+            Some(Translate {
+                text: None,
+                to: Some("french".into())
+            })
+        );
+        assert_eq!(
+            t("translate \"Où est la gare?\" to English"),
+            Some(Translate {
+                text: Some("Où est la gare?".into()),
+                to: Some("english".into())
+            })
+        );
+        assert_eq!(
+            t("translate good morning to Georgian"),
+            Some(Translate {
+                text: Some("good morning".into()),
+                to: Some("georgian".into())
+            })
+        );
+        assert_eq!(
+            t("how do you say thank you in japanese"),
+            Some(Translate {
+                text: Some("thank you".into()),
+                to: Some("japanese".into())
+            })
+        );
+        assert_eq!(
+            t("what does this say"),
+            Some(Translate {
+                text: None,
+                to: None
+            })
+        );
+        assert_eq!(t("translate this page to french"), None);
+        assert_eq!(
+            program_question("How do I use rsync to exclude a folder?"),
+            Some(("rsync".into(), "exclude a folder".into()))
+        );
+        assert_eq!(
+            program_question("how does tar work"),
+            Some(("tar".into(), String::new()))
+        );
+        assert_eq!(program_question("how do I use the dock"), None);
+        assert_eq!(t("open the translator"), None);
+        // the matcher leaves it to the chat
+        assert_eq!(m("translate this"), None);
+    }
+
+    #[test]
+    fn whats_new() {
+        is("what's new", "whats_new", json!({}));
+        is("What's new in ewe?", "whats_new", json!({}));
+        is("what changed in my last update", "whats_new", json!({}));
+        is("what did the last update change", "whats_new", json!({}));
+        is("show me the release notes", "whats_new", json!({}));
+        is(
+            "what's new in ewe 0.44",
+            "whats_new",
+            json!({"version": "0.44"}),
+        );
+        is(
+            "changelog 0.45.0-beta",
+            "whats_new",
+            json!({"version": "0.45.0-beta"}),
+        );
+    }
+
+    #[test]
+    fn learning_and_notes() {
+        is(
+            "Shaun, learn this: The printer is on the 2nd floor",
+            "learn",
+            json!({"text": "The printer is on the 2nd floor"}),
+        );
+        is(
+            "learn that our wifi is called Home5G",
+            "learn",
+            json!({"text": "our wifi is called Home5G"}),
+        );
+        is(
+            "remember for later: Mum's birthday is in May",
+            "learn",
+            json!({"text": "Mum's birthday is in May"}),
+        );
+        is(
+            "add to my notes: buy milk",
+            "learn",
+            json!({"text": "buy milk"}),
+        );
+        // "remember that …" is still memory's
+        is(
+            "remember that my dentist is on friday",
+            "remember",
+            json!({"text": "my dentist is on friday"}),
+        );
+        is("show my notes", "notes", json!({}));
+        is(
+            "search my notes for printer",
+            "notes",
+            json!({"query": "printer"}),
+        );
+        is(
+            "what do my notes say about the wifi",
+            "notes",
+            json!({"query": "the wifi"}),
+        );
+    }
+
+    #[test]
+    fn the_wiki_and_manual_pages() {
+        is(
+            "wiki bluetooth headset",
+            "wiki",
+            json!({"query": "bluetooth headset"}),
+        );
+        is(
+            "search the arch wiki for pipewire",
+            "wiki",
+            json!({"query": "pipewire"}),
+        );
+        is(
+            "what does the wiki say about fstab",
+            "wiki",
+            json!({"query": "fstab"}),
+        );
+        is(
+            "look up hibernation on the arch wiki",
+            "wiki",
+            json!({"query": "hibernation"}),
+        );
+        is("man rsync", "man_page", json!({"name": "rsync"}));
+        is(
+            "man rsync exclude",
+            "man_page",
+            json!({"name": "rsync", "query": "exclude"}),
+        );
+        is(
+            "show the man page for tar",
+            "man_page",
+            json!({"name": "tar"}),
+        );
+        is("rsync --help", "man_page", json!({"name": "rsync"}));
+        is(
+            "how do I use the rsync command to exclude a folder",
+            "man_page",
+            json!({"name": "rsync", "query": "exclude a folder"}),
+        );
+        is(
+            "what are the options for tar",
+            "man_page",
+            json!({"name": "tar"}),
+        );
+    }
+
+    #[test]
+    fn media_in_ewe_player() {
+        is("play this link", "play_link", json!({}));
+        is("play the link I copied", "play_link", json!({}));
+        is("play what i copied", "play_link", json!({}));
+        // a link keeps its case: YouTube's ids are not lower case
+        is(
+            "play https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "play_link",
+            json!({"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}),
+        );
+        is(
+            "open https://youtu.be/AbC in ewe player",
+            "play_link",
+            json!({"url": "https://youtu.be/AbC"}),
+        );
+        is(
+            "play jazz from my music",
+            "play_local",
+            json!({"query": "jazz"}),
+        );
+        is("play my jazz", "play_local", json!({"query": "jazz"}));
+        is("play my music", "play_local", json!({"query": ""}));
+        is("shuffle my library", "play_local", json!({"query": ""}));
+        is(
+            "play some massive attack from my library",
+            "play_local",
+            json!({"query": "massive attack"}),
+        );
+        // the browser keeps what it played before
+        is(
+            "play massive attack",
+            "play_music",
+            json!({"query": "massive attack"}),
+        );
+        is(
+            "play my favourites on youtube",
+            "play_music",
+            json!({"query": "my favourites"}),
+        );
+        is("what's playing", "now_playing", json!({}));
+        is("what song is this", "now_playing", json!({}));
+        is("why won't this video play", "why_no_play", json!({}));
+        is("why doesn't it play", "why_no_play", json!({}));
+        is("why can't I play this file", "why_no_play", json!({}));
+        is("this video won't play", "why_no_play", json!({}));
+        is(
+            "why won't ~/Videos/Film.MKV play",
+            "why_no_play",
+            json!({"path": "~/Videos/Film.MKV"}),
+        );
+        is(
+            "why won't https://example.com/Clip.webm play",
+            "why_no_play",
+            json!({"url": "https://example.com/Clip.webm"}),
+        );
+        // the old ones stay
+        is(
+            "open https://GitHub.com/prj786",
+            "open_url",
+            json!({"url": "https://GitHub.com/prj786"}),
+        );
+    }
+
+    #[test]
+    fn keyboards_and_typing() {
+        is(
+            "switch to georgian keyboard",
+            "keyboard_layout",
+            json!({"layout": "georgian"}),
+        );
+        is(
+            "change the keyboard to russian",
+            "keyboard_layout",
+            json!({"layout": "russian"}),
+        );
+        is(
+            "georgian keyboard",
+            "keyboard_layout",
+            json!({"layout": "georgian"}),
+        );
+        is(
+            "use the us layout",
+            "keyboard_layout",
+            json!({"layout": "us"}),
+        );
+        is("next layout", "keyboard_layout", json!({"layout": "next"}));
+        is(
+            "add japanese typing",
+            "typing_add",
+            json!({"language": "japanese"}),
+        );
+        is(
+            "I want to type in Chinese",
+            "typing_add",
+            json!({"language": "chinese"}),
+        );
+        is(
+            "how do I type in korean",
+            "typing_add",
+            json!({"language": "korean"}),
+        );
+        is("type in hindi", "typing_add", json!({"language": "hindi"}));
+    }
+
+    #[test]
+    fn settings_by_text() {
+        is(
+            "show the dock on all displays",
+            "dock_display",
+            json!({"on": "all"}),
+        );
+        is(
+            "put the dock on the main screen only",
+            "dock_display",
+            json!({"on": "primary"}),
+        );
+        is("dock on primary", "dock_display", json!({"on": "primary"}));
+        is("turn off the dock", "dock_display", json!({"on": "none"}));
+        is("fold the bar", "bar_fold", json!({"on": true}));
+        is("unfold the top bar", "bar_fold", json!({"on": false}));
+        is("collapse the tray icons", "bar_fold", json!({"on": true}));
+        is("bar fold off", "bar_fold", json!({"on": false}));
     }
 }

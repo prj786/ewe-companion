@@ -61,6 +61,12 @@ pub const LOOKS: &[&str] = &[
     "system_info",
     "disk_usage",
     "memories",
+    // the 2026-11-21 wave: knowledge on this computer, and what plays
+    "whats_new",
+    "wiki",
+    "man_page",
+    "now_playing",
+    "why_no_play",
 ];
 
 pub fn is_look(command: &str) -> bool {
@@ -78,6 +84,8 @@ pub fn system_prompt(b: &Brief) -> String {
          no thanks, no markdown headings.\n\
          - Think before you answer. When something is wrong, say the likely cause and the one next step that \
          fixes it. When a request could mean two different things, ask one short question instead of guessing.\n\
+         - Answer in the language the question is written in (Georgian for Georgian, Japanese for Japanese); \
+         keep ewe's own labels as ewe shows them.\n\
          - Name places exactly as ewe does, like \"ewe Settings → Wallpaper\" or \"Komble → Plugins\".\n\
          - Each question comes with <notes>: the parts of ewe's guide that fit it, this computer now (the date \
          and time included), and what the user asked you to remember. The user does not see the notes: use \

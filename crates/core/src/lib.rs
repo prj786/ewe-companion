@@ -29,6 +29,8 @@ pub mod find;
 pub mod id;
 pub mod intent;
 pub mod knowledge;
+pub mod lang;
+pub mod media;
 pub mod paths;
 pub mod persona;
 pub mod proto;
@@ -36,6 +38,7 @@ pub mod shell;
 pub mod trim;
 pub mod typo;
 pub mod units;
+pub mod wiki;
 
 /// The version every binary reports (`VERSION` at the repo root).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
