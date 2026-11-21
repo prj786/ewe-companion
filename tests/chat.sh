@@ -615,10 +615,14 @@ check '[ "$(echo "$out" | field command)" = "play_music" ] || [ "$(echo "$out" |
 out=$("$BIN/ewe-companion" ask "play https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 check '[ "$(echo "$out" | field text)" = "Playing the YouTube link in ewe Player" ] && dolog | grep -q "watch?v=dQw4w9WgXcQ"' \
       "play <a YouTube link> → ewe Player, the link's case kept" "$out $(dolog)"
-printf 'https://vimeo.com/76979871' >"$W/fakes/clipboard.txt"
+printf 'https://www.twitch.tv/videos/2210000000' >"$W/fakes/clipboard.txt"
 out=$("$BIN/ewe-companion" ask "play this link")
-check '[ "$(echo "$out" | field text)" = "Playing the Vimeo link in ewe Player" ] && grep -q "\"wayland\": \"wayland-test\"" "$W/fakes/wl-paste.log"' \
+check '[ "$(echo "$out" | field text)" = "Playing the Twitch link in ewe Player" ] && grep -q "\"wayland\": \"wayland-test\"" "$W/fakes/wl-paste.log"' \
       "play this link → the copied link, read on the island's display" "$out"
+before=$(grep -c "^do app" "$W/island.log")
+out=$("$BIN/ewe-companion" ask "play https://vimeo.com/76979871")
+check 'echo "$out" | grep -q "This Vimeo video is locked" && [ "$(grep -c "^do app" "$W/island.log")" = "$before" ] && [ "$(echo "$out" | js "r[\"action\"][\"command\"]")" = "open_url" ]' \
+      "a Vimeo link is said to be locked (DRM or a sign-in), never handed to ewe Player" "$out"
 out=$("$BIN/ewe-companion" ask "what's playing")
 check '[ "$(echo "$out" | field text)" = "Playing: So What — Miles Davis (ewe Player)" ] && [ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Pause" ]' \
       "what's playing → ewe Player's track (WebKit's own player skipped), with Pause" "$out"
@@ -635,6 +639,9 @@ rm -f "$W/fakes/gst-libav"
 out=$("$BIN/ewe-companion" ask "why won't https://www.youtube.com/watch?v=x play")
 check 'echo "$out" | grep -q "This is a YouTube web page, not a video file" && [ "$(echo "$out" | js "r[\"action\"][\"command\"]")" = "play_link" ]' \
       "a YouTube link is a web page: Play in ewe Player" "$out"
+out=$("$BIN/ewe-companion" ask "why won't https://drm.example/watch/1 play")
+check 'echo "$out" | grep -q "video is locked" && [ "$(echo "$out" | js "r[\"action\"][\"label\"]")" = "Open in the browser" ]' \
+      "a page whose formats are all DRM (yt-dlp -J) is locked, not \"plays through yt-dlp\"" "$out"
 printf '%s' "$H/Videos/film.mkv" >"$W/fakes/clipboard.txt"
 out=$("$BIN/ewe-companion" ask "why won't this video play")
 check 'echo "$out" | grep -q "an MKV file with HEVC (H.265) video and DTS audio" && echo "$out" | grep -q "DTS"' \

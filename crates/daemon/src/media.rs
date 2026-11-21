@@ -1,5 +1,7 @@
 //! Media with ewe Player (ewe-apps): play from the user's own music library,
-//! play a link (YouTube and 1000+ sites go through yt-dlp, ewe 0.46), say
+//! play a link (YouTube, Twitch, the BBC and many other sites go through
+//! yt-dlp, ewe 0.46; Vimeo serves DRM or wants a sign-in, so it is said
+//! plainly instead of tried), say
 //! what is playing, and why a file or a link will not play. Also the two
 //! file acts the finder's rows use: show a file in ewe Files, open it with
 //! another app.
@@ -366,6 +368,16 @@ pub async fn play_link(hub: &Arc<Hub>, a: &Value) -> Outcome {
         },
     };
     let site = site_of(&url);
+    // ewe Player answers "This video is locked" for these: say it here
+    if locked_site(&site) {
+        return Outcome {
+            action: Some((
+                "Open it in the browser".into(),
+                Call::new("open_url", json!({"url": url})),
+            )),
+            ..done(locked_line(&site), None)
+        };
+    }
     match start(hub, "ewe-player", vec![url.clone()]).await {
         Ok(()) => done(format!("Playing the {site} link in ewe Player"), None)
             .private(format!("Playing a {site} link in ewe Player.")),
@@ -378,6 +390,34 @@ pub async fn play_link(hub: &Arc<Hub>, a: &Value) -> Outcome {
         },
         Err(e) => failed(e),
     }
+}
+
+/// Sites whose videos ewe Player cannot get (ewe-apps' links map,
+/// 2026-11-21: Vimeo's anonymous player serves FairPlay DRM, vimeo.com
+/// wants a sign-in).
+fn locked_site(site: &str) -> bool {
+    matches!(site, "Vimeo" | "Netflix")
+}
+
+fn locked_line(site: &str) -> String {
+    format!(
+        "This {site} video is locked: {site} protects its videos (DRM) or wants a sign-in, so it plays only on the site itself. Open it in the browser."
+    )
+}
+
+/// Whether yt-dlp's `-J` says the video is protected: `_has_drm`, or
+/// every format with video marked `has_drm`.
+fn drm_in(info: &Value) -> bool {
+    if info["_has_drm"] == true {
+        return true;
+    }
+    let video: Vec<&Value> = info["formats"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|f| f["vcodec"].as_str() != Some("none"))
+        .collect();
+    !video.is_empty() && video.iter().all(|f| f["has_drm"] == true)
 }
 
 /// A link's site in a word: "YouTube", "vimeo.com".
@@ -394,7 +434,9 @@ fn site_of(url: &str) -> String {
         .to_lowercase();
     match host.as_str() {
         "youtube.com" | "youtu.be" | "music.youtube.com" => "YouTube".into(),
-        "vimeo.com" => "Vimeo".into(),
+        "vimeo.com" | "player.vimeo.com" => "Vimeo".into(),
+        "netflix.com" => "Netflix".into(),
+        "bbc.co.uk" | "bbc.com" => "BBC".into(),
         "twitch.tv" => "Twitch".into(),
         "soundcloud.com" => "SoundCloud".into(),
         h => h.to_string(),
@@ -644,11 +686,23 @@ async fn why_link(url: &str) -> Outcome {
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .kill_on_drop(true);
-        let known = matches!(
-            tokio::time::timeout(Duration::from_secs(20), c.output()).await,
-            Ok(Ok(o)) if o.status.success()
-        );
-        return if known {
+        let info: Option<Value> =
+            match tokio::time::timeout(Duration::from_secs(20), c.output()).await {
+                Ok(Ok(o)) if o.status.success() => serde_json::from_slice(&o.stdout).ok(),
+                _ => None,
+            };
+        // a protected video, or a site that only serves those
+        if locked_site(&site) || info.as_ref().is_some_and(drm_in) {
+            return Outcome {
+                action: Some((
+                    "Open in the browser".into(),
+                    Call::new("open_url", json!({"url": url})),
+                )),
+                ..done(locked_line(&site), None)
+            }
+            .line_is_facts();
+        }
+        return if info.is_some() {
             Outcome {
                 action: Some((
                     "Play in ewe Player".into(),
@@ -829,6 +883,21 @@ mod tests {
         assert_eq!(pick(&lib, "songs by miles davis").len(), 2);
         assert_eq!(pick(&lib, "").len(), 4, "all of it");
         assert!(pick(&lib, "polka").is_empty());
+    }
+
+    #[test]
+    fn protected_videos_are_said_plainly() {
+        use serde_json::json;
+        assert!(drm_in(&json!({"_has_drm": true})));
+        assert!(drm_in(&json!({"formats": [
+            {"vcodec": "avc1", "has_drm": true}, {"vcodec": "none", "acodec": "mp4a"}]})));
+        assert!(!drm_in(&json!({"formats": [
+            {"vcodec": "avc1", "has_drm": true}, {"vcodec": "vp9"}]})));
+        assert!(!drm_in(&json!({"formats": []})));
+        assert!(locked_site(&site_of("https://vimeo.com/76979871")));
+        assert!(locked_site(&site_of("https://player.vimeo.com/video/1")));
+        assert!(!locked_site(&site_of("https://www.twitch.tv/videos/1")));
+        assert_eq!(site_of("https://www.bbc.co.uk/news/av/x"), "BBC");
     }
 
     #[test]

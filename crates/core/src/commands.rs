@@ -382,7 +382,8 @@ pub const CATALOG: &[CommandInfo] = &[
     CommandInfo {
         name: "play_link",
         args: r#"{"url": "https://www.youtube.com/watch?v=…" (optional: else the link the user copied)}"#,
-        summary: "play a video or song link (YouTube and 1000+ sites, or a direct file) in ewe Player",
+        summary: "play a video or song link in ewe Player (YouTube, Twitch, news sites like the BBC and many \
+                  others, or a direct file; not Vimeo or Netflix: they protect their videos)",
     },
     CommandInfo {
         name: "now_playing",

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """A stand-in for ewe's ewe-theme, for the companion's tests: the real one
 repaints the owner's desktop. It answers `scheme list` (Ewe Dark on, or
-the slug in $EWE_FAKE_DIR/theme.json) and logs everything else to
-theme.log without doing it. One JSON object, exit 0."""
+the slug in $EWE_FAKE_DIR/theme.json) and `scheme apply ewe-dark|ewe-light`
+(it only records the slug), and logs every call to theme.log. One JSON
+object, exit 0."""
 import json
 import os
 import sys
@@ -23,4 +24,8 @@ if argv[:2] == ["scheme", "list"]:
         s["current"] = s["slug"] == cur
     print(json.dumps({"ok": True, "current": cur, "schemes": schemes}))
     sys.exit(0)
-print(json.dumps({"ok": False, "error": "fake", "message": "the fake ewe-theme only lists schemes"}))
+if argv[:2] == ["scheme", "apply"] and len(argv) == 3 and argv[2] in ("ewe-dark", "ewe-light"):
+    json.dump({"current": argv[2]}, open(os.path.join(D, "theme.json"), "w"))
+    print(json.dumps({"ok": True, "current": argv[2]}))
+    sys.exit(0)
+print(json.dumps({"ok": False, "error": "fake", "message": "the fake ewe-theme only lists and applies ewe's schemes"}))

@@ -807,9 +807,11 @@ pub async fn keyboard_layout(a: &Value, hypr: &str) -> Outcome {
 }
 
 /// `typing_add {language}`: typing in a language that needs an input
-/// method. With `ewe-ime` (ewe 0.46) and the language's engine installed,
-/// the exact `ewe-ime add <id>` with Run (Undo removes it); otherwise ewe
-/// Settings → Keyboard and mouse, where Install asks for the password once.
+/// method. With `ewe-ime` (ewe 0.46) and nothing missing for the language
+/// (its `ewe-ime catalog` entry: `installed`, `core`, `packages`), the exact
+/// `ewe-ime add <id>` with Run (Undo: `ewe-ime remove <id>`); otherwise ewe
+/// Settings → Keyboard and mouse → Typing in other languages → Add a
+/// language…, which installs it (one password prompt).
 pub async fn typing_add(hub: &std::sync::Arc<crate::hub::Hub>, a: &Value) -> Outcome {
     let lang = a["language"].as_str().unwrap_or("").trim().to_lowercase();
     let Some(id) = companion_core::lang::ime_id(&lang) else {
@@ -847,8 +849,16 @@ pub async fn typing_add(hub: &std::sync::Arc<crate::hub::Hub>, a: &Value) -> Out
                 .as_array()
                 .and_then(|c| c.iter().find(|e| e["id"] == id).cloned())
         });
+    // ewe-ime's catalog (ewe 0.46): `installed` is the language's own
+    // engine, `core` fcitx5 itself, `packages` what is still missing; only
+    // a language with nothing missing can be added from a Run click
+    let ready = |e: &Value| {
+        e["installed"] == true
+            && e["core"] != false
+            && e["packages"].as_array().is_none_or(|p| p.is_empty())
+    };
     match entry {
-        Some(e) if e["installed"] == true => {
+        Some(e) if ready(&e) => {
             let method = e["method"].as_str().unwrap_or("");
             Outcome {
                 propose_undo: Some(format!("ewe-ime remove {id}")),
@@ -863,7 +873,7 @@ pub async fn typing_add(hub: &std::sync::Arc<crate::hub::Hub>, a: &Value) -> Out
         }
         _ => {
             open_settings(format!(
-                "Opened ewe Settings → Keyboard and mouse: under Typing in other languages, pick {name}, then Install (it asks for your password once)."
+                "Opened ewe Settings → Keyboard and mouse: under Typing in other languages, press Add a language… and pick {name}. ewe installs it and asks for your password once."
             ))
             .await
         }
